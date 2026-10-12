@@ -31,8 +31,13 @@ public class RegisterRequest {
     @Size(max = 255, message = "Phone must not exceed 255 characters")
     private String phone;
 
-    @Pattern(regexp = "STUDENT|TEACHER|PARENT|OTHER_LEARNER|LEARNER|PROVIDER_ADMIN|PROVIDER_STAFF",
-            message = "Role must be one of: STUDENT, TEACHER, PARENT, OTHER_LEARNER, LEARNER, PROVIDER_ADMIN, PROVIDER_STAFF")
+    // Deliberately excludes PROVIDER_ADMIN/PROVIDER_STAFF and every platform role. Those are
+    // granted by platform invitation, never chosen by whoever fills in this public form. The
+    // pattern is the client-visible contract, so it must not advertise roles the service will
+    // reject - AuthServiceImpl.PUBLIC_REGISTRATION_ROLES is the authoritative allowlist and
+    // re-checks this server-side.
+    @Pattern(regexp = "STUDENT|TEACHER|PARENT|OTHER_LEARNER|LEARNER",
+            message = "Role must be one of: STUDENT, TEACHER, PARENT, OTHER_LEARNER, LEARNER")
     private String role;
 
     private String learningLevel;

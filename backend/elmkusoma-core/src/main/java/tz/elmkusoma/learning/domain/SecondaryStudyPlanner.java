@@ -33,14 +33,17 @@ public class SecondaryStudyPlanner extends BaseEntity {
     private LocalDate plannedDate;
 
     @Column(name = "duration_minutes")
+    @Builder.Default
     private Integer durationMinutes = 30;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private PlannerStatus status = PlannerStatus.PLANNED;
 
     @Column(name = "priority", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Priority priority = Priority.MEDIUM;
 
     @Column(name = "notes")

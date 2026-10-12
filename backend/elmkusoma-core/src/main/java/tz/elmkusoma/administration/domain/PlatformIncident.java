@@ -28,9 +28,11 @@ public class PlatformIncident extends BaseEntity {
     private String category;
 
     @Column(nullable = false)
+    @Builder.Default
     private String severity = "MEDIUM";
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "DETECTED";
 
     @Column(name = "affected_service")
@@ -43,6 +45,7 @@ public class PlatformIncident extends BaseEntity {
     private UUID affectedEntityId;
 
     @Column(name = "detected_at", nullable = false)
+    @Builder.Default
     private LocalDateTime detectedAt = LocalDateTime.now();
 
     @Column(name = "acknowledged_at")

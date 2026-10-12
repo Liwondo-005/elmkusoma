@@ -23,9 +23,35 @@ async function platformFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (institutionId) headers["X-Institution-Id"] = institutionId
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers })
-  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`)
+  if (!res.ok) throw new Error(await describeError(res))
   const json = await res.json()
   return json.data ?? json
+}
+
+/**
+ * Builds a human-readable error from a failed response. The API returns the real
+ * reason in the body (ApiResponse.error), and `res.statusText` is empty over HTTP/2
+ * and for most proxy responses - surfacing that alone produced blank messages such
+ * as "API 400: " and hid real validation/authorization failures from the user.
+ */
+async function describeError(res: Response): Promise<string> {
+  let detail = ""
+  try {
+    const raw = await res.text()
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        detail = parsed?.error || parsed?.message || ""
+      } catch {
+        detail = raw.slice(0, 200)
+      }
+    }
+  } catch {
+    // body already consumed or unreadable - fall back to status text
+  }
+  if (detail) return `API ${res.status}: ${detail}`
+  if (res.statusText) return `API ${res.status}: ${res.statusText}`
+  return `API ${res.status}`
 }
 
 export interface PlatformDashboard {
@@ -91,6 +117,142 @@ export interface UserSummary {
   isEmailVerified?: boolean
   isPhoneVerified?: boolean
   phone?: string
+}
+
+/**
+ * Request for an expiring platform-issued invitation. No password by design: the recipient
+ * chooses their own when they redeem, after proving control of the address.
+ */
+export interface PlatformInvitationPayload {
+  email: string
+  institutionId: string
+  role: string
+  firstName?: string
+  lastName?: string
+}
+
+/** Response for a created invitation. `token` is returned exactly once, never re-listed. */
+export interface PlatformInvitation {
+  id: string
+  email: string
+  role: string
+  status: string
+  token?: string
+  expiresAt?: string
+}
+
+export type ContactMessageStatus =
+  | "NEW"
+  | "IN_PROGRESS"
+  | "AWAITING_RESPONSE"
+  | "RESOLVED"
+  | "CLOSED"
+
+/** What the server actually recorded about notification. NOT_CONFIGURED means nobody was emailed. */
+export type ContactNotificationStatus = "NOT_CONFIGURED" | "PENDING" | "SENT" | "FAILED"
+
+export interface ContactMessageRecord {
+  id: string
+  reference: string
+  name: string
+  email: string
+  category: string
+  subject: string
+  message: string
+  status: ContactMessageStatus
+  priority: string
+  assignedTo: string | null
+  createdAt: string | null
+  resolvedAt: string | null
+  notificationStatus: ContactNotificationStatus
+  notificationError: string | null
+  notificationAttempts: number
+  notifiedAt: string | null
+  userId: string | null
+  ipAddress: string | null
+  userAgent: string | null
+}
+
+export interface ContactMessageReply {
+  id: string
+  authorId: string | null
+  message: string
+  internal: boolean
+  delivered: boolean
+  createdAt: string | null
+}
+
+export type LegalDocType = "TERMS" | "PRIVACY" | "COOKIE" | "SUPPORT_POLICY"
+
+export interface LegalDocumentRecord {
+  id: string
+  type: LegalDocType
+  title: string
+  content: string
+  effectiveDate: string | null
+  /** Working-copy revision. Moves when the draft is edited. */
+  draftVersion: number
+  /** What the public is actually reading. Null until first publication. */
+  publishedVersion: number | null
+  lastModifiedBy: string | null
+  updatedAt: string | null
+}
+
+export interface LegalVersionRecord {
+  id: string
+  version: number
+  title: string
+  content: string
+  effectiveDate: string | null
+  publishedAt: string | null
+  publishedBy: string | null
+}
+
+export type NewsPriority = "NORMAL" | "IMPORTANT" | "URGENT"
+
+export type NewsStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED"
+
+/** The full admin view, including the working-copy fields the public payload omits. */
+export interface NewsArticleRecord {
+  id: string
+  slug: string
+  title: string
+  summary: string
+  body: string
+  category: string | null
+  coverImageUrl: string | null
+  authorName: string | null
+  status: NewsStatus
+  publishedAt: string | null
+  scheduledAt: string | null
+  expiresAt: string | null
+  featured: boolean
+  priority: NewsPriority
+  sortOrder: number
+  lastModifiedBy: string | null
+  publishedBy: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/**
+ * Save payload. Deliberately has no `status` and no `publishedAt`: lifecycle changes go through
+ * their own endpoints, and the server owns the publication timestamp.
+ */
+export interface NewsArticlePayload {
+  title: string
+  summary: string
+  body: string
+  slug?: string
+  category?: string
+  coverImageUrl?: string
+  authorName?: string
+  priority?: NewsPriority
+  featured?: boolean
+  sortOrder?: number
+  /** Local datetime-local value; converted to ISO before sending. */
+  scheduledAt?: string | null
+  expiresAt?: string | null
 }
 
 export interface UserCreatePayload {
@@ -657,6 +819,16 @@ export const platformAdminApi = {
     platformFetch<UserSummary>(`/v1/platform-admin/users/${userId}/status?active=${active}`, { method: "PUT" }),
   createUser: (payload: UserCreatePayload) =>
     platformFetch<UserSummary>(`/v1/platform-admin/users`, { method: "POST", body: JSON.stringify(payload) }),
+  /**
+   * Issues an expiring, single-delivery invitation instead of creating the account outright.
+   * The recipient activates it and chooses their own password, so the platform never sets a
+   * permanent credential. The token is returned once and is not re-listable.
+   */
+  createInvitation: (payload: PlatformInvitationPayload) =>
+    platformFetch<PlatformInvitation>(`/v1/platform-admin/invitations`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   updateUser: (id: string, payload: UserUpdatePayload) =>
     platformFetch<UserSummary>(`/v1/platform-admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteUser: (id: string) =>
@@ -695,6 +867,17 @@ export const platformAdminApi = {
 
   getProviderQuotas: (providerId: string) =>
     platformFetch<ProviderQuota[]>(`/v1/platform-admin/providers/${providerId}/quotas`),
+  /**
+   * Audit B-48: the grant endpoint existed on the backend but had no frontend caller, so a
+   * provider could never acquire a service package from the UI. The provider id in the path
+   * must match institutionId in the body; the backend rejects a mismatch.
+   */
+  createProviderEntitlement: (providerId: string, data: {
+    serviceId: string; maxSeats?: number | null; startsAt?: string; expiresAt?: string
+  }) =>
+    platformFetch<ProviderQuota>(`/v1/platform-admin/providers/${providerId}/entitlements`, {
+      method: "POST", body: JSON.stringify({ institutionId: providerId, ...data }),
+    }),
   updateEntitlement: (entitlementId: string, data: { maxSeats?: number; status?: string }) =>
     platformFetch<ProviderQuota>(`/v1/platform-admin/entitlements/${entitlementId}`, { method: "PUT", body: JSON.stringify(data) }),
   grantSponsorSeats: (data: { providerId: string; serviceId: string; userId: string; studentId: string; seats?: number; expiresAt?: string; note?: string }) =>
@@ -788,12 +971,17 @@ export const platformAdminApi = {
   resolveSecurityEvent: (eventId: string) =>
     platformFetch<SecurityEventItem>(`/v1/platform-admin/security/events/${eventId}/resolve`, { method: "POST" }),
 
+  /**
+   * Audit B-49: returns a real PageResponse so callers know the total page count. The endpoint
+   * previously returned a bare array, which forced the audit page to guess whether a Next button
+   * should be enabled by checking whether the current page happened to be full.
+   */
   getAuditLogs: (page = 0, size = 20, action?: string, entityType?: string, entityId?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
     if (action) params.set("action", action)
     if (entityType) params.set("entityType", entityType)
     if (entityId) params.set("entityId", entityId)
-    return platformFetch<AuditLogEntry[]>(`/v1/platform-admin/audit/logs?${params}`)
+    return platformFetch<PageResponse<AuditLogEntry>>(`/v1/platform-admin/audit/logs?${params}`)
   },
 
   search: (q: string, type?: string) => {
@@ -834,6 +1022,147 @@ export const platformAdminApi = {
   },
   updateConfig: (key: string, value: string) =>
     platformFetch<PlatformConfigItem>(`/v1/platform-admin/config/${key}`, { method: "PUT", body: JSON.stringify({ value }) }),
+
+  listContactMessages: (params: { page?: number; size?: number; status?: string; q?: string } = {}) => {
+    const search = new URLSearchParams()
+    search.set("page", String(params.page ?? 0))
+    search.set("size", String(params.size ?? 20))
+    if (params.status) search.set("status", params.status)
+    if (params.q) search.set("q", params.q)
+    return platformFetch<PageResponse<ContactMessageRecord>>(
+      `/v1/platform-admin/contact-messages?${search.toString()}`)
+  },
+  getContactMessage: (id: string) =>
+    platformFetch<ContactMessageRecord>(`/v1/platform-admin/contact-messages/${id}`),
+  updateContactMessageStatus: (id: string, status: ContactMessageStatus) =>
+    platformFetch<ContactMessageRecord>(
+      `/v1/platform-admin/contact-messages/${id}/status?status=${status}`,
+      { method: "PUT" }),
+  assignContactMessage: (id: string, assigneeId: string | null) =>
+    platformFetch<ContactMessageRecord>(`/v1/platform-admin/contact-messages/${id}/assign`, {
+      method: "PUT",
+      body: JSON.stringify({ assigneeId }),
+    }),
+  contactMessageReplies: (id: string) =>
+    platformFetch<ContactMessageReply[]>(`/v1/platform-admin/contact-messages/${id}/replies`),
+  replyToContactMessage: (id: string, message: string, internal: boolean) =>
+    platformFetch<{ id: string; internal: boolean; delivered: boolean }>(
+      `/v1/platform-admin/contact-messages/${id}/replies`,
+      { method: "POST", body: JSON.stringify({ message, internal }) }),
+  /** Re-attempts notification on the same enquiry. Never creates a second ticket. */
+  renotifyContactMessage: (id: string) =>
+    platformFetch<ContactMessageRecord>(`/v1/platform-admin/contact-messages/${id}/notify`,
+      { method: "POST" }),
+
+  listLegalDocuments: (type?: LegalDocType) =>
+    platformFetch<LegalDocumentRecord[]>(
+      `/v1/platform-admin/legal-documents${type ? `?type=${type}` : ""}`),
+  createLegalDocument: (payload: { type: LegalDocType; title: string; content: string; effectiveDate?: string }) =>
+    platformFetch<LegalDocumentRecord>("/v1/platform-admin/legal-documents", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateLegalDocument: (
+    id: string,
+    payload: { title: string; content: string; effectiveDate?: string }) =>
+    platformFetch<LegalDocumentRecord>(`/v1/platform-admin/legal-documents/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  publishLegalDocument: (id: string) =>
+    platformFetch<LegalDocumentRecord>(`/v1/platform-admin/legal-documents/${id}/publish`,
+      { method: "POST" }),
+  legalDocumentVersions: (id: string) =>
+    platformFetch<LegalVersionRecord[]>(`/v1/platform-admin/legal-documents/${id}/versions`),
+revertLegalDocument: (id: string, version: number) =>
+    platformFetch<LegalDocumentRecord>(`/v1/platform-admin/legal-documents/${id}/revert`, {
+      method: "POST",
+      body: JSON.stringify({ version }),
+    }),
+
+  // ── public news ────────────────────────────────────────────────────────────────────────
+  // Lifecycle transitions are separate calls rather than a status field on save, so an ordinary
+  // edit can never publish an article by accident.
+
+  listNews: (params: {
+    page?: number
+    size?: number
+    status?: NewsStatus
+    category?: string
+    featured?: boolean
+    q?: string
+  } = {}) => {
+    const search = new URLSearchParams()
+    search.set("page", String(params.page ?? 0))
+    search.set("size", String(params.size ?? 20))
+    if (params.status) search.set("status", params.status)
+    if (params.category) search.set("category", params.category)
+    if (params.featured !== undefined) search.set("featured", String(params.featured))
+    if (params.q) search.set("q", params.q)
+    return platformFetch<PageResponse<NewsArticleRecord>>(`/v1/platform-admin/news?${search.toString()}`)
+  },
+
+  getNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}`),
+
+  createNewsArticle: (payload: NewsArticlePayload) =>
+    platformFetch<NewsArticleRecord>("/v1/platform-admin/news", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateNewsArticle: (id: string, payload: NewsArticlePayload) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  publishNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/publish`, { method: "POST" }),
+
+  unpublishNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/unpublish`, { method: "POST" }),
+
+  archiveNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/archive`, { method: "POST" }),
+
+  setNewsFeatured: (id: string, featured: boolean) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/featured`, {
+      method: "POST",
+      body: JSON.stringify({ featured }),
+    }),
+
+  deleteNewsArticle: (id: string) =>
+    platformFetch<void>(`/v1/platform-admin/news/${id}`, { method: "DELETE" }),
+
+  /**
+   * Uploads a cover image and returns its public URL.
+   *
+   * <p>Not JSON: this is multipart, so it bypasses platformFetch rather than being bent to fit
+   * its Content-Type. The error is reshaped to match platformFetch's `API <status>: <detail>` form
+   * so callers can treat both transports the same way.</p>
+   */
+  uploadNewsCover: async (file: File): Promise<string> => {
+    const token = getToken()
+    const institutionId = getInstitutionId()
+    const form = new FormData()
+    form.append("file", file)
+
+    const headers: Record<string, string> = {}
+    if (token) headers["Authorization"] = `Bearer ${token}`
+    if (institutionId) headers["X-Institution-Id"] = institutionId
+
+    const res = await fetch(`${API_BASE}/v1/platform-admin/news/cover`, {
+      method: "POST",
+      headers,
+      body: form,
+    })
+    if (!res.ok) throw new Error(await describeError(res))
+    const json = await res.json()
+    const data = json.data ?? json
+    if (!data?.url) throw new Error("Upload succeeded but no URL was returned")
+    return data.url as string
+  },
 
   listNotifications: (page = 0, size = 20) =>
     platformFetch<PageResponse<NotificationSummary>>(`/v1/platform-admin/notifications?page=${page}&size=${size}`),
@@ -937,7 +1266,7 @@ export const platformAdminApi = {
     const headers: Record<string, string> = {}
     if (token) headers["Authorization"] = `Bearer ${token}`
     const res = await fetch(`${API_BASE}/v1/platform-admin/export?type=${type}`, { headers })
-    if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`)
+    if (!res.ok) throw new Error(await describeError(res))
     const blob = await res.blob()
     const a = document.createElement("a")
     a.href = URL.createObjectURL(blob)
@@ -979,6 +1308,12 @@ export const platformAdminApi = {
   getRolePermissions: (roleId: string) => platformFetch<string[]>(`/v1/platform-admin/roles/${roleId}/permissions`),
   updateRolePermissions: (roleId: string, permissions: string[]) =>
     platformFetch<string[]>(`/v1/platform-admin/roles/${roleId}/permissions`, {
+      method: "PUT", body: JSON.stringify({ permissions }),
+    }),
+  getAdminPermissions: (userId: string) =>
+    platformFetch<string[]>(`/v1/platform-admin/admins/${userId}/permissions`),
+  updateAdminPermissions: (userId: string, permissions: string[]) =>
+    platformFetch<string[]>(`/v1/platform-admin/admins/${userId}/permissions`, {
       method: "PUT", body: JSON.stringify({ permissions }),
     }),
   createAdmin: (payload: AdminCreatePayload) =>

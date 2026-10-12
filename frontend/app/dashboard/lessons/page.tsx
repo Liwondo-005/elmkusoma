@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useRequireAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { learningApi, type Lesson, type LessonProgress } from "@/lib/api"
@@ -10,6 +11,9 @@ import { BookOpen, Clock, CheckCircle, Play, ArrowRight, Search, Filter } from "
 
 export default function LessonsPage() {
   const { user } = useRequireAuth()
+  // Audit B-55: the dashboard subject cards deep-link here with ?subject=<name> so the learner
+  // lands on that subject already filtered instead of the unfiltered list.
+  const searchParams = useSearchParams()
   const t = useTranslations("primary")
   const ts = useTranslations("status")
   const [lessons, setLessons] = useState<Lesson[]>([])
@@ -17,6 +21,7 @@ export default function LessonsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const deepLinkSubject = searchParams.get("subject")
   const level = user?.learningLevel as LearningLevel | null
   const isPrimary = level?.toUpperCase() === "PRIMARY"
 
@@ -24,6 +29,12 @@ export default function LessonsPage() {
     if (!user) return
     loadData()
   }, [user])
+
+  // Audit B-55: honour ?subject= on arrival. Guarded so a manual subject chip later in the
+  // session is not immediately overwritten by the URL.
+  useEffect(() => {
+    if (deepLinkSubject) setSelectedSubject(deepLinkSubject)
+  }, [deepLinkSubject])
 
   async function loadData() {
     try {
@@ -52,11 +63,27 @@ export default function LessonsPage() {
     return matchesSubject && matchesSearch
   })
 
+  // Audit B-55: the subject chips and groups were both built from the hardcoded curriculum
+  // config, so any subject the platform actually assigns outside that list could not be
+  // selected at all. Derive the available subjects from the learner's lessons, keeping the
+  // known curriculum styling where it matches and falling back to a plain label otherwise.
+  const lessonSubjectNames = [...new Set(lessons.map((l) => l.subjectName).filter(Boolean))] as string[]
+  const knownFirst = primarySubjects.map((s) => s.name).filter((n) => lessonSubjectNames.includes(n))
+  const extraFirst = lessonSubjectNames.filter((n) => !primarySubjects.some((s) => s.name === n)).sort()
+  const availableSubjects = [...knownFirst, ...extraFirst]
+
   const subjectGroups = isPrimary
-    ? primarySubjects.map((subject) => ({
-        ...subject,
-        lessons: filteredLessons.filter((l) => l.subjectName === subject.name),
-      })).filter((group) => group.lessons.length > 0 || !selectedSubject)
+    ? availableSubjects.map((name) => {
+        const theme = primarySubjects.find((s) => s.name === name)
+        return {
+          name,
+          icon: theme?.icon ?? BookOpen,
+          color: theme?.color ?? "text-muted-foreground",
+          bgColor: theme?.bgColor ?? "bg-muted",
+          description: theme?.description ?? "",
+          lessons: filteredLessons.filter((l) => l.subjectName === name),
+        }
+      }).filter((group) => group.lessons.length > 0 || !selectedSubject)
     : []
 
   if (isPrimary) {
@@ -92,17 +119,17 @@ export default function LessonsPage() {
           >
             {t("lessons.allSubjects")}
           </button>
-          {primarySubjects.map((subject) => (
+          {availableSubjects.map((name) => (
             <button
-              key={subject.name}
-              onClick={() => setSelectedSubject(selectedSubject === subject.name ? null : subject.name)}
+              key={name}
+              onClick={() => setSelectedSubject(selectedSubject === name ? null : name)}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                selectedSubject === subject.name
+                selectedSubject === name
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
-              {subject.name}
+              {name}
             </button>
           ))}
         </div>

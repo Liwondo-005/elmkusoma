@@ -55,6 +55,7 @@ public class Institution {
     private UUID wardId;
 
     @Column(name = "country", nullable = false)
+    @Builder.Default
     private String country = "Tanzania";
 
     @Column(name = "phone")
@@ -88,9 +89,11 @@ public class Institution {
     private String metadataJson;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "status", length = 30)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @CreatedDate
@@ -108,6 +111,7 @@ public class Institution {
     private String updatedBy;
 
     @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
     private Boolean isDeleted = false;
 
     @Column(name = "approved_at")

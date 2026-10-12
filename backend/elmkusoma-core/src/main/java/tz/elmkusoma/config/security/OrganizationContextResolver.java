@@ -172,6 +172,20 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
                             request.setAttribute("institutionId", targetInstitutionId);
                             request.setAttribute("membershipRole", activeMembership.getRole().name());
                             request.setAttribute("userPermissions", userPermissions);
+
+                            // Per-provider scope (audit B-14/X-7). Publish the provider ids this
+                            // account is explicitly scoped to. Empty set means "no explicit
+                            // provider scope", i.e. the historical institution-wide behaviour.
+                            java.util.Set<UUID> ownedProviderIds = new java.util.LinkedHashSet<>();
+                            for (InstitutionMembership m : effectiveMemberships) {
+                                if (m.getProviderId() != null && !Boolean.TRUE.equals(m.getIsDeleted())) {
+                                    ownedProviderIds.add(m.getProviderId());
+                                }
+                            }
+                            request.setAttribute("ownedProviderIds", java.util.Collections.unmodifiableSet(ownedProviderIds));
+                            if (ownedProviderIds.size() == 1) {
+                                request.setAttribute("providerId", ownedProviderIds.iterator().next());
+                            }
                         } else {
                             log.warn("Could not resolve institution for user {}", user.getId());
                         }

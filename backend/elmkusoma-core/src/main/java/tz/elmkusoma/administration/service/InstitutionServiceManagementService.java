@@ -41,9 +41,17 @@ public class InstitutionServiceManagementService {
 
     @Transactional
     public InstitutionServiceResponse enableService(UUID institutionId, InstitutionServiceRequest request, UUID userId) {
-        // Verify platform feature exists
-        platformFeatureRepository.findByFeatureKeyAndIsDeletedFalse(request.getFeatureKey())
+        // Audit B-29: the platform feature had to EXIST but its status was ignored, so flipping a
+        // feature to RETIRED in the platform console blocked nothing. A retired/deprecated feature
+        // can no longer be switched on for an organisation.
+        tz.elmkusoma.administration.domain.PlatformFeature feature = platformFeatureRepository
+                .findByFeatureKeyAndIsDeletedFalse(request.getFeatureKey())
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformFeature", "featureKey", request.getFeatureKey()));
+        String featureStatus = feature.getStatus() != null ? feature.getStatus().toUpperCase() : "ACTIVE";
+        if ("RETIRED".equals(featureStatus) || "DEPRECATED".equals(featureStatus)) {
+            throw new IllegalStateException("Feature '" + request.getFeatureKey()
+                    + "' is " + featureStatus + " at platform level and cannot be enabled");
+        }
 
         InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, request.getFeatureKey()).orElse(null);
         if (service == null) {

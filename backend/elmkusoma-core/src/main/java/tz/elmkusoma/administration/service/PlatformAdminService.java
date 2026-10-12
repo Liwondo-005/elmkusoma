@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.administration.domain.*;
 import tz.elmkusoma.administration.dto.*;
+import tz.elmkusoma.administration.dto.EntitlementCreateRequest;
 import tz.elmkusoma.administration.repository.*;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.domain.SecurityEvent;
@@ -28,6 +29,7 @@ import tz.elmkusoma.config.security.OrganizationContextResolver;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.dto.PublicSiteSettings;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -107,6 +109,13 @@ public class PlatformAdminService {
     private final tz.elmkusoma.parent.repository.SupportTicketRepository supportTicketRepository;
     private final PlatformFeatureRepository featureRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    // Audit X-5: provider delivery counters for the platform registry.
+    private final tz.elmkusoma.nfe.provider.repository.EducationProviderRepository educationProviderRepository;
+    private final tz.elmkusoma.nfe.program.repository.NfeProgramRepository nfeProgramRepository;
+    private final tz.elmkusoma.nfe.learner.repository.NfeLearnerRepository nfeLearnerRepository;
+    private final tz.elmkusoma.nfe.session.repository.NfeSessionRepository nfeSessionRepository;
+    private final tz.elmkusoma.nfe.certificate.repository.NfeCertificateRepository nfeCertificateRepository;
+    private final tz.elmkusoma.administration.repository.AdminUserPermissionRepository adminUserPermissionRepository;
     private final DashboardSnapshotRepository snapshotRepository;
     private final tz.elmkusoma.learner.repository.LearnerNotificationRepository learnerNotificationRepository;
     private final PlatformIntegrationService integrationService;
@@ -115,7 +124,12 @@ public class PlatformAdminService {
     private final tz.elmkusoma.config.security.PermissionCacheService permissionCacheService;
     private final tz.elmkusoma.event.service.EventService eventService;
     private final tz.elmkusoma.identity.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+    private final tz.elmkusoma.config.EventPublisherService eventPublisherService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    /** Base URL of the web app, used to build password-reset links. */
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl = "http://localhost:3000";
 
     // ── Command Center ──
 
@@ -311,10 +325,45 @@ public class PlatformAdminService {
         return toUserSummary(user);
     }
 
+    /** Audit B-14: binds provider roles to the institution's single provider record, when it exists. */
+    private UUID resolveProviderScope(User.Role role, UUID institutionId) {
+        if (role != User.Role.PROVIDER_ADMIN && role != User.Role.PROVIDER_STAFF) {
+            return null;
+        }
+        return educationProviderRepository.findAllByInstitutionId(institutionId).stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                .map(tz.elmkusoma.nfe.provider.domain.EducationProvider::getId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** Audit B-02: roles whose authority is scoped to one organization. */
+    private static boolean requiresInstitution(User.Role role) {
+        if (role == null) {
+            return false;
+        }
+        return switch (role) {
+            case INSTITUTION_ADMIN, PROVIDER_ADMIN, PROVIDER_STAFF, TEACHER, INSTRUCTOR,
+                 NATIONAL_ADMIN, REGIONAL_ADMIN, DISTRICT_ADMIN -> true;
+            default -> false;
+        };
+    }
+
     @Transactional
     public UserSummaryResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
             throw new IllegalArgumentException("User with email " + request.getEmail() + " already exists");
+        }
+        // Audit B-02: organisation-scoped roles were creatable without an institution, producing an
+        // account that logs in but resolves no scope -- every provider/administration API call then
+        // failed with 400 and the provider workspace was unreachable. Reject it at the boundary.
+        if (requiresInstitution(request.getRole()) && request.getInstitutionId() == null) {
+            throw new IllegalArgumentException(
+                    "institutionId is required when creating a user with role " + request.getRole().name());
+        }
+        if (request.getInstitutionId() != null
+                && !institutionRepository.existsByIdAndIsDeletedFalse(request.getInstitutionId())) {
+            throw new IllegalArgumentException("Institution " + request.getInstitutionId() + " does not exist");
         }
         User user = User.builder()
                 .firstName(request.getFirstName())
@@ -333,13 +382,17 @@ public class PlatformAdminService {
         // §11: an active membership makes the account visible to the people directory,
         // scope services and permission computation for the provisioned organization.
         if (request.getInstitutionId() != null) {
-            membershipRepository.save(InstitutionMembership.builder()
+            InstitutionMembership membership = InstitutionMembership.builder()
                     .userId(user.getId())
                     .institutionId(request.getInstitutionId())
                     .role(OrganizationContextResolver.mapUserRoleToMembershipRole(request.getRole()))
                     .isActive(true)
                     .isDeleted(false)
-                    .build());
+                    // Per-provider scope (B-14): a provider account is bound to the institution's
+                    // provider record so its authority is that provider, not the whole institution.
+                    .providerId(resolveProviderScope(request.getRole(), request.getInstitutionId()))
+                    .build();
+            membershipRepository.save(membership);
         }
         writeAudit(PLATFORM_INSTITUTION_ID, "USER", user.getId(), user.getEmail(), "CREATE",
                 Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name()));
@@ -436,15 +489,41 @@ public class PlatformAdminService {
     public void sendPasswordResetLink(UUID userId) {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        String rawToken = UUID.randomUUID().toString() + UUID.randomUUID().toString();
         PasswordResetToken resetToken = PasswordResetToken.builder()
-                .token(hashToken(UUID.randomUUID().toString() + UUID.randomUUID().toString()))
+                .token(hashToken(rawToken))
                 .userId(user.getId())
                 .expiresAt(LocalDateTime.now().plusHours(24))
                 .used(false)
                 .build();
         passwordResetTokenRepository.save(resetToken);
-        // TODO: Send email with reset link
-        log.info("Password reset link sent to user: {}", user.getEmail());
+
+        // Previously this only logged "sent" while nobody ever received anything. It now
+        // publishes the same email event the self-service forgot-password flow uses, so the
+        // admin action actually delivers and is audited.
+        Map<String, Object> variables = new HashMap<>();
+        String displayName = user.getFirstName() != null ? user.getFirstName() : user.getEmail();
+        variables.put("userName", displayName);
+        variables.put("resetLink", frontendUrl + "/reset-password?token=" + rawToken);
+        variables.put("expiryHours", 24);
+        try {
+            eventPublisherService.publishEmailEvent(
+                    user.getEmail(),
+                    "Reset your Elmkusoma password",
+                    "password-reset",
+                    variables,
+                    user.getInstitutionId());
+            writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                    "USER", userId, user.getEmail(), "SEND_RESET_LINK", Map.of(), Map.of());
+            log.info("Password reset link published to user: {}", user.getEmail());
+        } catch (Exception ex) {
+            // Do not leave a live token behind that the recipient was never told about.
+            resetToken.setUsed(true);
+            passwordResetTokenRepository.save(resetToken);
+            log.error("Password reset link delivery failed for {}: {}", user.getEmail(), ex.getMessage());
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Could not deliver the reset link. Check that email delivery (SMTP) is configured on the server.");
+        }
     }
 
     // ── Institutions ──
@@ -562,6 +641,61 @@ public class PlatformAdminService {
                             .build();
                 })
                 .toList();
+    }
+
+    /**
+     * Audit B-35: creates the entitlement row that the provider registry could only read and
+     * update. Uses the existing entity, the existing platform_services catalogue and the existing
+     * audit writer -- no new commerce model.
+     */
+    @Transactional
+    public ProviderQuotaResponse createProviderEntitlement(EntitlementCreateRequest request) {
+        UUID institutionId = request.getInstitutionId();
+        if (!institutionRepository.existsByIdAndIsDeletedFalse(institutionId)) {
+            throw new IllegalArgumentException("Institution " + institutionId + " does not exist");
+        }
+        PlatformService service = platformServiceRepository.findByIdAndIsDeletedFalse(request.getServiceId())
+                .orElseThrow(() -> new ResourceNotFoundException("PlatformService", "id", request.getServiceId()));
+
+        List<ProviderServiceEntitlement> existing =
+                providerEntitlementRepository.findByProviderIdAndIsDeletedFalse(institutionId);
+        boolean duplicate = existing.stream()
+                .anyMatch(e -> request.getServiceId().equals(e.getServiceId())
+                        && !Boolean.TRUE.equals(e.getIsDeleted()));
+        if (duplicate) {
+            throw new IllegalStateException("This provider already holds an entitlement for that service");
+        }
+
+        ProviderServiceEntitlement entitlement = ProviderServiceEntitlement.builder()
+                .providerId(institutionId)
+                .serviceId(request.getServiceId())
+                .status("ACTIVE")
+                .seatsUsed(0)
+                .maxSeats(request.getMaxSeats() != null ? request.getMaxSeats() : service.getMaxSeats())
+                .startsAt(request.getStartsAt())
+                .expiresAt(request.getExpiresAt())
+                .build();
+        entitlement.setInstitutionId(institutionId);
+        ProviderServiceEntitlement saved = providerEntitlementRepository.save(entitlement);
+
+        writeAudit(institutionId, "ENTITLEMENT", saved.getId(),
+                String.valueOf(saved.getServiceId()), "CREATE",
+                Map.of(), Map.of("serviceId", String.valueOf(request.getServiceId()),
+                        "maxSeats", String.valueOf(saved.getMaxSeats())));
+        log.info("Provider entitlement created for institution {} service {}", institutionId, request.getServiceId());
+        PlatformService svc = platformServiceRepository.findById(saved.getServiceId()).orElse(null);
+        return ProviderQuotaResponse.builder()
+                .id(saved.getId())
+                .providerId(saved.getProviderId())
+                .serviceId(saved.getServiceId())
+                .serviceName(svc != null ? svc.getName() : null)
+                .serviceCode(svc != null ? svc.getCode() : null)
+                .status(saved.getStatus())
+                .seatsUsed(saved.getSeatsUsed())
+                .maxSeats(saved.getMaxSeats())
+                .expiresAt(saved.getExpiresAt())
+                .createdAt(saved.getCreatedAt())
+                .build();
     }
 
     public ProviderQuotaResponse updateProviderEntitlement(UUID entitlementId, EntitlementUpdateRequest req) {
@@ -830,16 +964,29 @@ public class PlatformAdminService {
 
     // ── Audit ──
 
+    /**
+     * Audit B-49: returns a real PageResponse instead of a bare List. The previous signature
+     * discarded Page.getTotalElements(), so the client could not know how many pages existed and
+     * the UI fell back to "a full page means there might be another" — which shows a dead Next
+     * button on the final page and hides real pages whenever the total is not a multiple of size.
+     * The entityId branch also loaded every matching row unpaged; that is now a real paged query.
+     */
     @Transactional(readOnly = true)
-    public List<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType, UUID entityId) {
+    public PageResponse<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType, UUID entityId) {
         Page<AuditLog> logs;
-        PageRequest pr = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        int safeSize = Math.max(1, Math.min(size, 200));
+        PageRequest pr = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         boolean hasAction = action != null && !action.isBlank();
         boolean hasEntity = entityType != null && !entityType.isBlank();
         try {
             if (entityId != null) {
-                // Filter by a specific resource (e.g. one certificate's audit trail)
-                logs = auditLogRepository.findByEntityIdAndIsDeletedFalse(entityId, pr);
+                // Audit B-49: entityType used to be silently DISCARDED whenever an entityId was
+                // supplied (else-if chain), so a delegation's audit trail could return rows for a
+                // same-id entity of another type. Type is now an additional predicate.
+                logs = entityType != null && !entityType.isBlank()
+                        ? auditLogRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(
+                                entityType.toUpperCase(), entityId, pr)
+                        : auditLogRepository.findByEntityIdAndIsDeletedFalse(entityId, pr);
             } else if (hasAction && hasEntity) {
                 AuditLog.AuditAction act = AuditLog.AuditAction.valueOf(action.toUpperCase());
                 logs = auditLogRepository.findByActionAndEntityTypeAndIsDeletedFalse(act, entityType.toUpperCase(), pr);
@@ -855,7 +1002,7 @@ public class PlatformAdminService {
             logs = auditLogRepository.findAll(pr);
         }
 
-        return logs.getContent().stream()
+        List<AuditLogResponse> content = logs.getContent().stream()
                 .map(log -> AuditLogResponse.builder()
                         .id(log.getId())
                         .userId(log.getUserId())
@@ -871,6 +1018,9 @@ public class PlatformAdminService {
                         .createdAt(log.getCreatedAt())
                         .build())
                 .toList();
+
+        return new PageResponse<>(content, logs.getNumber(), logs.getSize(),
+                logs.getTotalElements(), logs.getTotalPages(), logs.isFirst(), logs.isLast());
     }
 
     // ── Global Search ──
@@ -1141,6 +1291,21 @@ public class PlatformAdminService {
     public PlatformConfigResponse updateConfig(String key, String value, String modifiedBy) {
         PlatformConfigEntry entry = configRepository.findByConfigKeyAndIsDeletedFalse(key)
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformConfig", "key", key));
+
+        // Public-facing keys are validated on write, not only on read.
+        //
+        // The public endpoint already drops a value that fails its format check, but doing that
+        // alone made a rejected save indistinguishable from a successful one: the admin saw
+        // "Config updated" and the value in the field, and the link simply never appeared on the
+        // public site. Rejecting here reports the failure to the person who can fix it.
+        //
+        // Only approved public keys are constrained. Internal settings keep whatever rules they
+        // already have, and a blank value is always allowed because it means "unset this".
+        String problem = PublicSiteSettings.validationError(key, value);
+        if (problem != null) {
+            throw new IllegalArgumentException("The value for \"" + key + "\" " + problem);
+        }
+
         boolean sensitive = Boolean.TRUE.equals(entry.getIsSensitive());
         String oldValue = sensitive ? "****" : String.valueOf(entry.getConfigValue());
         String newValue = sensitive ? "****" : String.valueOf(value);
@@ -1535,13 +1700,30 @@ public class PlatformAdminService {
     }
 
     private ProviderRegistryItem toProviderRegistryItem(Institution inst) {
+        // Audit X-5: surface the provider's real delivery activity so the platform can see what a
+        // provider has actually produced, not only its verification paperwork.
+        UUID institutionId = inst.getId();
+        int programs = (int) nfeProgramRepository.countByInstitutionId(institutionId);
+        int learners = (int) nfeLearnerRepository.countByInstitutionId(institutionId);
+        int sessions = (int) nfeSessionRepository.countByInstitutionId(institutionId);
+        int certificates = (int) nfeCertificateRepository.countByInstitutionId(institutionId);
+        var providerRows = educationProviderRepository.findAllByInstitutionId(institutionId).stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                .toList();
         return ProviderRegistryItem.builder()
                 .id(inst.getId()).name(inst.getName()).code(inst.getCode())
                 .type(inst.getType() != null ? inst.getType().name() : null)
                 .city(inst.getCity()).region(inst.getRegion())
                 .isActive(inst.getIsActive()).status(inst.getStatus())
-                .verificationStatus(resolveVerificationStatus(inst.getId()))
-                .adminCount(countInstitutionAdmins(inst.getId()))
+                .verificationStatus(resolveVerificationStatus(institutionId))
+                .adminCount(countInstitutionAdmins(institutionId))
+                .programs(programs)
+                .learners(learners)
+                .sessions(sessions)
+                .certificates(certificates)
+                .providerRecordPresent(!providerRows.isEmpty())
+                .providerVerified(providerRows.stream()
+                        .anyMatch(p -> Boolean.TRUE.equals(p.getIsVerified())))
                 .createdAt(inst.getCreatedAt())
                 .build();
     }
@@ -2324,7 +2506,7 @@ public class PlatformAdminService {
             userRepository.findByRoleAndIsDeletedFalse(role, PageRequest.of(0, 500)).forEach(u -> {
                 List<String> perms = List.of();
                 try {
-                    perms = rolePermissionRepository.findPermissionsByRoleId(u.getId());
+                    perms = adminUserPermissionRepository.findPermissionsByUserId(u.getId());
                 } catch (Exception e) { log.debug("No permissions for user {}: {}", u.getId(), e.getMessage()); }
                 Long recent = null;
                 try {
@@ -2348,6 +2530,45 @@ public class PlatformAdminService {
     @Transactional(readOnly = true)
     public List<String> getRolePermissions(UUID roleId) {
         return rolePermissionRepository.findPermissionsByRoleId(roleId);
+    }
+
+    /**
+     * Per-account permission matrix (audit B-10). Keyed strictly by {@code users.id} so it can
+     * never collide with {@code custom_roles.id} the way the shared role_permissions column could.
+     */
+    @Transactional(readOnly = true)
+    public List<String> getAdminUserPermissions(UUID userId) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        return adminUserPermissionRepository.findPermissionsByUserId(user.getId());
+    }
+
+    @Transactional
+    public List<String> updateAdminUserPermissions(UUID userId, RolePermissionUpdateRequest req, String actor) {
+        if (req == null || req.getPermissions() == null) {
+            throw new IllegalArgumentException("permissions list is required");
+        }
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        List<String> old = adminUserPermissionRepository.findPermissionsByUserId(userId);
+        adminUserPermissionRepository.deleteByUserIdAndIsDeletedFalse(userId);
+        adminUserPermissionRepository.flush();
+        for (String p : req.getPermissions()) {
+            if (p != null && !p.isBlank()) {
+                adminUserPermissionRepository.save(
+                        tz.elmkusoma.administration.domain.AdminUserPermission.of(userId, p.trim(), actor));
+            }
+        }
+        adminUserPermissionRepository.flush();
+
+        writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                "ADMIN_PERMISSION", userId, user.getEmail(), "UPDATE",
+                Map.of("permissions", String.join(",", old)),
+                Map.of("permissions", String.join(",", req.getPermissions())));
+        log.info("Admin permissions updated for {}: {} -> {} permissions", user.getEmail(), old.size(),
+                req.getPermissions().size());
+        return adminUserPermissionRepository.findPermissionsByUserId(userId);
     }
 
     public List<String> updateRolePermissions(UUID roleId, RolePermissionUpdateRequest req) {
@@ -2482,8 +2703,9 @@ public class PlatformAdminService {
                         var r = resourceRepository.findById(id).orElse(null);
                         if (r == null || Boolean.TRUE.equals(r.getIsDeleted())) { failures.add(id + ": not found"); break; }
                         switch (action) {
-                            case "PUBLISH" -> { }
-                            case "UNPUBLISH" -> { }
+                            // Same fix as MEDIA: these were no-ops that reported success.
+                            case "PUBLISH" -> r.setVisibility(tz.elmkusoma.learning.domain.Resource.ResourceVisibility.PUBLIC);
+                            case "UNPUBLISH" -> r.setVisibility(tz.elmkusoma.learning.domain.Resource.ResourceVisibility.DRAFT);
                             case "ARCHIVE" -> r.setIsDeleted(true);
                             case "RESTORE" -> r.setIsDeleted(false);
                             default -> { }
@@ -2495,8 +2717,11 @@ public class PlatformAdminService {
                         var m = mediaAssetRepository.findById(id).orElse(null);
                         if (m == null || Boolean.TRUE.equals(m.getIsDeleted())) { failures.add(id + ": not found"); break; }
                         switch (action) {
-                            case "PUBLISH" -> { }
-                            case "UNPUBLISH" -> { }
+                            // PUBLISH/UNPUBLISH were empty blocks that still counted as affected
+                            // and saved, so the platform UI reported success while changing
+                            // nothing. They now drive the asset's existing visibility field.
+                            case "PUBLISH" -> m.setVisibility("PUBLIC");
+                            case "UNPUBLISH" -> m.setVisibility("INSTITUTION");
                             case "ARCHIVE" -> m.setIsDeleted(true);
                             case "RESTORE" -> m.setIsDeleted(false);
                             default -> { }
@@ -2737,7 +2962,9 @@ public class PlatformAdminService {
                 .lastName(user.getLastName())
                 .role(user.getRole() != null ? user.getRole().name() : null)
                 .isActive(user.getIsActive())
-                .institutionId(null)
+                // Audit B-02: this was hard-coded to null, which hid the "account provisioned with no
+                // organization" failure from the admin UI that creates the account.
+                .institutionId(user.getInstitutionId())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

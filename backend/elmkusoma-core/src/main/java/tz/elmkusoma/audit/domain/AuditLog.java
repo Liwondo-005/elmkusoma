@@ -131,6 +131,15 @@ public class AuditLog {
     
     public enum AuditAction {
         CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOGIN_FAILED,
-        PASSWORD_CHANGE, ROLE_CHANGE, PERMISSION_CHANGE, EXPORT, IMPORT, VIEW
+        PASSWORD_CHANGE, ROLE_CHANGE, PERMISSION_CHANGE, EXPORT, IMPORT, VIEW,
+        // Administrative password reset. Distinct from PASSWORD_CHANGE, which is a
+        // self-service change by the account holder. audit_logs.action is a plain
+        // varchar column, so adding values needs no schema migration.
+        RESET_PASSWORD, SEND_RESET_LINK, USER_STATUS_CHANGE,
+        // Editorial lifecycle for public news articles. PUBLISH/UNPUBLISH/ARCHIVE are kept
+        // separate from UPDATE because each changes who can see the content, and an audit trail
+        // that records them all as UPDATE cannot answer "when did this become public?".
+        // audit_logs.action is a plain varchar column, so these need no schema migration.
+        PUBLISH, UNPUBLISH, ARCHIVE, FEATURE
     }
 }

@@ -16,4 +16,7 @@ public class EnrollmentRequest {
 
     @NotNull(message = "Academic year ID is required")
     private UUID academicYearId;
+
+    /** Audit Phase 6: optional explicit status so a placement can be created PENDING for approval. */
+    private tz.elmkusoma.enrollment.domain.Enrollment.EnrollmentStatus status;
 }

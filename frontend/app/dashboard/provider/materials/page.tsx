@@ -106,10 +106,10 @@ export default function MaterialsPage() {
                 <div key={material.id} className="flex items-center justify-between rounded-lg border border-border p-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">{material.title || material.name}</p>
-                    <p className="text-xs text-muted-foreground">{material.type || material.fileType || t("materials.fileFallback")}</p>
+                    <p className="text-xs text-muted-foreground">{material.materialType || t("materials.fileFallback")}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">{material.status || t("materials.availableFallback")}</span>
+                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">{material.isFree ? t("form.free") : t("form.paid")}</span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => { setConfirmDeleteId(null); setEditRow(material) }}

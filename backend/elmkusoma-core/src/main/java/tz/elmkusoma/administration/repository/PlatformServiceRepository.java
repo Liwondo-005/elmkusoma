@@ -12,6 +12,9 @@ public interface PlatformServiceRepository extends JpaRepository<PlatformService
     Page<PlatformService> findByIsDeletedFalse(Pageable pageable);
     Page<PlatformService> findByCategoryAndIsDeletedFalse(String category, Pageable pageable);
     Optional<PlatformService> findByCodeAndIsDeletedFalse(String code);
+
+    /** Added for the provider entitlement grant (audit B-35). */
+    Optional<PlatformService> findByIdAndIsDeletedFalse(UUID id);
     long countByIsDeletedFalse();
     long countByIsActiveAndIsDeletedFalse(boolean isActive);
 }

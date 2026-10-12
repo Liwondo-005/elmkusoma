@@ -36,23 +36,38 @@ async function nfeRequest<T>(url: string, options: RequestInit = {}): Promise<T>
 /**
  * Assessments, attendance and certificates are provider-scoped on the backend
  * (/providers/{providerId} path segments). The workspace belongs to a single
- * institution, so resolve the institution's first NFE provider once and reuse
- * it; institutions without a provider row get empty lists (and creates fail
- * with a clear message) rather than 404s.
+ * institution, so resolve that institution's NFE provider once and reuse it.
+ *
+ * Audit B-01: nothing used to create the nfe_education_providers row, so this
+ * always resolved to null, every create failed with "No education provider exists
+ * for this institution yet" and three lists were permanently empty. The backend
+ * now exposes GET /v1/nfe/providers/me which provisions the provider from the
+ * institution the platform already approved, so the workspace self-provisions.
  */
 let providerIdCache: string | null | undefined
 async function resolveProviderId(): Promise<string | null> {
   if (providerIdCache !== undefined) return providerIdCache
   try {
-    const providers = await nfeRequest<unknown[]>("/v1/nfe/providers")
-    providerIdCache =
-      Array.isArray(providers) && providers.length > 0 && (providers[0] as { id?: string }).id
-        ? ((providers[0] as { id: string }).id ?? null)
-        : null
+    const provider = await nfeRequest<{ id?: string } | null>("/v1/nfe/providers/me")
+    providerIdCache = provider?.id ?? null
   } catch {
-    providerIdCache = null
+    // Fall back to the list endpoint for institutions provisioned before /me existed.
+    try {
+      const providers = await nfeRequest<unknown[]>("/v1/nfe/providers")
+      providerIdCache =
+        Array.isArray(providers) && providers.length > 0 && (providers[0] as { id?: string }).id
+          ? ((providers[0] as { id: string }).id ?? null)
+          : null
+    } catch {
+      providerIdCache = null
+    }
   }
   return providerIdCache
+}
+
+/** Drops the memoised provider so a new provider switch takes effect immediately. */
+export function resetNfeProviderCache() {
+  providerIdCache = undefined
 }
 async function requireProviderId(): Promise<string> {
   const id = await resolveProviderId()
@@ -69,7 +84,18 @@ export const nfeApi = {
   updateProvider: (id: string, data: any) => nfeRequest<any>(`/v1/nfe/providers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteProvider: (id: string) => nfeRequest<void>(`/v1/nfe/providers/${id}`, { method: "DELETE" }),
 
-  listPrograms: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/programs${providerId ? `?providerId=${providerId}` : ""}`),
+  /**
+   * Audit B-32/B-33: these helpers appended `?providerId=`, which no backend list endpoint
+   * declares — Spring ignores it, so callers received the whole institution-wide list while the
+   * code read as if provider scoping were applied. They now call the routes that actually scope
+   * (`/provider/{providerId}`) and resolve the active provider through the (now self-provisioning)
+   * /providers/me endpoint instead of pinning `providers[0]`.
+   */
+  listPrograms: async (): Promise<any[]> => {
+    const providerId = await resolveProviderId()
+    if (!providerId) return []
+    return nfeRequest<any[]>(`/v1/nfe/programs/provider/${providerId}`)
+  },
   getProgram: (id: string) => nfeRequest<any>(`/v1/nfe/programs/${id}`),
   createProgram: async (data: any) => {
     const providerId = await requireProviderId()
@@ -81,7 +107,10 @@ export const nfeApi = {
   },
   deleteProgram: (id: string) => nfeRequest<void>(`/v1/nfe/programs/${id}`, { method: "DELETE" }),
 
-  listLearners: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/learners${providerId ? `?providerId=${providerId}` : ""}`),
+  listLearners: async (): Promise<any[]> => {
+    const pid = await resolveProviderId()
+    return pid ? nfeRequest<any[]>(`/v1/nfe/learners/provider/${pid}`) : []
+  },
   getLearner: (id: string) => nfeRequest<any>(`/v1/nfe/learners/${id}`),
   createLearner: async (data: any) => {
     const providerId = await requireProviderId()
@@ -93,7 +122,10 @@ export const nfeApi = {
   },
   deleteLearner: (id: string) => nfeRequest<void>(`/v1/nfe/learners/${id}`, { method: "DELETE" }),
 
-  listSessions: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/sessions${providerId ? `?providerId=${providerId}` : ""}`),
+  listSessions: async (): Promise<any[]> => {
+    const pid = await resolveProviderId()
+    return pid ? nfeRequest<any[]>(`/v1/nfe/sessions/provider/${pid}`) : []
+  },
   createSession: async (data: any) => {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/sessions", { method: "POST", body: JSON.stringify({ ...data, providerId }) })
@@ -104,7 +136,10 @@ export const nfeApi = {
   },
   deleteSession: (id: string) => nfeRequest<void>(`/v1/nfe/sessions/${id}`, { method: "DELETE" }),
 
-  listMaterials: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/materials${providerId ? `?providerId=${providerId}` : ""}`),
+  listMaterials: async (): Promise<any[]> => {
+    const pid = await resolveProviderId()
+    return pid ? nfeRequest<any[]>(`/v1/nfe/materials/provider/${pid}`) : []
+  },
   createMaterial: async (data: any) => {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/materials", { method: "POST", body: JSON.stringify({ ...data, providerId }) })

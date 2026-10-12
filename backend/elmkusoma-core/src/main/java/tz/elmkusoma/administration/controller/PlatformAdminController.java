@@ -14,16 +14,22 @@ import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.service.PlatformAdminService;
 import tz.elmkusoma.audit.dto.ActivityFeedResponse;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.common.exception.ResourceNotFoundException;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.event.dto.EventRequest;
 import tz.elmkusoma.event.dto.EventResponse;
 import tz.elmkusoma.institution.dto.request.CreateInstitutionRequest;
 import tz.elmkusoma.institution.dto.request.UpdateInstitutionRequest;
 import tz.elmkusoma.institution.dto.response.InstitutionResponse;
+import tz.elmkusoma.parent.domain.SupportTicket;
+import tz.elmkusoma.parent.repository.SupportTicketRepository;
+import tz.elmkusoma.parent.domain.SupportTicketMessage;
+import tz.elmkusoma.parent.repository.SupportTicketMessageRepository;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/platform-admin")
@@ -33,6 +39,9 @@ import java.util.UUID;
 public class PlatformAdminController {
 
     private final PlatformAdminService platformAdminService;
+    private final tz.elmkusoma.administration.service.PlatformAccountInvitationService platformAccountInvitationService;
+    private final SupportTicketMessageRepository supportTicketMessageRepository;
+    private final SupportTicketRepository supportTicketRepository;
     private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
     private final tz.elmkusoma.certificate.service.CertificateGovernanceService certificateGovernanceService;
     private final tz.elmkusoma.institution.service.InstitutionService institutionService;
@@ -120,6 +129,24 @@ public class PlatformAdminController {
         UserSummaryResponse response = platformAdminService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User created successfully", response));
+    }
+
+    /**
+     * Invites an account for a role only the platform may grant, including PROVIDER_ADMIN.
+     *
+     * <p>The response carries the token exactly once so it can be delivered out of band; it is
+     * never re-listed ({@code /invitations} omits tokens). The recipient sets their own password
+     * when they redeem it, so no permanent credential is ever chosen by the platform.</p>
+     */
+    @PostMapping("/invitations")
+    @Operation(summary = "Invite a provider/platform account (platform admin, expiring token, no password)")
+    public ResponseEntity<ApiResponse<InvitationResponse>> createInvitation(
+            @Valid @RequestBody PlatformInviteRequest request,
+            HttpServletRequest httpRequest) {
+        InvitationResponse response = platformAccountInvitationService
+                .invite(request, actorId(httpRequest));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Invitation created", response));
     }
 
     @PutMapping("/users/{userId}")
@@ -213,15 +240,18 @@ public class PlatformAdminController {
     @Operation(summary = "Update institution details")
     public ResponseEntity<ApiResponse<InstitutionResponse>> updateInstitution(
             @PathVariable UUID institutionId,
+            @RequestAttribute(value = "userId", required = false) String actorId,
             @Valid @RequestBody UpdateInstitutionRequest req) {
-        InstitutionResponse response = institutionService.updateInstitution(institutionId, req);
+        InstitutionResponse response = institutionService.updateInstitution(institutionId, req, actorUuid(actorId));
         return ResponseEntity.ok(ApiResponse.success("Institution updated successfully", response));
     }
 
     @DeleteMapping("/institutions/{institutionId}")
     @Operation(summary = "Soft-delete an institution")
-    public ResponseEntity<ApiResponse<Void>> deleteInstitution(@PathVariable UUID institutionId) {
-        institutionService.deleteInstitution(institutionId);
+    public ResponseEntity<ApiResponse<Void>> deleteInstitution(
+            @PathVariable UUID institutionId,
+            @RequestAttribute(value = "userId", required = false) String actorId) {
+        institutionService.deleteInstitution(institutionId, actorUuid(actorId));
         return ResponseEntity.ok(ApiResponse.success("Institution deleted successfully", null));
     }
 
@@ -318,14 +348,14 @@ public class PlatformAdminController {
     // ── Audit ──
 
     @GetMapping("/audit/logs")
-    @Operation(summary = "Get platform-wide audit logs (optionally filtered by a specific entity id)")
-    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogs(
+    @Operation(summary = "Get platform-wide audit logs (paged; optionally filtered by a specific entity)")
+    public ResponseEntity<ApiResponse<PageResponse<AuditLogResponse>>> getAuditLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) UUID entityId) {
-        List<AuditLogResponse> response = platformAdminService.getAuditLogs(page, size, action, entityType, entityId);
+        PageResponse<AuditLogResponse> response = platformAdminService.getAuditLogs(page, size, action, entityType, entityId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -670,6 +700,20 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.listProviderQuotas(providerId)));
     }
 
+    @PostMapping("/providers/{providerId}/entitlements")
+    @Operation(summary = "Grant a provider a service package (audit B-35: previously no create path existed)")
+    public ResponseEntity<ApiResponse<ProviderQuotaResponse>> createProviderEntitlement(
+            @PathVariable UUID providerId,
+            @Valid @RequestBody EntitlementCreateRequest request) {
+        // The path identifies the provider institution; the body must agree with it.
+        if (!providerId.equals(request.getInstitutionId())) {
+            throw new IllegalArgumentException("institutionId must match the provider in the path");
+        }
+        ProviderQuotaResponse created = platformAdminService.createProviderEntitlement(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Entitlement granted", created));
+    }
+
     @PutMapping("/entitlements/{entitlementId}")
     @Operation(summary = "Update provider entitlement quota (max seats / status)")
     public ResponseEntity<ApiResponse<ProviderQuotaResponse>> updateProviderEntitlement(
@@ -837,6 +881,18 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Sweep complete", dataGovernanceService.runSweep(actor)));
     }
 
+    /**
+     * Loads a ticket or reports it missing.
+     *
+     * <p>Called before any thread is read or written so an unknown id is a 404 rather than an
+     * empty thread, which would otherwise read as "this case has no messages yet".</p>
+     */
+    private SupportTicket requireTicket(UUID ticketId) {
+        return supportTicketRepository.findById(ticketId)
+                .filter(t -> !Boolean.TRUE.equals(t.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("SupportTicket", "id", ticketId));
+    }
+
     @GetMapping("/data-governance/quality")
     @Operation(summary = "Data quality checks (live queries)")
     public ResponseEntity<ApiResponse<List<DataQualityCheckResponse>>> dataQuality() {
@@ -852,6 +908,63 @@ public class PlatformAdminController {
                 platformAdminService.assignSupportTicket(ticketId, body.get("assigneeId"))));
     }
 
+    /**
+     * Reads a ticket's conversation.
+     *
+     * <p>Platform Admin could list, transition and assign tickets but had no way to read the
+     * thread, so a case could be triaged in the abstract and never actually read. This closes
+     * that gap against the existing {@code support_ticket_messages} table rather than
+     * introducing a second messaging model.</p>
+     *
+     * <p>Internal notes are visible here and only here. The parent-facing read path in
+     * {@code ParentSelfController} serves the ticket's own requester, so an internal note must
+     * not be part of what it returns - that filtering is enforced in its service.</p>
+     */
+    @GetMapping("/support/tickets/{ticketId}/messages")
+    @Operation(summary = "Read a support ticket's conversation, internal notes included")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> supportTicketMessages(
+            @PathVariable UUID ticketId) {
+        // Confirms the ticket exists and is readable before its thread is disclosed.
+        requireTicket(ticketId);
+        List<Map<String, Object>> messages = supportTicketMessageRepository
+                .findByTicketIdAndIsDeletedFalseOrderByCreatedAtAsc(ticketId).stream()
+                .map(m -> Map.<String, Object>of(
+                        "id", m.getId(),
+                        "senderId", String.valueOf(m.getSenderId()),
+                        "message", m.getMessage(),
+                        "internal", Boolean.TRUE.equals(m.getIsInternal()),
+                        "createdAt", String.valueOf(m.getCreatedAt())))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(messages));
+    }
+
+    @PostMapping("/support/tickets/{ticketId}/messages")
+    @Operation(summary = "Reply to a support ticket, or record an internal note")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> addSupportTicketMessage(
+            @PathVariable UUID ticketId,
+            @RequestBody java.util.Map<String, Object> body,
+            HttpServletRequest request) {
+        SupportTicket ticket = requireTicket(ticketId);
+        String text = body.get("message") == null ? null : String.valueOf(body.get("message"));
+        if (text == null || text.isBlank() || text.length() > 5000) {
+            throw new IllegalArgumentException("A reply must be between 1 and 5000 characters");
+        }
+        // "internal" is parsed defensively: a non-boolean body value must not silently become
+        // an internal note, nor silently become a customer-visible reply by accident.
+        boolean internal = Boolean.parseBoolean(String.valueOf(body.get("internal")));
+
+        SupportTicketMessage saved = supportTicketMessageRepository.save(
+                SupportTicketMessage.builder()
+                        .ticketId(ticket.getId())
+                        .senderId(actorId(request))
+                        .message(text.trim())
+                        .isInternal(internal)
+                        .build());
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "id", saved.getId(),
+                "internal", Boolean.TRUE.equals(saved.getIsInternal()))));
+    }
+
     @GetMapping("/admins")
     @Operation(summary = "List admin accounts with role permissions")
     public ResponseEntity<ApiResponse<List<AdminAccountResponse>>> listAdmins() {
@@ -859,9 +972,37 @@ public class PlatformAdminController {
     }
 
     @GetMapping("/roles/{roleId}/permissions")
-    @Operation(summary = "Get permissions for a role / admin user id")
+    @Operation(summary = "Get permissions for a role")
     public ResponseEntity<ApiResponse<List<String>>> getRolePermissions(@PathVariable UUID roleId) {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.getRolePermissions(roleId)));
+    }
+
+    @GetMapping("/admins/{userId}/permissions")
+    @Operation(summary = "Get permissions for an admin account (keyed by user id)")
+    public ResponseEntity<ApiResponse<List<String>>> getAdminUserPermissions(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.getAdminUserPermissions(userId)));
+    }
+
+    @PutMapping("/admins/{userId}/permissions")
+    @Operation(summary = "Replace permissions for an admin account (keyed by user id)")
+    public ResponseEntity<ApiResponse<List<String>>> updateAdminUserPermissions(
+            @PathVariable UUID userId,
+            @Valid @RequestBody RolePermissionUpdateRequest req,
+            @RequestAttribute(value = "userId", required = false) String actorId) {
+        return ResponseEntity.ok(ApiResponse.success("Permissions updated",
+                platformAdminService.updateAdminUserPermissions(userId, req, actorId)));
+    }
+
+    /** Null-safe parse of the actor id published by the JWT request-attribute filter. */
+    private UUID actorUuid(String rawUserId) {
+        if (rawUserId == null || rawUserId.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(rawUserId.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @PutMapping("/roles/{roleId}/permissions")

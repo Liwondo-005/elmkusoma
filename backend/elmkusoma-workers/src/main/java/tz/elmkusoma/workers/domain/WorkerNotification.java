@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "worker_notifications")
 @Data
@@ -18,10 +20,10 @@ public class WorkerNotification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(nullable = false)
-    private Long userId;
+    private UUID userId;
 
     @Column(nullable = false)
     private String title;
@@ -35,10 +37,10 @@ public class WorkerNotification {
     @Column(nullable = false)
     private String targetType;
 
-    private Long targetId;
+    private UUID targetId;
 
     @Column(nullable = false)
-    private Long institutionId;
+    private UUID institutionId;
 
     @Column(nullable = false)
     @Builder.Default

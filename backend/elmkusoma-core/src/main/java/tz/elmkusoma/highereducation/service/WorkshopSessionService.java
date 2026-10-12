@@ -72,9 +72,13 @@ public class WorkshopSessionService {
     }
 
     public void deleteSession(UUID id) {
-        if (!workshopSessionRepository.existsById(id))
-            throw new ResourceNotFoundException("Workshop session not found");
-        workshopSessionRepository.deleteById(id);
+// Audit P3: hard delete bypassed the project's soft-delete contract, so retention sweeps
+        // and audit trails could not see these removals. Soft delete is the convention everywhere
+        // else (BaseEntity.is_deleted).
+        WorkshopSession entity = workshopSessionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop session not found"));
+        entity.setIsDeleted(true);
+        workshopSessionRepository.save(entity);
     }
 
     // The learner form submits display-case values ("Lab Session", "Hands-On");

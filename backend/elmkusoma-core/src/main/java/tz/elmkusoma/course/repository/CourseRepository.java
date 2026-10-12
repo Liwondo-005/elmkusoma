@@ -10,10 +10,14 @@ import tz.elmkusoma.course.domain.Course;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, UUID> {
+
+    /** Added for NFE ecosystem linking (audit B-11): resolve a course and reject soft-deleted rows. */
+    Optional<Course> findByIdAndIsDeletedFalse(UUID id);
 
     List<Course> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 

@@ -52,7 +52,7 @@ import java.util.HashSet;
 @RestController
 @RequestMapping("/v1/learner")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('OTHER_LEARNER', 'TEACHER', 'STUDENT', 'INSTITUTION_ADMIN', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OTHER_LEARNER', 'LEARNER', 'TEACHER', 'STUDENT', 'INSTITUTION_ADMIN', 'ADMIN')")
 @Tag(name = "General Learner", description = "General Learner / Participant workspace")
 @Slf4j
 public class LearnerController {
@@ -636,7 +636,9 @@ public class LearnerController {
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
         List<Announcement> announcements = new ArrayList<>(announcementRepository
-                .findByInstitutionIdAndIsDeletedFalse(institutionId));
+                // Published-only: this query previously ignored status, so a SCHEDULED
+                // announcement was visible to learners from the moment it was created.
+                .findVisibleToLearnersByInstitutionId(institutionId, java.time.LocalDateTime.now()));
 
         User user = userRepository.findById(userId).orElse(null);
         Set<UUID> seen = new HashSet<>();

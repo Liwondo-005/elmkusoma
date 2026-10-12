@@ -33,4 +33,13 @@ public class NfeLearner extends BaseEntity {
     @Builder.Default
     @Column(name = "status", nullable = false)
     private String status = "ACTIVE";
+
+    /**
+     * Ecosystem link (audit X-2 / X-3): optional pointer to the K-12 student profile for the same
+     * person. Before V131 this relationship existed only by convention ({@code user_id} matching a
+     * users.id with no constraint), which is why provider learner records never reached the
+     * learner workspace and vice versa.
+     */
+    @Column(name = "student_id")
+    private UUID studentId;
 }

@@ -48,6 +48,20 @@ public class NfeProgram extends BaseEntity {
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = false;
 
+    /**
+     * Ecosystem link (audit B-11 / X-2): optional pointer to the platform course this provider
+     * program delivers. This is what makes provider content reachable by the learner workspace:
+     * the learner already browses {@code courses}, so linking a program to one exposes it without
+     * introducing a second catalogue.
+     */
+    @Column(name = "course_id")
+    private UUID courseId;
+
+    /** When true, learners of the linked course may enrol on this program. */
+    @Builder.Default
+    @Column(name = "enrollment_open", nullable = false)
+    private Boolean enrollmentOpen = false;
+
     public enum ProgramType {
         PROGRAM, COURSE, SEMINAR, WORKSHOP
     }

@@ -25,6 +25,7 @@ public class Teacher extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private TeacherStatus status = TeacherStatus.ACTIVE;
 
     @Column(name = "specialization")

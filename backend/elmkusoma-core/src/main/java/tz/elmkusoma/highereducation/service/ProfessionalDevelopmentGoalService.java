@@ -73,9 +73,13 @@ public class ProfessionalDevelopmentGoalService {
     }
 
     public void deleteGoal(UUID id) {
-        if (!goalRepository.existsById(id))
-            throw new ResourceNotFoundException("Goal not found");
-        goalRepository.deleteById(id);
+// Audit P3: hard delete bypassed the project's soft-delete contract, so retention sweeps
+        // and audit trails could not see these removals. Soft delete is the convention everywhere
+        // else (BaseEntity.is_deleted).
+        ProfessionalDevelopmentGoal entity = goalRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal not found"));
+        entity.setIsDeleted(true);
+        goalRepository.save(entity);
     }
 
     private ProfessionalDevelopmentGoalDTO toDTO(ProfessionalDevelopmentGoal g) {

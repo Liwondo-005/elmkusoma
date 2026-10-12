@@ -65,11 +65,12 @@ public class InstitutionController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<InstitutionResponse>> updateInstitution(
             @PathVariable UUID id,
+            @RequestAttribute(value = "userId", required = false) String actorUserId,
             @Valid @RequestBody UpdateInstitutionRequest request,
             @RequestAttribute("institutionId") UUID ctxInstitutionId,
             @RequestAttribute("userRole") String userRole) {
         assertWithinScope(id, ctxInstitutionId, userRole);
-        InstitutionResponse response = institutionService.updateInstitution(id, request);
+        InstitutionResponse response = institutionService.updateInstitution(id, request, actorId(actorUserId));
         return ResponseEntity.ok(ApiResponse.success("Institution updated successfully", response));
     }
 
@@ -86,8 +87,10 @@ public class InstitutionController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteInstitution(@PathVariable UUID id) {
-        institutionService.deleteInstitution(id);
+    public ResponseEntity<ApiResponse<Void>> deleteInstitution(
+            @PathVariable UUID id,
+            @RequestAttribute(value = "userId", required = false) String actorUserId) {
+        institutionService.deleteInstitution(id, actorId(actorUserId));
         return ResponseEntity.ok(ApiResponse.success("Institution deleted successfully", null));
     }
 
@@ -103,6 +106,18 @@ public class InstitutionController {
     public ResponseEntity<ApiResponse<InstitutionResponse>> deactivateInstitution(@PathVariable UUID id) {
         InstitutionResponse response = institutionService.deactivateInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution deactivated", response));
+    }
+
+    /** Parses the actor id published by the JWT request-attribute filter; null when absent. */
+    private UUID actorId(String rawUserId) {
+        if (rawUserId == null || rawUserId.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(rawUserId.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private UUID getCurrentUserId() {

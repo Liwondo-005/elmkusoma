@@ -17,8 +17,24 @@ const nextConfig = {
     const realtimeUrl = process.env.REALTIME_URL || "http://localhost:8081"
     return [
       {
-        source: "/api/v1/media/:path*",
-        destination: `${mediaUrl}/api/v1/media/:path*`,
+        // Only the endpoints the media service actually owns are routed to it. The Media
+        // Library (list, /my, detail, search, class, recordings, create/update/delete,
+        // download-url) lives on the core service at /v1/media, so the previous blanket
+        // /api/v1/media/:path* rule sent requests such as /api/v1/media/my to a service
+        // that has no such endpoint - and to nothing at all when it is not running.
+        // Upload and presigned-upload are deliberately NOT routed here: core exposes them
+        // and proxies to the media service with the caller's bearer token, so going direct
+        // would bypass that authorisation.
+        source: "/api/v1/media/local-content",
+        destination: `${mediaUrl}/api/v1/media/local-content`,
+      },
+      {
+        source: "/api/v1/media/health",
+        destination: `${mediaUrl}/api/v1/media/health`,
+      },
+      {
+        source: "/api/v1/media/:id/download",
+        destination: `${mediaUrl}/api/v1/media/:id/download`,
       },
       {
         // The higher-education controllers are mapped at /api/v1/education/** on

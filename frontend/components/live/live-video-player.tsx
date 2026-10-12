@@ -18,6 +18,9 @@ interface LiveVideoPlayerProps {
   state: LivePlayerState
   remoteVideoTrack: TrackPublication | null
   remoteAudioTrack: TrackPublication | null
+  /** Teacher screen-share publication. Tracked apart from the camera so a screen share
+   *  can take the main stage instead of competing with the camera for one slot. */
+  remoteScreenTrack?: TrackPublication | null
   isTeacher?: boolean
   localStream?: MediaStream | null
   screenStream?: MediaStream | null
@@ -65,6 +68,7 @@ export function LiveVideoPlayer({
   state,
   remoteVideoTrack,
   remoteAudioTrack,
+  remoteScreenTrack = null,
   isTeacher = false,
   localStream = null,
   screenStream = null,
@@ -84,22 +88,32 @@ export function LiveVideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const screenRef = useRef<HTMLVideoElement>(null)
+  const localScreenRef = useRef<HTMLVideoElement>(null)
   const localRef = useRef<HTMLVideoElement>(null)
   const pipRef = useRef<HTMLVideoElement>(null)
 
   const hasRemoteVideo = state === "live" && !!remoteVideoTrack?.videoTrack
+  const hasRemoteScreen = state === "live" && !!remoteScreenTrack?.videoTrack
+  // A screen share owns the stage; the camera drops to picture-in-picture while it is up.
+  const screenOnStage = hasRemoteScreen
 
   useEffect(() => {
     attachMedia(videoRef.current, hasRemoteVideo ? remoteVideoTrack : null, "video")
   }, [remoteVideoTrack, hasRemoteVideo])
 
   useEffect(() => {
+    attachMedia(screenRef.current, hasRemoteScreen ? remoteScreenTrack : null, "video")
+  }, [remoteScreenTrack, hasRemoteScreen])
+
+  useEffect(() => {
     attachMedia(audioRef.current, remoteAudioTrack, "audio")
   }, [remoteAudioTrack])
 
   useEffect(() => {
-    const el = screenRef.current
+    const el = localScreenRef.current
     if (!el) return
+    // The host must always see their own screen share, even when a learner camera is
+    // subscribed (previously the local screen preview was hidden by any remote video).
     if (screenStream) {
       el.srcObject = screenStream
       el.play?.().catch(() => {})
@@ -208,7 +222,18 @@ export function LiveVideoPlayer({
         </div>
       )}
 
-      {hasRemoteVideo && (
+      {screenOnStage && (
+        <video
+          ref={screenRef}
+          autoPlay
+          playsInline
+          className="absolute inset-0 h-full w-full object-contain"
+          aria-label={t("playerLiveScreenAria")}
+        />
+      )}
+
+      {/* Camera: full stage normally, picture-in-picture while a screen share is on stage. */}
+      {hasRemoteVideo && !screenOnStage && (
         <video
           ref={videoRef}
           autoPlay
@@ -218,22 +243,35 @@ export function LiveVideoPlayer({
           aria-label={t("playerLiveVideoAria")}
         />
       )}
+      {hasRemoteVideo && screenOnStage && (
+        <div className="absolute bottom-20 right-2 z-10 w-32 overflow-hidden rounded-lg border border-white/20 shadow-lg sm:w-44">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="h-full w-full object-cover"
+            aria-label={t("playerLiveVideoAria")}
+          />
+        </div>
+      )}
 
       {remoteAudioTrack?.audioTrack && (state === "live" || state === "waiting") && (
         <audio ref={audioRef} autoPlay playsInline />
       )}
 
-      {showTeacherLocal && screenStream && !hasRemoteVideo && (
+      {showTeacherLocal && screenStream && !screenOnStage && (
         <video
-          ref={screenRef}
+          ref={localScreenRef}
           autoPlay
           playsInline
           muted
           className="absolute inset-0 h-full w-full object-contain"
+          aria-label={t("playerYourScreenAria")}
         />
       )}
 
-      {showTeacherLocal && localStream && cameraEnabled && !screenStream && !hasRemoteVideo && (
+      {showTeacherLocal && localStream && cameraEnabled && !screenStream && !screenOnStage && !hasRemoteVideo && (
         <video
           ref={localRef}
           autoPlay
@@ -243,7 +281,7 @@ export function LiveVideoPlayer({
         />
       )}
 
-      {showTeacherLocal && !screenStream && !(localStream && cameraEnabled) && !hasRemoteVideo && (
+      {showTeacherLocal && !screenStream && !(localStream && cameraEnabled) && !screenOnStage && !hasRemoteVideo && (
         <div className="absolute inset-0 flex items-center justify-center text-center text-white">
           <div>
             <Video className="mx-auto mb-2 size-10 opacity-40" />

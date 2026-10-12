@@ -33,6 +33,7 @@ public class ProviderServiceImpl implements ProviderService {
     private final NfeLearnerRepository learnerRepository;
     private final NfeSessionRepository sessionRepository;
     private final NfeCertificateRepository certificateRepository;
+    private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
 
     @Override
     public ProviderResponse createProvider(UUID institutionId, ProviderRequest request) {
@@ -136,6 +137,79 @@ public class ProviderServiceImpl implements ProviderService {
         return providerRepository.findActiveByInstitutionId(institutionId).stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    /**
+     * B-01: resolves the provider for the caller's institution and provisions it on first use.
+     *
+     * <p>The seven provider resources all hang off an {@code nfe_education_providers} row, but
+     * nothing in the product ever created one, so the whole workspace reported
+     * "No education provider exists for this institution yet" and the assessment/attendance/
+     * certificate lists were permanently empty. The provider identity is derived from the
+     * institution the platform admin already approved -- no second model, no duplicate data.
+     */
+    @Override
+    public ProviderResponse getOrCreateProviderForInstitution(UUID institutionId, String actor) {
+        List<EducationProvider> existing = providerRepository.findAllByInstitutionId(institutionId);
+        for (EducationProvider p : existing) {
+            if (!Boolean.TRUE.equals(p.getIsDeleted())) {
+                return mapToResponse(p);
+            }
+        }
+
+        tz.elmkusoma.shared.domain.Institution institution = institutionRepository
+                .findByIdAndIsDeletedFalse(institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", institutionId));
+
+        EducationProvider provider = EducationProvider.builder()
+                .name(institution.getName())
+                // Institution.InstitutionType -> EducationProvider.ProviderType (two distinct
+                // vocabularies; only the values below are accepted by the column CHECK constraint).
+                .providerType(mapInstitutionType(institution))
+                .description(institution.getDescription())
+                .logoUrl(institution.getLogoUrl())
+                .website(institution.getWebsite())
+                .email(institution.getEmail())
+                .phone(institution.getPhone())
+                .address(institution.getAddress())
+                .city(institution.getCity())
+                .country(institution.getCountry())
+                .isActive(!Boolean.FALSE.equals(institution.getIsActive()))
+                // Approved institutions are verified at provisioning time; the platform can still
+                // review or revoke it through the verification endpoint.
+                .isVerified("ACTIVE".equalsIgnoreCase(String.valueOf(institution.getStatus())))
+                .build();
+        provider.setInstitutionId(institutionId);
+        provider.setCreatedBy(actor);
+        return mapToResponse(providerRepository.save(provider));
+    }
+
+    private EducationProvider.ProviderType mapInstitutionType(tz.elmkusoma.shared.domain.Institution institution) {
+        String type = institution.getType() != null ? institution.getType().name() : null;
+        if (type == null) {
+            return EducationProvider.ProviderType.ORGANIZATION;
+        }
+        return switch (type) {
+            case "TRAINING_PROVIDER" -> EducationProvider.ProviderType.TRAINING;
+            case "COMPANY" -> EducationProvider.ProviderType.COMPANY;
+            case "GOVERNMENT" -> EducationProvider.ProviderType.GOVERNMENT;
+            default -> EducationProvider.ProviderType.ORGANIZATION;
+        };
+    }
+
+    /**
+     * B-12: platform approval flips the provider's verified flag. Before this there was no writer
+     * for {@code is_verified} anywhere in the codebase, so operators always saw "not verified".
+     */
+    @Override
+    public ProviderResponse setProviderVerified(UUID institutionId, UUID providerId, boolean verified) {
+        EducationProvider provider = providerRepository.findByIdAndInstitutionId(providerId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Education Provider", "id", providerId));
+        provider.setIsVerified(verified);
+        if (verified) {
+            provider.setIsActive(true);
+        }
+        return mapToResponse(providerRepository.save(provider));
     }
 
     @Override

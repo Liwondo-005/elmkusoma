@@ -25,12 +25,21 @@ import java.util.UUID;
 public class LearnerServiceImpl implements LearnerService {
 
     private final NfeLearnerRepository learnerRepository;
+    private final tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
     private final OwnershipGuard ownershipGuard;
 
     @Override
     public LearnerResponse createLearner(UUID institutionId, LearnerRequest request) {
+        // B-15: the provider must belong to the caller's institution.
+        UUID providerId = scopeValidator.requireOwnedProvider(institutionId, request.getProviderId()).getId();
+        // Ecosystem link (X-2/X-3): connect the provider learner to the platform user/student
+        // profile so participation is visible from the learner workspace. The user must exist.
+        scopeValidator.requireWritableInstitution(institutionId);
+        UUID studentId = scopeValidator.resolveStudentLink(institutionId, request.getUserId(),
+                request.getStudentId());
         NfeLearner learner = NfeLearner.builder()
-                .providerId(request.getProviderId())
+                .providerId(providerId)
+                .studentId(studentId)
                 .userId(request.getUserId())
                 .participantNumber(request.getParticipantNumber())
                 .occupation(request.getOccupation())
@@ -86,7 +95,10 @@ public class LearnerServiceImpl implements LearnerService {
                 .orElseThrow(() -> new ResourceNotFoundException("Learner", "id", learnerId));
         ownershipGuard.verifyInstitution(learner.getInstitutionId(), institutionId);
 
-        if (request.getProviderId() != null) learner.setProviderId(request.getProviderId());
+        // B-16: providerId is an ownership column. Repointing it is rejected rather than silently ignored.
+        if (request.getProviderId() != null && !request.getProviderId().equals(learner.getProviderId())) {
+            throw new IllegalArgumentException("providerId cannot be changed after creation");
+        }
         if (request.getUserId() != null) learner.setUserId(request.getUserId());
         if (request.getParticipantNumber() != null) learner.setParticipantNumber(request.getParticipantNumber());
         if (request.getOccupation() != null) learner.setOccupation(request.getOccupation());

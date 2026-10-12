@@ -59,7 +59,7 @@ export default function NurseryProfilePage() {
       </div>
 
       {/* Avatar Card */}
-      <div className="nursery-card rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 p-6 text-center text-white">
+      <div className="nursery-card rounded-2xl bg-gradient-to-br from-blue-500 to-sky-400 p-6 text-center text-white">
         <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-white/20 text-3xl font-bold">
           {initials}
         </div>

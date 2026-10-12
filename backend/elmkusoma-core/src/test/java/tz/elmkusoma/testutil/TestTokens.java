@@ -88,7 +88,12 @@ public final class TestTokens {
         try {
             byte[] body = jsonBody.getBytes(StandardCharsets.UTF_8);
             String headerJson = "{\"alg\":\"HS256\"}";
-            String payloadJson = "{\"iss\":\"" + LIVEKIT_API_KEY + "\",\"sha256\":\"" + sha256Hex(body) + "\"}";
+            // exp/nbf are included because the receiver validates the replay window (the real
+            // LiveKit server always sends them).
+            long now = System.currentTimeMillis() / 1000;
+            String payloadJson = "{\"iss\":\"" + LIVEKIT_API_KEY + "\",\"nbf\":" + now
+                    + ",\"exp\":" + (now + 300)
+                    + ",\"sha256\":\"" + sha256Hex(body) + "\"}";
             String signingInput = base64Url(headerJson.getBytes(StandardCharsets.UTF_8))
                     + "."
                     + base64Url(payloadJson.getBytes(StandardCharsets.UTF_8));

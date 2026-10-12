@@ -28,6 +28,7 @@ public class TestDataSeeder implements ApplicationRunner {
     public static final UUID INSTITUTION_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     public static final UUID ADMIN_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
     public static final UUID TEACHER_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000015");
+    public static final UUID TEACHER_ID = UUID.fromString("00000000-0000-0000-0000-000000000115");
     public static final UUID STUDENT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000020");
     public static final UUID LEARNER_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000030");
     public static final UUID OTHER_STUDENT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000040");
@@ -46,6 +47,7 @@ public class TestDataSeeder implements ApplicationRunner {
         seedUser(TestTokens.STUDENT_EMAIL, STUDENT_USER_ID, User.Role.STUDENT, InstitutionMembership.Role.STUDENT);
         seedUser(TestTokens.LEARNER_EMAIL, LEARNER_USER_ID, User.Role.OTHER_LEARNER, InstitutionMembership.Role.STUDENT);
         seedUser(TestTokens.OTHER_STUDENT_EMAIL, OTHER_STUDENT_USER_ID, User.Role.STUDENT, InstitutionMembership.Role.STUDENT);
+        seedTeacher();
         seedLiveClass();
         log.info("TestDataSeeder completed");
     }
@@ -85,6 +87,18 @@ public class TestDataSeeder implements ApplicationRunner {
         }
     }
 
+    private void seedTeacher() {
+        // live_classes.teacher_id references teachers.id, not users.id.
+        if (exists("SELECT COUNT(*) FROM teachers WHERE id = ?", TEACHER_ID)) {
+            return;
+        }
+        jdbcTemplate.update(
+                "INSERT INTO teachers (id, institution_id, user_id, employee_number, status, "
+                        + "created_at, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                TEACHER_ID, INSTITUTION_ID, TEACHER_USER_ID, "EMP-TEST-0001", "ACTIVE",
+                LocalDateTime.now(), false);
+    }
+
     private void seedLiveClass() {
         if (exists("SELECT COUNT(*) FROM live_classes WHERE id = ?", CLASS_ID)) {
             return;
@@ -95,7 +109,7 @@ public class TestDataSeeder implements ApplicationRunner {
                         + "recording_enabled, session_type, timezone, is_recurring, lobby_enabled) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 CLASS_ID, INSTITUTION_ID, LocalDateTime.now(), false,
-                TEACHER_USER_ID, "Test Live Class", "Seeded for integration tests",
+                TEACHER_ID, "Test Live Class", "Seeded for integration tests",
                 LocalDateTime.now().plusHours(1), 60, "IN_PROGRESS", 100,
                 true, "LECTURE", "Africa/Dar_es_Salaam", false, false);
     }

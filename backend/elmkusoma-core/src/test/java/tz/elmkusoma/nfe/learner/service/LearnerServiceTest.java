@@ -13,6 +13,7 @@ import tz.elmkusoma.nfe.learner.domain.NfeLearner;
 import tz.elmkusoma.nfe.learner.dto.LearnerRequest;
 import tz.elmkusoma.nfe.learner.dto.LearnerResponse;
 import tz.elmkusoma.nfe.learner.repository.NfeLearnerRepository;
+import tz.elmkusoma.nfe.provider.domain.EducationProvider;
 import tz.elmkusoma.nfe.learner.service.impl.LearnerServiceImpl;
 
 import java.util.List;
@@ -30,6 +31,9 @@ class LearnerServiceTest {
     private NfeLearnerRepository learnerRepository;
     @Mock
     private OwnershipGuard ownershipGuard;
+    /** Audit B-15: learner creation now tenant-validates its provider before writing. */
+    @Mock
+    private tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
 
     @InjectMocks
     private LearnerServiceImpl learnerService;
@@ -45,10 +49,26 @@ class LearnerServiceTest {
         learnerId = UUID.randomUUID();
         providerId = UUID.randomUUID();
         userId = UUID.randomUUID();
+
+        // Audit B-15: every create path now tenant-validates its provider before writing.
+        EducationProvider ownedProvider = new EducationProvider();
+        ownedProvider.setId(providerId);
+        ownedProvider.setProviderType(EducationProvider.ProviderType.ORGANIZATION);
+        lenient().when(scopeValidator.requireOwnedProvider(eq(institutionId), eq(providerId)))
+                .thenReturn(ownedProvider);
+        lenient().when(scopeValidator.resolveStudentLink(eq(institutionId), any(), any())).thenReturn(null);
     }
 
     @Test
     void createLearner_shouldSaveAndReturnResponse() {
+    // Audit B-15: creation resolves the provider through the scope validator.
+// Audit B-15: creation resolves the provider through the scope validator.
+    EducationProvider ownedProvider = new EducationProvider();
+    ownedProvider.setId(providerId);
+    ownedProvider.setProviderType(EducationProvider.ProviderType.ORGANIZATION);
+    when(scopeValidator.requireOwnedProvider(eq(institutionId), eq(providerId)))
+            .thenReturn(ownedProvider);
+    when(scopeValidator.resolveStudentLink(eq(institutionId), eq(userId), isNull())).thenReturn(null);
         LearnerRequest request = LearnerRequest.builder()
                 .providerId(providerId)
                 .userId(userId)

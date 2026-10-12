@@ -32,6 +32,10 @@ import java.util.stream.Collectors;
 @Tag(name = "Admin Live Session Monitoring", description = "Monitor active live sessions across institution")
 public class AdminLiveSessionController {
 
+    /** Statuses that mean a session is currently live and therefore administrable. */
+    private static final java.util.Set<String> ACTIVE_SESSION_STATUSES = java.util.Set.of(
+            "IN_PROGRESS", "LIVE", "STARTING", "RECOVERING");
+
     private final LiveClassRepository liveClassRepository;
     private final LiveClassParticipantRepository participantRepository;
     private final UserRepository userRepository;
@@ -48,8 +52,14 @@ public class AdminLiveSessionController {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
+        // Every state in which a session is actually running. STARTING/LIVE/RECOVERING were
+        // previously omitted, so a live classroom could be invisible to admin operations.
         List<LiveClass> activeClasses = liveClassRepository
-                .findByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "IN_PROGRESS");
+                .findByInstitutionIdAndIsDeletedFalse(institutionId).stream()
+                .filter(lc -> ACTIVE_SESSION_STATUSES.contains(lc.getStatus()))
+                .sorted(java.util.Comparator.comparing(LiveClass::getScheduledAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .toList();
 
         List<Map<String, Object>> sessions = activeClasses.stream().map(lc -> {
             long participantCount = participantRepository
@@ -81,7 +91,9 @@ public class AdminLiveSessionController {
 
         long total = liveClassRepository.countByInstitutionIdAndIsDeletedFalse(institutionId);
         long scheduled = liveClassRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "SCHEDULED");
-        long inProgress = liveClassRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "IN_PROGRESS");
+        long inProgress = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(institutionId).stream()
+                .filter(lc -> ACTIVE_SESSION_STATUSES.contains(lc.getStatus()))
+                .count();
         long completed = liveClassRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "COMPLETED");
 
         Map<String, Object> stats = new LinkedHashMap<>();
@@ -161,7 +173,7 @@ public class AdminLiveSessionController {
             return ResponseEntity.status(400).body(ApiResponse.error("Live class has no assigned teacher"));
         }
 
-        LiveClassResponse ended = liveClassService.endSession(liveClass.getTeacherId(), classId, userId);
+        LiveClassResponse ended = liveClassService.forceEndSession(classId, institutionId, userId);
 
         try {
             notificationService.notifyInstitutionStudentsExcluding(

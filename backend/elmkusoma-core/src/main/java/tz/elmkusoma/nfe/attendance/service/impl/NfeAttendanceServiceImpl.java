@@ -24,13 +24,18 @@ import java.util.UUID;
 public class NfeAttendanceServiceImpl implements NfeAttendanceService {
 
     private final NfeAttendanceRepository attendanceRepository;
+    private final tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
 
     @Override
     public AttendanceResponse recordAttendance(UUID institutionId, UUID providerId, AttendanceRequest request) {
+        // B-15: provider/session/learner references are tenant-validated server-side.
+        UUID ownedProviderId = scopeValidator.requireOwnedProvider(institutionId, providerId).getId();
+        UUID sessionId = scopeValidator.requireOwnedSession(institutionId, request.getSessionId());
+        UUID learnerId = scopeValidator.requireOwnedLearner(institutionId, request.getLearnerId());
         NfeAttendance attendance = NfeAttendance.builder()
-                .providerId(providerId)
-                .sessionId(request.getSessionId())
-                .learnerId(request.getLearnerId())
+                .providerId(ownedProviderId)
+                .sessionId(sessionId)
+                .learnerId(learnerId)
                 .status(NfeAttendance.AttendanceStatus.valueOf(request.getStatus()))
                 .checkInTime(request.getCheckInTime())
                 .checkOutTime(request.getCheckOutTime())
@@ -100,8 +105,12 @@ public class NfeAttendanceServiceImpl implements NfeAttendanceService {
         NfeAttendance attendance = attendanceRepository.findByIdAndInstitutionId(attendanceId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("NFE Attendance", "id", attendanceId));
 
-        if (request.getSessionId() != null) attendance.setSessionId(request.getSessionId());
-        if (request.getLearnerId() != null) attendance.setLearnerId(request.getLearnerId());
+        if (request.getSessionId() != null) {
+            attendance.setSessionId(scopeValidator.requireOwnedSession(institutionId, request.getSessionId()));
+        }
+        if (request.getLearnerId() != null) {
+            attendance.setLearnerId(scopeValidator.requireOwnedLearner(institutionId, request.getLearnerId()));
+        }
         if (request.getStatus() != null) attendance.setStatus(NfeAttendance.AttendanceStatus.valueOf(request.getStatus()));
         if (request.getCheckInTime() != null) attendance.setCheckInTime(request.getCheckInTime());
         if (request.getCheckOutTime() != null) attendance.setCheckOutTime(request.getCheckOutTime());

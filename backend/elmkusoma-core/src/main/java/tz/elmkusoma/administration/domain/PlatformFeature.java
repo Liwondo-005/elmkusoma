@@ -21,6 +21,7 @@ public class PlatformFeature extends BaseEntity {
     private String name;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @Column(columnDefinition = "TEXT")

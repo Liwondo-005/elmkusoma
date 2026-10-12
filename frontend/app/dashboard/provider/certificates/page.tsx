@@ -19,10 +19,38 @@ export default function CertificatesPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editRow, setEditRow] = useState<any | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  // Audit B-03: the certificate dialog needs a real learner to certify.
+  const [learnerOptions, setLearnerOptions] = useState<{ value: string; label: string }[]>([])
+  const [learnerOptionsMessage, setLearnerOptionsMessage] = useState("")
 
   useEffect(() => {
     loadCertificates()
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    nfeApi
+      .listLearners()
+      .then((rows) => {
+        if (cancelled) return
+        const opts = (rows ?? [])
+          .map((l: any) => ({
+            value: String(l.id ?? ""),
+            label: String(l.fullName || l.name || l.email || l.participantNumber || l.userId || ""),
+          }))
+          .filter((o: { value: string; label: string }) => o.value && o.label)
+        setLearnerOptions(opts)
+        setLearnerOptionsMessage(opts.length ? "" : t("form.noLearnersAvailable"))
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setLearnerOptions([])
+        setLearnerOptionsMessage(e instanceof Error && e.message ? e.message : t("form.noLearnersAvailable"))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [t])
 
   async function loadCertificates() {
     try {
@@ -52,6 +80,18 @@ export default function CertificatesPage() {
   )
 
   const createFields: ProviderFormField[] = [
+    {
+      // Audit B-03: nfe_certificates.learner_id is NOT NULL. The form never collected it, so every
+      // attempt failed with HTTP 409. It is now a required select populated from the provider's
+      // real learners.
+      name: "learnerId",
+      label: t("form.learner"),
+      type: "select",
+      required: true,
+      options: learnerOptions.length
+        ? learnerOptions
+        : [{ value: "", label: learnerOptionsMessage }],
+    },
     {
       name: "certificateType",
       label: t("form.certificateType"),
@@ -143,6 +183,7 @@ export default function CertificatesPage() {
             setEditRow(null)
           } else {
             await nfeApi.generateCertificate({
+              learnerId: v.learnerId,
               certificateType: v.certificateType,
               title: v.title,
               studentName: v.studentName,

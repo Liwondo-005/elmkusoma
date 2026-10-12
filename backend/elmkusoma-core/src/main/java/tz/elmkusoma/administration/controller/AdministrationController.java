@@ -25,7 +25,7 @@ public class AdministrationController {
 
     private final AdministrationService administrationService;
 
-    // â”€â”€ Dashboard â”€â”€
+    // ── Dashboard ──
 
     @GetMapping("/dashboard")
     @Operation(summary = "Get institution dashboard aggregations")
@@ -45,7 +45,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // â”€â”€ Access & Permission Center â”€â”€
+    // ── Access & Permission Center ──
 
     @GetMapping("/my-access")
     @Operation(summary = "Effective access of the calling administrator: role, organization, membership, scope, and permissions")
@@ -55,7 +55,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // â”€â”€ Settings â”€â”€
+    // ── Settings ──
 
     @GetMapping("/settings")
     @Operation(summary = "List all system settings for institution")
@@ -85,7 +85,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success("Setting updated successfully", response));
     }
 
-    // â”€â”€ Role Management â”€â”€
+    // ── Role Management ──
 
     @PostMapping("/roles")
     @Operation(summary = "Create a custom role")
@@ -116,6 +116,18 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @PutMapping("/roles/{roleId}")
+    @Operation(summary = "Update a custom role's details and permissions")
+    public ResponseEntity<ApiResponse<RoleResponse>> updateRole(
+            @PathVariable UUID roleId,
+            @Valid @RequestBody CreateRoleRequest request,
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        return ResponseEntity.ok(ApiResponse.success("Role updated successfully",
+                administrationService.updateRole(roleId, request, institutionId, userEmail, userRole)));
+    }
+
     @DeleteMapping("/roles/{roleId}")
     @Operation(summary = "Delete a custom role")
     public ResponseEntity<ApiResponse<Void>> deleteRole(
@@ -127,20 +139,22 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success("Role deleted successfully", null));
     }
 
-    // â”€â”€ User Import â”€â”€
+    // ── User Import ──
 
     @PostMapping("/users/import")
-    @Operation(summary = "Create a CSV import job for bulk user creation")
+    @Operation(summary = "Import users from a CSV file")
     public ResponseEntity<ApiResponse<ImportJobResponse>> createImportJob(
             @RequestParam String importType,
-            @RequestParam String fileName,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {
-        ImportJobResponse response = administrationService.createImportJob(importType, fileName, institutionId, userId, userEmail, userRole);
+        // Audit B-28: this used to accept only a fileName, so no rows were ever imported.
+        ImportJobResponse response = administrationService.createImportJob(importType, file,
+                institutionId, userId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Import job created successfully", response));
+                .body(ApiResponse.success("Import job processed successfully", response));
     }
 
     @GetMapping("/users/import")

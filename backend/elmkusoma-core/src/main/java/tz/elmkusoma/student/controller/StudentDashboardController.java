@@ -17,7 +17,7 @@ import java.util.UUID;
 @RequestMapping("/v1/student/dashboard")
 @RequiredArgsConstructor
 // Student-scoped data: only the STUDENT role may read it (§ P0 backend authorization).
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'LEARNER')")
 @Tag(name = "Student Dashboard", description = "Student dashboard summary, results, and attendance")
 public class StudentDashboardController {
 

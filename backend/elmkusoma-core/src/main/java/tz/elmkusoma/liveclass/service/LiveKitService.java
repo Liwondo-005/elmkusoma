@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import tz.elmkusoma.liveclass.config.LiveKitConfig;
+import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -90,14 +91,26 @@ public class LiveKitService {
     }
 
     public String generateToken(UUID classId, UUID userId, String identity, boolean isTeacher) {
-        return generateTokenForRoom(generateRoomName(classId), userId, identity, isTeacher);
+        return generateTokenForRoom(generateRoomName(classId), userId, identity, isTeacher, null);
+    }
+
+    /**
+     * Role-aware variant. {@code participantRole} is the LiveClassParticipant.role
+     * (LEARNER / MODERATOR / OBSERVER / TEACHER); null means "no specific role recorded".
+     * OBSERVER is receive-only: it must not be able to publish media even though the
+     * generic learner grant is canPublish (interactive raise-hand-to-speak classroom).
+     */
+    public String generateToken(UUID classId, UUID userId, String identity, boolean isTeacher,
+                                String participantRole) {
+        return generateTokenForRoom(generateRoomName(classId), userId, identity, isTeacher, participantRole);
     }
 
     public String generateEventToken(UUID eventId, UUID userId, String identity, boolean isTeacher) {
-        return generateTokenForRoom(generateRoomNameForEvent(eventId), userId, identity, isTeacher);
+        return generateTokenForRoom(generateRoomNameForEvent(eventId), userId, identity, isTeacher, null);
     }
 
-    private String generateTokenForRoom(String roomName, UUID userId, String identity, boolean isTeacher) {
+    private String generateTokenForRoom(String roomName, UUID userId, String identity, boolean isTeacher,
+                                        String participantRole) {
         if (!config.isConfigured()) {
             log.warn("LiveKit not configured, cannot generate token");
             return null;
@@ -114,6 +127,9 @@ public class LiveKitService {
             videoGrants.put("roomJoin", true);
             videoGrants.put("room", roomName);
 
+            boolean observer = participantRole != null
+                    && LiveClassParticipant.ROLE_OBSERVER.equalsIgnoreCase(participantRole.trim());
+
             if (isTeacher) {
                 videoGrants.put("roomCreate", true);
                 videoGrants.put("roomAdmin", true);
@@ -125,7 +141,10 @@ public class LiveKitService {
                 // Learners are active participants: camera + microphone publishing is required
                 // for the interactive classroom (raise-hand-to-speak, teacher sees/hears learner).
                 // roomAdmin/roomCreate stay teacher-only.
-                videoGrants.put("canPublish", true);
+                // OBSERVER is explicitly receive-only, so the host's moderation role change
+                // (POST /participants/{classId}/role) is actually enforced at the media plane
+                // instead of being advisory only.
+                videoGrants.put("canPublish", !observer);
                 videoGrants.put("canPublishData", true);
                 videoGrants.put("canSubscribe", true);
                 videoGrants.put("canUpdateOwnMetadata", true);
@@ -141,7 +160,9 @@ public class LiveKitService {
 
             String jwt = signHs256(claims, apiSecret);
 
-            log.info("Generated LiveKit token for room={}, user={}, teacher={}", roomName, userId, isTeacher);
+            log.info("Generated LiveKit token for room={}, user={}, teacher={}, role={}, canPublish={}",
+                    roomName, userId, isTeacher, participantRole,
+                    videoGrants.get("canPublish"));
             return jwt;
 
         } catch (Exception e) {
@@ -166,7 +187,14 @@ public class LiveKitService {
 
     /** Participant token for a breakout room, granted the same publish rights as the main room. */
     public String generateBreakoutToken(UUID classId, UUID roomId, UUID userId, String identity, boolean isTeacher) {
-        return generateTokenForRoom(generateBreakoutRoomName(classId, roomId), userId, identity, isTeacher);
+        return generateTokenForRoom(generateBreakoutRoomName(classId, roomId), userId, identity, isTeacher, null);
+    }
+
+    /** Role-aware breakout token, so an OBSERVER cannot publish inside a breakout room either. */
+    public String generateBreakoutToken(UUID classId, UUID roomId, UUID userId, String identity,
+                                        boolean isTeacher, String participantRole) {
+        return generateTokenForRoom(generateBreakoutRoomName(classId, roomId), userId, identity, isTeacher,
+                participantRole);
     }
 
     public String generateRoomNameForEvent(UUID eventId) {
@@ -264,6 +292,122 @@ public class LiveKitService {
         } catch (Exception e) {
             log.error("Failed to stop recording egressId={}", egressId, e);
             return false;
+        }
+    }
+
+    /**
+ * Server-side removal of a participant from the room (moderation kick).
+     * <p>
+     * Closing the application WebSocket is not enough: the participant keeps their LiveKit
+     * media session and would still publish/receive. This removes them from the LiveKit room
+     * so the moderation action is actually enforced at the media plane.
+     *
+     * @return true when LiveKit accepted the removal
+     */
+    public boolean removeParticipant(UUID classId, UUID userId) {
+        if (!config.isConfigured() || userId == null) {
+            return false;
+        }
+        try {
+            String roomName = generateRoomName(classId);
+            Map<String, Object> request = new HashMap<>();
+            request.put("room", roomName);
+            request.put("identity", userId.toString());
+            String body = objectMapper.writeValueAsString(request);
+            String result = callTwirp("livekit.RoomService", "RemoveParticipant", body);
+            boolean ok = result != null;
+            log.info("LiveKit remove participant identity={} from room {}: {}", userId, roomName, ok);
+            return ok;
+        } catch (Exception e) {
+            log.error("Failed to remove participant {} from class {}: {}", userId, classId, e);
+            return false;
+        }
+    }
+
+    /**
+     * Server-side mute/unmute of a participant's published audio track.
+     * <p>
+     * RoomService/MutePublishedTrack needs the LiveKit track SID, and the ELMKUSOMA domain
+     * only knows the application user id, so the participant is resolved through
+     * ListParticipants first. Without this the host's mute button was purely advisory: it
+     * broadcast an event that the muted client could simply ignore.
+     *
+     * @param muted true to mute, false to unmute
+     * @return true when LiveKit accepted the change
+     */
+    public boolean setParticipantMuted(UUID classId, UUID userId, boolean muted) {
+        if (!config.isConfigured() || userId == null) {
+            return false;
+        }
+        try {
+            String roomName = generateRoomName(classId);
+            List<JsonNode> participants = listParticipants(roomName);
+            if (participants == null || participants.isEmpty()) {
+                log.warn("No LiveKit participants found in room {} for mute request on {}", roomName, userId);
+                return false;
+            }
+            String identity = userId.toString();
+            for (JsonNode participant : participants) {
+                String participantIdentity = participant.path("identity").asText(null);
+                if (participantIdentity == null || !identity.equals(participantIdentity)) {
+                    continue;
+                }
+                for (JsonNode track : participant.path("tracks")) {
+                    if (!"MICROPHONE".equalsIgnoreCase(track.path("source").asText(""))) {
+                        continue;
+                    }
+                    String trackSid = track.path("sid").asText(null);
+                    if (trackSid == null || trackSid.isBlank()) {
+                        continue;
+                    }
+                    Map<String, Object> request = new HashMap<>();
+                    request.put("roomName", roomName);
+                    request.put("identity", participantIdentity);
+                    request.put("trackSid", trackSid);
+                    request.put("muted", muted);
+                    String body = objectMapper.writeValueAsString(request);
+                    String result = callTwirp("livekit.RoomService", "MutePublishedTrack", body);
+                    boolean ok = result != null;
+                    log.info("LiveKit mute{} applied in room {} for {}: {}", muted ? "" : "-un", roomName, identity, ok);
+                    return ok;
+                }
+                log.warn("Participant {} in room {} has no published microphone track to mute", identity, roomName);
+                return false;
+            }
+            log.warn("Participant identity {} not present in LiveKit room {}", identity, roomName);
+            return false;
+        } catch (Exception e) {
+            log.error("Failed to set muted={} for participant {} in class {}: {}", muted, userId, classId, e);
+            return false;
+        }
+    }
+
+    /** ListParticipants via Twirp; returns an empty list when the room is gone. */
+    private List<JsonNode> listParticipants(String roomName) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("room", roomName);
+        String body;
+        try {
+            body = objectMapper.writeValueAsString(request);
+        } catch (Exception e) {
+            log.warn("Could not serialize ListParticipants request: {}", e.getMessage());
+            return List.of();
+        }
+        String result = callTwirp("livekit.RoomService", "ListParticipants", body);
+        if (result == null) {
+            return List.of();
+        }
+        try {
+            JsonNode node = objectMapper.readTree(result);
+            JsonNode arr = node.path("participants");
+            List<JsonNode> out = new ArrayList<>(arr.size());
+            for (JsonNode n : arr) {
+                out.add(n);
+            }
+            return out;
+        } catch (Exception e) {
+            log.warn("Could not parse ListParticipants response: {}", e.getMessage());
+            return List.of();
         }
     }
 
@@ -428,6 +572,50 @@ public class LiveKitService {
     }
 
     /**
+     * Normalises a LiveKit file-result {@code location} into a usable URL.
+     *
+     * <p>The LiveKit protocol types {@code FileInfo.location} as a plain {@code string} and
+     * documents no scheme, so the value cannot be assumed to be an http(s) URL. LiveKit Cloud
+     * with S3-compatible storage may return an {@code s3://bucket/key} URI or a bare object key
+     * depending on the storage provider. Accepting only {@code http} silently dropped those
+     * recordings, which surfaced as a missing Replay and MediaAsset.</p>
+     *
+     * <p>Anything that is not already http(s) is rebuilt from the CONFIGURED endpoint and
+     * bucket - never from the response - so a hostile or malformed location cannot redirect a
+     * recording at an attacker-controlled host. Returns null when no URL can be derived, so
+     * callers never persist a fabricated location.</p>
+     */
+    public String toPlayableRecordingUrl(String location) {
+        if (location == null || location.isBlank()) {
+            return null;
+        }
+        String value = location.trim();
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            return value;
+        }
+
+        String bucket = config.getEgress().getOutputBucket();
+        String endpoint = config.getEgress().getEndpoint();
+        if (bucket == null || bucket.isBlank() || endpoint == null || endpoint.isBlank()) {
+            // No endpoint configured (plain AWS): a non-http location cannot be turned into a
+            // URL here. Return null rather than inventing one. The value itself is not logged:
+            // a location can be a signed URL, and the query part of one is a short-lived secret.
+            log.warn("Recording location is not http(s) and no egress endpoint is configured; "
+                            + "cannot derive a URL (length={})",
+                    value.length());
+            return null;
+        }
+
+        String objectPath = value.startsWith("s3://") ? value.substring("s3://".length()) : value;
+        // Tolerate "key" as well as "bucket/key".
+        if (!objectPath.startsWith(bucket + "/")) {
+            objectPath = bucket + "/" + objectPath;
+        }
+        String base = endpoint.endsWith("/") ? endpoint.substring(0, endpoint.length() - 1) : endpoint;
+        return base + "/" + objectPath;
+    }
+
+    /**
      * Polls ListEgress until the egress completes and returns the final file URL,
      * or null if it fails / does not become available in time.
      * NOTE: there is no GetEgress RPC - LiveKit answers it with 404 bad_route, so the
@@ -466,9 +654,10 @@ public class LiveKitService {
                             for (JsonNode f : files) {
                                 String url = f.path("location").asText(null);
                                 if (url == null) url = f.path("url").asText(null);
-                                if (url != null && url.startsWith("http")) {
+                                String playable = toPlayableRecordingUrl(url);
+                                if (playable != null) {
                                     log.info("Resolved recording URL for egress {} (attempt {})", egressId, attempt);
-                                    return url;
+                                    return playable;
                                 }
                             }
                         }

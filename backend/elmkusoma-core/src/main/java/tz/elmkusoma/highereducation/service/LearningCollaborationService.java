@@ -62,9 +62,13 @@ public class LearningCollaborationService {
     }
 
     public void deleteCollaboration(UUID id) {
-        if (!collaborationRepository.existsById(id))
-            throw new ResourceNotFoundException("Collaboration not found");
-        collaborationRepository.deleteById(id);
+// Audit P3: hard delete bypassed the project's soft-delete contract, so retention sweeps
+        // and audit trails could not see these removals. Soft delete is the convention everywhere
+        // else (BaseEntity.is_deleted).
+        LearningCollaboration entity = collaborationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Collaboration not found"));
+        entity.setIsDeleted(true);
+        collaborationRepository.save(entity);
     }
 
     private LearningCollaborationDTO toDTO(LearningCollaboration c) {

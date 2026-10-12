@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
@@ -43,11 +44,35 @@ public class SendCodeRateLimitFilter extends OncePerRequestFilter implements Ord
 
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
 
+    private volatile java.util.List<String> trustedProxyPrefixes = java.util.List.of();
+
+    /**
+     * Audit B-26: networks whose X-Forwarded-For header may be trusted (reverse proxy / load
+     * balancer CIDRs). Empty by default, which means the header is ignored and the socket
+     * address is used.
+     */
+    @Value("${elmkusoma.security.trusted-proxies:}")
+    private String trustedProxies;
+
     @Value("${elmkusoma.security.send-code-per-minute:20}")
     private long limitPerMinute;
 
     public SendCodeRateLimitFilter(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+    }
+
+    /** Parses the configured trusted-proxy prefixes once the properties are bound. */
+    @PostConstruct
+    void initTrustedProxies() {
+        if (trustedProxies == null || trustedProxies.isBlank()) {
+            trustedProxyPrefixes = java.util.List.of();
+        } else {
+            trustedProxyPrefixes = java.util.Arrays.stream(trustedProxies.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+        }
+        log.info("send-code rate limit trusts X-Forwarded-For only from: {}", trustedProxyPrefixes);
     }
 
     @Override
@@ -92,7 +117,18 @@ public class SendCodeRateLimitFilter extends OncePerRequestFilter implements Ord
         filterChain.doFilter(request, response);
     }
 
-    private static String clientIp(HttpServletRequest request) {
+    /**
+     * Audit B-26: {@code X-Forwarded-For} was trusted unconditionally, so any caller could vary
+     * that header and defeat the per-IP limit -- which is what protects the mail endpoint from
+     * being used to bomb third-party addresses. The header is now honoured only when the direct
+     * peer is a configured trusted proxy; otherwise the socket address is used, which a client
+     * cannot forge.
+     */
+    private String clientIp(HttpServletRequest request) {
+        String remote = request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+        if (!isTrustedProxy(remote)) {
+            return remote;
+        }
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
             // First hop is the original client; trim before any chain noise.
@@ -102,7 +138,19 @@ public class SendCodeRateLimitFilter extends OncePerRequestFilter implements Ord
                 return first;
             }
         }
-        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+        return remote;
+    }
+
+    private boolean isTrustedProxy(String remoteAddr) {
+        if (remoteAddr == null || remoteAddr.isBlank()) {
+            return false;
+        }
+        for (String prefix : trustedProxyPrefixes) {
+            if (!prefix.isBlank() && remoteAddr.startsWith(prefix.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Visible for tests: reset the in-memory window state.

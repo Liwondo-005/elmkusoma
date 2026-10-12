@@ -12,6 +12,10 @@ export type LiveClass = {
   going?: number
   time: string
   level: "Beginner" | "Intermediate" | "Advanced"
+  /** Server-derived flag: this session has a finished, playable recording. */
+  hasRecording?: boolean
+  /** True when the session is running and can be joined. */
+  canJoin?: boolean
 }
 
 export const liveClasses: LiveClass[] = [

@@ -33,6 +33,7 @@ public class Announcement extends BaseEntity {
     private UUID subjectId;
 
     @Column(name = "priority", nullable = false, length = 20)
+    @Builder.Default
     private String priority = "NORMAL";
 
     /**
@@ -50,6 +51,7 @@ public class Announcement extends BaseEntity {
 
     /** DRAFT | SCHEDULED | PUBLISHED */
     @Column(name = "status", length = 16)
+    @Builder.Default
     private String status = "PUBLISHED";
 
     @Column(name = "scheduled_at")

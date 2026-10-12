@@ -40,9 +40,11 @@ public class LearningGoal extends BaseEntity {
     private LocalDateTime completedAt;
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @Column(name = "progress_percentage", precision = 5, scale = 2)
+    @Builder.Default
     private BigDecimal progressPercentage = BigDecimal.ZERO;
 
     @Column(name = "related_entity_type")

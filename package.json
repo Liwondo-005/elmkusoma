@@ -1,0 +1,12 @@
+{
+  "name": "elmkusoma-dev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Unified local development launcher for ELMKUSOMA (LiveKit + backend + frontend).",
+  "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./start-dev.ps1",
+    "dev:local": "powershell -NoProfile -ExecutionPolicy Bypass -File ./start-dev.ps1 -LocalLiveKit",
+    "dev:backend": "powershell -NoProfile -ExecutionPolicy Bypass -File ./start-dev.ps1 -SkipFrontend",
+    "dev:frontend": "powershell -NoProfile -ExecutionPolicy Bypass -File ./start-dev.ps1 -SkipBackend"
+  }
+}

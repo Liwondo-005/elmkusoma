@@ -3,10 +3,18 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
 import { useTranslations } from "next-intl"
+import { SocialLinks } from "@/components/social-links"
+import { telHref, useSiteSettings } from "@/hooks/use-site-settings"
 
 export function SiteFooter() {
   const tNav = useTranslations("nav")
   const tCommon = useTranslations("common")
+  const { value } = useSiteSettings()
+
+  const contactEmail = value("public.contact.email")
+  const contactPhone = value("public.contact.phone")
+  const contactAddress = value("public.contact.address")
+  const phoneHref = telHref(contactPhone)
 
   const columns = [
     {
@@ -31,6 +39,7 @@ export function SiteFooter() {
       title: tCommon("platform"),
       links: [
         { label: tNav("about"), href: "/about" },
+        { label: tNav("news"), href: "/news" },
         { label: tCommon("verifyCertificate"), href: "/certificates/verify" },
         { label: tCommon("becomeInstructor"), href: "/register" },
         { label: tCommon("forInstitutions"), href: "/register" },
@@ -68,25 +77,29 @@ export function SiteFooter() {
           <div>
             <h4 className="text-sm font-semibold text-foreground">{tCommon("contactUs")}</h4>
             <ul className="mt-4 space-y-3">
-              <li className="text-sm text-muted-foreground">
-                Dar es Salaam, Tanzania
-              </li>
-              <li>
-                <a
-                  href="tel:+255700000000"
-                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                >
-                  +255 700 000 000
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:info@elmkusoma.co.tz"
-                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                >
-                  info@elmkusoma.co.tz
-                </a>
-              </li>
+              {contactAddress && (
+                <li className="text-sm text-muted-foreground">{contactAddress}</li>
+              )}
+              {contactPhone && phoneHref && (
+                <li>
+                  <a
+                    href={phoneHref}
+                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {contactPhone}
+                  </a>
+                </li>
+              )}
+              {contactEmail && (
+                <li>
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {contactEmail}
+                  </a>
+                </li>
+              )}
               <li>
                 <Link
                   href="/contact"
@@ -96,22 +109,12 @@ export function SiteFooter() {
                 </Link>
               </li>
             </ul>
-            <div className="mt-5 flex flex-wrap gap-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Facebook">
-                Facebook
-              </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Instagram">
-                Instagram
-              </a>
-              <a href="https://wa.me/255700000000" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="WhatsApp">
-                WhatsApp
-              </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Twitter">
-                Twitter
-              </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="LinkedIn">
-                LinkedIn
-              </a>
+            {/* Social and WhatsApp come from one shared component so the footer, contact page
+                and support page can never drift apart or disagree on which platforms exist.
+                Each link renders only when an administrator has configured a real, validated
+                URL — nothing here invents an account or links to a bare domain root. */}
+            <div className="mt-5">
+              <SocialLinks variant="icon" includeWhatsApp />
             </div>
           </div>
         </div>

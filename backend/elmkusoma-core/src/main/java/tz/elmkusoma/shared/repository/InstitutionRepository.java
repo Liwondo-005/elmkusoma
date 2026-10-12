@@ -19,6 +19,8 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID> 
 
     boolean existsByCodeAndIsDeletedFalse(String code);
 
+    boolean existsByIdAndIsDeletedFalse(UUID id);
+
     List<Institution> findByIsDeletedFalse();
 
     Page<Institution> findByIsDeletedFalse(Pageable pageable);

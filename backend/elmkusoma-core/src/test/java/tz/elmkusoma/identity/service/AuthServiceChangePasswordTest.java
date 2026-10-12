@@ -4,10 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import tz.elmkusoma.identity.dto.request.ChangePasswordRequest;
+import tz.elmkusoma.identity.service.PasswordPolicy;
 import tz.elmkusoma.identity.service.impl.AuthServiceImpl;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -32,6 +34,16 @@ class AuthServiceChangePasswordTest {
     private UserRepository userRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    // Concrete collaborator, so @InjectMocks would otherwise inject null.
+
+
+    @Spy
+
+
+    private PasswordPolicy passwordPolicy = new PasswordPolicy();
+
+
 
     @InjectMocks
     private AuthServiceImpl authService;

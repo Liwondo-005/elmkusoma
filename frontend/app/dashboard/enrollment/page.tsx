@@ -24,6 +24,8 @@ export default function EnrollmentPage() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+  // Audit B-22: never present an authorization failure as "you have no enrolments".
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -33,11 +35,25 @@ export default function EnrollmentPage() {
   async function loadEnrollments() {
     try {
       setLoading(true)
-      const data = await enrollmentApi.list(page, 10)
-      setEnrollments(data.content)
-      setTotalPages(data.totalPages)
-    } catch {
+      setLoadError(null)
+      // Audit B-22: this page used the ADMIN-only list endpoint, so a learner got a 403 that was
+      // swallowed into a false "no enrolments" empty state. /v1/enrollments/me resolves the
+      // caller's own placement server-side.
+      const isAdminUser = ["ADMIN", "INSTITUTION_ADMIN", "TEACHER"].includes(
+        (user?.role ?? "") as string,
+      )
+      if (isAdminUser) {
+        const data = await enrollmentApi.list(page, 10)
+        setEnrollments(data.content)
+        setTotalPages(data.totalPages)
+      } else {
+        const rows = await enrollmentApi.mine()
+        setEnrollments(rows ?? [])
+        setTotalPages(1)
+      }
+    } catch (e) {
       setEnrollments([])
+      setLoadError(e instanceof Error && e.message ? e.message : tc("error") || "Failed to load enrollments")
     } finally {
       setLoading(false)
     }
@@ -75,6 +91,12 @@ export default function EnrollmentPage() {
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-12 text-center">
+          <XCircle className="mx-auto size-12 text-destructive/70" />
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{tc("error") || "Could not load enrollments"}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
         </div>
       ) : enrollments.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">

@@ -113,7 +113,7 @@ export default function ProgramsPage() {
                     <p className="text-xs text-muted-foreground">{program.description || t("programs.noDescriptionFallback")}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{program.status || ts("active")}</span>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{program.isPublished ? t("form.published") : t("form.draft")}</span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => { setConfirmDeleteId(null); setEditRow(program) }}

@@ -96,9 +96,11 @@ public class LearningModuleService {
     }
 
     public void deleteModule(UUID id) {
-        if (!learningModuleRepository.existsById(id))
-            throw new ResourceNotFoundException("Module not found");
-        learningModuleRepository.deleteById(id);
+        // Audit P3: hard delete bypassed the project's soft-delete contract.
+        LearningModule entity = learningModuleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Module not found"));
+        entity.setIsDeleted(true);
+        learningModuleRepository.save(entity);
     }
 
     private LearningModuleDTO toDTO(LearningModule m) {

@@ -24,5 +24,6 @@ public class District extends BaseEntity {
     private java.util.UUID regionId;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 }

@@ -137,6 +137,9 @@ function mapRoleToFrontend(backendRole: string): string {
     TEACHER: "Teacher",
     PARENT: "Parent",
     OTHER_LEARNER: "Other Learner",
+    // Audit B-52: the LEARNER role is accepted at registration but had no display mapping, so
+    // such a user fell through to the raw backend string and lost every role-aware UI branch.
+    LEARNER: "Learner",
     ADMIN: "Admin",
     INSTITUTION_ADMIN: "Institution Admin",
     NATIONAL_ADMIN: "National Admin",
@@ -157,6 +160,7 @@ export function roleToI18nKey(role: string | null | undefined): string {
   const keyMap: Record<string, string> = {
     Student: "student",
     "Other Learner": "otherLearner",
+    Learner: "learner",
     Teacher: "teacher",
     Instructor: "instructor",
     Parent: "parent",

@@ -16,6 +16,7 @@ export default function AdminsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<AdminAccount | null>(null)
   const [permDraft, setPermDraft] = useState("")
+const [matrixError, setMatrixError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<AdminAccount | null>(null)
@@ -56,20 +57,24 @@ export default function AdminsPage() {
 
   const openMatrix = async (a: AdminAccount) => {
     setSelected(a)
+    setMatrixError(null)
     try {
-      const perms = await platformAdminApi.getRolePermissions(a.userId)
+      const perms = await platformAdminApi.getAdminPermissions(a.userId)
       setPermDraft(perms.join("\n"))
-    } catch {
-      setPermDraft((a.permissions ?? []).join("\n"))
+    } catch (e: any) {
+      // Never fall back to a different data source: the matrix must not look populated
+      // when the authoritative read failed (it would be saved back on the next PUT).
+      setPermDraft("")
+      setMatrixError(e?.message || t("admins.failedToLoadPermissions"))
     }
   }
 
   const saveMatrix = async () => {
-    if (!selected) return
+    if (!selected || matrixError) return
     setSaving(true); setError(null)
     try {
       const permissions = permDraft.split("\n").map(s => s.trim()).filter(Boolean)
-      const updated = await platformAdminApi.updateRolePermissions(selected.userId, permissions)
+      const updated = await platformAdminApi.updateAdminPermissions(selected.userId, permissions)
       setSelected({ ...selected, permissions: updated })
       setAdmins(prev => prev.map(a => (a.userId === selected.userId ? { ...a, permissions: updated } : a)))
     } catch (e: any) {
@@ -185,14 +190,20 @@ export default function AdminsPage() {
           ) : (
             <>
               <p className="mt-2 text-xs text-muted-foreground">{selected.fullName} · {selected.email}</p>
+              {matrixError && (
+                <p role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {matrixError}
+                </p>
+              )}
               <textarea
                 value={permDraft}
                 onChange={(e) => setPermDraft(e.target.value)}
                 rows={14}
                 spellCheck={false}
-                className="mt-3 w-full rounded-xl border border-border bg-background p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/20"
+                disabled={saving || !!matrixError}
+                className="mt-3 w-full rounded-xl border border-border bg-background p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
               />
-              <button onClick={saveMatrix} disabled={saving}
+              <button onClick={saveMatrix} disabled={saving || !!matrixError}
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} {t("admins.savePermissions")}</button>
             </>

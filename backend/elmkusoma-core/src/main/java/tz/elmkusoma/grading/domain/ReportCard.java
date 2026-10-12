@@ -57,6 +57,7 @@ public class ReportCard extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private ReportCardStatus status = ReportCardStatus.DRAFT;
 
     @Column(name = "published_at")

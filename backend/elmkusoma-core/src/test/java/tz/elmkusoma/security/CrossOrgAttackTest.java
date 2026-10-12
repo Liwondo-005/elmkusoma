@@ -108,12 +108,17 @@ class CrossOrgAttackTest {
     }
 
     @Test
-    void fileIdManipulation_CrossInstitution_Returns403() throws Exception {
+    void fileIdManipulation_CrossInstitution_IsDenied() throws Exception {
         String studentToken = TestTokens.studentToken();
 
         mockMvc.perform(get("/v1/media/00000000-0000-0000-0000-000000000055")
                 .header("Authorization", "Bearer " + studentToken))
-            .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
+        // STUDENT is now an accepted role on /v1/media/{id} so learners can open recordings
+        // of sessions they took part in. The request reaches the handler, which answers 404
+        // for anything the caller is not entitled to - the same response as "no such asset",
+        // so the endpoint cannot probe which recordings exist. Access is still denied; only
+        // the status changed, and to the less revealing one.
     }
 
     @Test
@@ -248,7 +253,7 @@ class CrossOrgAttackTest {
                         + "recording_enabled, session_type, timezone, is_recurring, lobby_enabled) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 liveClassId, foreignInstitutionId, java.time.LocalDateTime.now(), false,
-                tz.elmkusoma.testutil.TestDataSeeder.TEACHER_USER_ID, "XOrg foreign live class",
+                tz.elmkusoma.testutil.TestDataSeeder.TEACHER_ID, "XOrg foreign live class",
                 "Cross-org isolation probe",
                 java.time.LocalDateTime.now().plusHours(1), 60, "SCHEDULED", 50,
                 false, "LECTURE", "Africa/Dar_es_Salaam", false, false);

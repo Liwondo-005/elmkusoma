@@ -41,6 +41,7 @@ public class NurseryMilestone extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private MilestoneStatus status = MilestoneStatus.PENDING;
 
     @Column(name = "observed_by")

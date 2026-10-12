@@ -25,6 +25,7 @@ public class MediaAssetRequest {
     private String sourceType;
     private UUID sourceId;
     private UUID courseId;
+    private UUID classGroupId;
     private UUID subjectId;
     private String tags;
 }

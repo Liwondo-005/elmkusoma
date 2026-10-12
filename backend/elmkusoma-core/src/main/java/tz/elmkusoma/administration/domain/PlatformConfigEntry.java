@@ -21,6 +21,7 @@ public class PlatformConfigEntry extends BaseEntity {
     private String configValue;
 
     @Column(name = "config_type", nullable = false)
+    @Builder.Default
     private String configType = "STRING";
 
     private String description;
@@ -28,9 +29,11 @@ public class PlatformConfigEntry extends BaseEntity {
     private String category;
 
     @Column(name = "is_sensitive", nullable = false)
+    @Builder.Default
     private Boolean isSensitive = false;
 
     @Column(name = "is_public", nullable = false)
+    @Builder.Default
     private Boolean isPublic = false;
 
     @Column(name = "last_modified_by")

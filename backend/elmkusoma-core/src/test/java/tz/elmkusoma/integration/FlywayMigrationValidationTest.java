@@ -303,6 +303,173 @@ class FlywayMigrationValidationTest {
  * migrations to prove the columns exist and that department_id is uuid-typed, matching the
  * UUID it references on departments(id).
  */
+    /**
+     * V156 creates news_articles. Every column NewsArticle maps is asserted here, because the test
+     * profile builds its schema with Hibernate (ddl-auto=create-drop) and never runs Flyway: a
+     * column present on the entity but missing from the migration passes the entire Spring test
+     * suite and then fails as a bare HTTP 500 against a real database, which is exactly the class
+     * of defect this suite exists to catch.
+     *
+     * <p>Also pins the NOT NULL columns. A migration that omits a nullability constraint still
+     * lets Hibernate create it in tests, so the mismatch would not surface until production.</p>
+     */
+    @Test
+    void newsArticleColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> columnNames = Set.of(
+                "title", "summary", "body", "slug", "category", "cover_image_url", "author_name",
+                "status", "published_at", "scheduled_at", "expires_at", "is_featured",
+                "priority", "sort_order", "last_modified_by", "published_by");
+
+        Map<String, String> types = effectiveColumnTypes(columnNames);
+
+        List<String> missing = columnNames.stream()
+                .map(name -> "news_articles." + name.toLowerCase(java.util.Locale.ROOT))
+                .filter(key -> !types.containsKey(key))
+                .sorted()
+                .toList();
+        assertTrue(missing.isEmpty(),
+                "NewsArticle maps these columns but V156 does not declare them, so publishing an "
+                        + "article would fail against a real database: " + missing);
+
+        // published_at is what the NEW window is measured against. If a future edit widened it to
+        // text, every comparison against it would silently become a string comparison.
+        String publishedAt = types.get("news_articles.published_at");
+        assertTrue(publishedAt != null && publishedAt.startsWith("timestamp"),
+                "news_articles.published_at must be a timestamp but was declared as \""
+                        + publishedAt + "\" at " + declaredIn.get("news_articles.published_at"));
+
+        assertTrue(types.get("news_articles.is_featured").startsWith("boolean"),
+                "is_featured is a boolean on the entity; a migration that declared it as text "
+                        + "would still pass Hibernate's generated schema in tests");
+    }
+
+    /**
+     * V157 adds the publication/access columns that make a live class publicly discoverable.
+     *
+     * <p>The same reasoning as the news assertion applies, and it matters more here: the test
+     * profile builds live_classes from the entity with ddl-auto=create-drop, so a migration that
+     * omitted any of these columns would leave the entire Spring suite green and then fail as a
+     * bare 500 against a real database the first time a class was submitted, approved or
+     * published.</p>
+     *
+     * <p>Also pins the dark-by-default constraint. Both publication_status and access_level are
+     * NOT NULL with a default that keeps pre-existing rows invisible. A future edit that relaxed
+     * either to nullable would silently let a row with no publication decision appear in a public
+     * query, which is the exact failure the two-axis design exists to prevent.</p>
+     */
+    @Test
+    void liveClassPublicationColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> columnNames = Set.of(
+                "publication_status", "access_level", "cover_image_url", "ended_at",
+                "submitted_for_review_at", "published_at", "reviewed_by", "reviewed_at",
+                "review_note");
+
+        // V157 adds these with ALTER TABLE ... ADD COLUMN rather than CREATE TABLE, so this is
+        // read with declaredColumns, not effectiveColumnTypes.
+        Map<String, String> types = declaredColumns(
+                columnNames.stream().map(n -> "live_classes." + n).collect(java.util.stream.Collectors.toSet()));
+
+        List<String> missing = columnNames.stream()
+                .map(name -> "live_classes." + name.toLowerCase(java.util.Locale.ROOT))
+                .filter(key -> !types.containsKey(key))
+                .sorted()
+                .toList();
+        assertTrue(missing.isEmpty(),
+                "LiveClass maps these columns but V157 does not declare them, so the publication "
+                        + "workflow would fail against a real database: " + missing);
+
+        // Timestamps drive Past Classes and the review queue. Widening one to text would make every
+        // comparison silently lexicographic rather than temporal.
+        for (String temporal : List.of("ended_at", "submitted_for_review_at", "published_at",
+                "reviewed_at")) {
+            String type = types.get("live_classes." + temporal);
+            assertTrue(type != null && type.startsWith("timestamp"),
+                    "live_classes." + temporal + " must be a timestamp but was declared as \""
+                            + type + "\"");
+        }
+
+        assertTrue(types.get("live_classes.publication_status").startsWith("character varying")
+                        || types.get("live_classes.publication_status").startsWith("varchar"),
+                "publication_status must be a varchar, but is \""
+                        + types.get("live_classes.publication_status") + "\"");
+
+        assertTrue(types.get("live_classes.review_note").startsWith("character varying")
+                        || types.get("live_classes.review_note").startsWith("varchar"),
+                "review_note must be a varchar so a note cannot be silently truncated, but is \""
+                        + types.get("live_classes.review_note") + "\"");
+
+        // cover_image_url carries a URL, so a length cap matters; an unbounded varchar would let a
+        // caller store an arbitrarily large value in a column every public card reads.
+        assertTrue(types.get("live_classes.cover_image_url").contains("1000"),
+                "cover_image_url must stay length-bounded (VARCHAR(1000)) but is \""
+                        + types.get("live_classes.cover_image_url") + "\"");
+    }
+
+    /**
+     * V157's dark-by-default guarantee is a property of the column definitions, not of any Java
+     * code, so it is asserted here against the migration text.
+     *
+     * <p>A row with publication_status NULL would be excluded by the {@code = 'PUBLISHED'}
+     * predicate rather than exposed, so the NULL case is not itself a leak. The leak this guards
+     * against is a DEFAULT that ever changes from 'DRAFT'/'INSTITUTION' to something permissive,
+     * which would promote every pre-existing row on the next migration that re-added the column.
+     */
+    @Test
+    void liveClassPublicationColumns_AreDarkByDefault() throws IOException {
+        String migration = readMigration("V157__live_class_public_discovery.sql");
+
+        assertTrue(migration.contains("publication_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'"),
+                "publication_status must default to DRAFT so every pre-existing class stays "
+                        + "invisible; found: "
+                        + firstLineContaining(migration, "publication_status VARCHAR"));
+
+        assertTrue(migration.contains("access_level VARCHAR(30) NOT NULL DEFAULT 'INSTITUTION'"),
+                "access_level must default to INSTITUTION; found: "
+                        + firstLineContaining(migration, "access_level VARCHAR"));
+    }
+
+    /** Reads a migration by file name from the located migration directory. */
+    private String readMigration(String fileName) throws IOException {
+        Path path = migrationDir.resolve(fileName);
+        assertTrue(Files.exists(path), "migration must exist: " + fileName);
+        return Files.readString(path, StandardCharsets.UTF_8);
+    }
+
+    private static String firstLineContaining(String text, String needle) {
+        for (String line : text.split("\\R")) {
+            if (line.contains(needle)) {
+                return line.trim();
+            }
+        }
+        return "(not found)";
+    }
+
+    /**
+     * V156 adds media_assets.class_group_id, the class target that makes a live class
+     * recording appear in the Media Library. MediaAsset maps @Column(name = "class_group_id")
+     * and the test profile builds its schema from the entity, so a missing migration would
+     * only surface at runtime against a real database.
+     */
+    @Test
+    void mediaAssetsClassGroup_IsDeclaredInMigrations() throws IOException {
+        Map<String, String> declared = declaredColumns(Set.of("media_assets.class_group_id"));
+
+        assertTrue(declared.containsKey("media_assets.class_group_id"),
+                "MediaAsset maps @Column(name = \"class_group_id\") but no migration declares it, "
+                        + "so saving a recording would fail against a real database");
+        assertTrue(declared.get("media_assets.class_group_id").startsWith("uuid"),
+                "media_assets.class_group_id must be uuid to reference class_groups(id), but is \""
+                        + declared.get("media_assets.class_group_id") + "\"");
+    }
+
+    /**
+     * V136 makes Department -> Programme a real foreign key and adds course_modules.module_code.
+     * Both are mapped on entities, and the test profile builds its schema with Hibernate instead
+     * of Flyway, so a missing or mistyped migration would only surface at runtime against a real
+     * database - the exact class of bare-500 defect this suite exists to prevent. Replays the
+     * migrations to prove the columns exist and that department_id is uuid-typed, matching the
+     * UUID it references on departments(id).
+     */
     @Test
     void departmentProgrammeAndModuleColumns_AreDeclaredInMigrations() throws IOException {
         Set<String> wanted = Set.of(

@@ -24,5 +24,6 @@ public class Ward extends BaseEntity {
     private String code;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 }

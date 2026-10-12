@@ -27,4 +27,7 @@ public class LearnerRequest {
     private String organization;
 
     private String status;
+
+    /** Ecosystem link (audit X-2): optional K-12 student profile for the same person. */
+    private UUID studentId;
 }

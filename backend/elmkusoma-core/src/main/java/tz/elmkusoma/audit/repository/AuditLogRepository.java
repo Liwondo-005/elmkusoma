@@ -54,6 +54,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     Page<AuditLog> findByEntityIdAndIsDeletedFalse(UUID entityId, Pageable pageable);
 
+    /**
+     * Audit B-49: paged counterpart of the unpaged findByEntityTypeAndEntityId. Platform Admin's
+     * entity-scoped audit lookup previously loaded every matching row into memory and faked the
+     * total as "rows returned", so an entity with a long history ignored page/size entirely.
+     */
+    @Query("SELECT a FROM AuditLog a WHERE a.entityType = :entityType AND a.entityId = :entityId AND a.isDeleted = false ORDER BY a.createdAt DESC")
+    Page<AuditLog> findByEntityTypeAndEntityIdAndIsDeletedFalse(@Param("entityType") String entityType,
+                                                                @Param("entityId") UUID entityId,
+                                                                Pageable pageable);
+
     @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.entityType = :entityType AND a.action = :action AND a.isDeleted = false AND a.createdAt >= :since")
     long countByEntityTypeAndActionSince(@Param("entityType") String entityType,
                                          @Param("action") tz.elmkusoma.audit.domain.AuditLog.AuditAction action,

@@ -26,6 +26,7 @@ public class EventRegistration extends BaseEntity {
     private UUID userId;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "REGISTERED";
 
     @Column(name = "registered_at", nullable = false)
@@ -38,6 +39,7 @@ public class EventRegistration extends BaseEntity {
     private String cancellationReason;
 
     @Column(name = "attended")
+    @Builder.Default
     private Boolean attended = false;
 
     @Column(name = "attended_at")

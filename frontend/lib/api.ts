@@ -72,8 +72,11 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   const institutionId = getInstitutionId()
+  // Audit B-28: a FormData body must keep the browser-generated multipart boundary, so the JSON
+  // content type is only set when we actually send JSON.
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...((options.headers as Record<string, string>) || {}),
   }
 
@@ -295,8 +298,10 @@ export interface Enrollment {
 export const enrollmentApi = {
   list: (page = 0, size = 20) =>
     request<PageResponse<Enrollment>>(`/v1/enrollments?page=${page}&size=${size}`),
-  byStudent: (studentId: string) =>
-    request<Enrollment[]>(`/v1/enrollments/student/${studentId}`),
+byStudent: (studentId: string) =>
+request<Enrollment[]>(`/v1/enrollments/student/${studentId}`),
+  /** Audit B-22: the caller's own enrollments; the server resolves the student from the JWT. */
+  mine: () => request<Enrollment[]>(`/v1/enrollments/me`),
   byClass: (classGroupId: string) =>
     request<Enrollment[]>(`/v1/enrollments/class/${classGroupId}`),
   enroll: (data: { studentId: string; classGroupId: string; academicYearId: string }) =>
@@ -1438,15 +1443,28 @@ export const adminApi = {
   getRole: (institutionId: string, roleId: string) =>
     request<RoleResponse>(`/v1/admin/roles/${roleId}?institutionId=${institutionId}`),
 
+  /** B-57: roles could be created and deleted but never edited, so a role's permission set was frozen. */
+  updateRole: (institutionId: string, roleId: string, data: CreateRoleRequest) =>
+    request<RoleResponse>(`/v1/admin/roles/${roleId}?institutionId=${institutionId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
   deleteRole: (institutionId: string, roleId: string) =>
     request<void>(`/v1/admin/roles/${roleId}?institutionId=${institutionId}`, {
       method: "DELETE",
     }),
 
-  triggerImport: (institutionId: string, importType: string, fileName: string) =>
-    request<ImportJobResponse>(`/v1/admin/users/import?institutionId=${institutionId}&importType=${importType}&fileName=${fileName}`, {
-      method: "POST",
-    }),
+  /** Audit B-28: the CSV itself is now uploaded; previously only its name was sent. */
+  triggerImport: (institutionId: string, importType: string, file: File) => {
+    const form = new FormData()
+    form.append("importType", importType)
+    form.append("file", file, file.name)
+    return request<ImportJobResponse>(
+      `/v1/admin/users/import?institutionId=${institutionId}`,
+      { method: "POST", body: form },
+    )
+  },
 
   listImportJobs: (institutionId: string) =>
     request<ImportJobResponse[]>(`/v1/admin/users/import?institutionId=${institutionId}`),
@@ -2170,7 +2188,14 @@ export const gradingApi = {
 export const mediaApi = {
   upload: async (file: File, options?: UploadOptions) => {
     const token = localStorage.getItem("elmkusoma_access_token")
-    const instId = localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
+    const instId = localStorage.getItem("elmkusoma_institution_id")
+    // Audit B-42: this path used to substitute the National HQ id when no organization was stored,
+    // which silently filed every upload into the HQ tenant -- a cross-tenant data-integrity bug
+    // with no error anywhere. The server binds the file to whatever header it receives, so the
+    // only honest option is to fail loudly and let the caller surface it.
+    if (!instId) {
+      throw new Error("No organization scope available. Sign in again to upload files.")
+    }
     return uploadFile({
       url: "/api/v1/media/upload",
       file,

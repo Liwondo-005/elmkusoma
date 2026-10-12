@@ -65,6 +65,10 @@ public class LiveClassServiceImpl implements LiveClassService {
      */
     private static final long SCHEDULE_PAST_GRACE_MINUTES = 1;
 
+    /** Statuses an administrator is allowed to force-end (i.e. any running session). */
+    private static final java.util.Set<String> FORCE_ENDABLE_STATUSES = java.util.Set.of(
+            "STARTING", "LIVE", "IN_PROGRESS", "RECOVERING", "ENDING");
+
     private final LiveClassRepository liveClassRepository;
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
@@ -80,6 +84,8 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    /** Publishes finished/failed recordings into the existing media library (media_assets). */
+    private final tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher liveRecordingMediaPublisher;
     private final org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     /**
@@ -172,6 +178,11 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .isRecurring(Boolean.TRUE.equals(request.getIsRecurring()))
                 .recurrencePattern(request.getRecurrencePattern())
                 .lobbyEnabled(Boolean.TRUE.equals(request.getLobbyEnabled()))
+                .coverImageUrl(normaliseOptional(request.getCoverImageUrl()))
+                .accessLevel(normaliseAccessLevel(request.getAccessLevel()))
+                // Publication always starts as a draft, whatever the caller sends. This request DTO
+                // has no publication field precisely so a teacher cannot publish by accident.
+                .publicationStatus(LiveClass.PublicationStatus.DRAFT.name())
                 .build();
         liveClass.setInstitutionId(institutionId);
 
@@ -206,14 +217,28 @@ public class LiveClassServiceImpl implements LiveClassService {
             throw new IllegalArgumentException("Cannot edit a " + currentStatus.toLowerCase().replace('_', ' ') + " class");
         }
 
-        if (request.getTitle() != null) liveClass.setTitle(request.getTitle());
-        if (request.getDescription() != null) liveClass.setDescription(request.getDescription());
+        // Any material change to a class that is already publicly listed returns it to DRAFT so a
+        // Platform Admin re-examines it before the change stays visible. Editing what visitors
+        // already see, or when they see it, must not ride along silently on an unrelated edit.
+        boolean materialChange = false;
+
+        if (request.getTitle() != null && !request.getTitle().equals(liveClass.getTitle())) {
+            liveClass.setTitle(request.getTitle());
+            materialChange = true;
+        }
+        if (request.getDescription() != null && !request.getDescription().equals(liveClass.getDescription())) {
+            liveClass.setDescription(request.getDescription());
+            materialChange = true;
+        }
         if (request.getScheduledAt() != null) {
             LocalDateTime newScheduledAt = parseDateTime(request.getScheduledAt());
             if (newScheduledAt != null && newScheduledAt.isBefore(LocalDateTime.now().minusMinutes(SCHEDULE_PAST_GRACE_MINUTES))) {
                 throw new IllegalArgumentException("Scheduled time must be in the future");
             }
-            liveClass.setScheduledAt(newScheduledAt);
+            if (newScheduledAt != null && !newScheduledAt.equals(liveClass.getScheduledAt())) {
+                liveClass.setScheduledAt(newScheduledAt);
+                materialChange = true;
+            }
         }
         if (request.getDurationMinutes() != null) liveClass.setDurationMinutes(request.getDurationMinutes());
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
@@ -230,6 +255,25 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
         if (request.getBroadcastSource() != null) {
             liveClass.setBroadcastSource(parseBroadcastSource(request.getBroadcastSource()));
+        }
+        if (request.getCoverImageUrl() != null) {
+            String requestedCover = normaliseOptional(request.getCoverImageUrl());
+            if (!java.util.Objects.equals(requestedCover, liveClass.getCoverImageUrl())) {
+                liveClass.setCoverImageUrl(requestedCover);
+                materialChange = true;
+            }
+        }
+        if (request.getAccessLevel() != null && !request.getAccessLevel().isBlank()) {
+            String requested = normaliseAccessLevel(request.getAccessLevel());
+            if (!requested.equals(liveClass.getAccessLevel())) {
+                liveClass.setAccessLevel(requested);
+                materialChange = true;
+            }
+        }
+
+        if (materialChange && LiveClass.PublicationStatus.PUBLISHED.name().equals(liveClass.getPublicationStatus())) {
+            liveClass.setPublicationStatus(LiveClass.PublicationStatus.DRAFT.name());
+            liveClass.setPublishedAt(null);
         }
 
         if (liveClass.getScheduledAt() != null) {
@@ -349,12 +393,42 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     /**
+     * Administrative force-end. Unlike {@link #endSession(UUID, UUID, UUID)} this accepts every
+     * running state (STARTING / LIVE / IN_PROGRESS / RECOVERING) and authorises on the acting
+     * admin instead of impersonating the class teacher, so the attendance/certificate rows are
+     * attributed to the admin who actually performed the action.
+     */
+    public LiveClassResponse forceEndSession(UUID liveClassId, UUID institutionId, UUID actingUserId) {
+        LiveClass liveClass = liveClassRepository.findById(liveClassId)
+                .filter(lc -> !lc.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
+
+        if (institutionId == null || !institutionId.equals(liveClass.getInstitutionId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied");
+        }
+        if (!FORCE_ENDABLE_STATUSES.contains(liveClass.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Only running classes can be force-ended. Current status: " + liveClass.getStatus());
+        }
+
+        log.info("Force-ending live class {} ({}) on behalf of admin {}", liveClassId, liveClass.getStatus(), actingUserId);
+        return completeSession(liveClass, actingUserId, LiveClassStatus.COMPLETED);
+    }
+
+    /**
      * Shared terminal path for both a teacher-initiated end and the authoritative
      * expiry sweep, so attendance, certificates and the recording/replay chain can
      * never diverge between the two.
      */
     private LiveClassResponse completeSession(LiveClass liveClass, UUID markedBy, LiveClassStatus terminalStatus) {
         liveClass.setStatus(terminalStatus.name());
+        // Record when it actually finished. Past Classes previously inferred this from
+        // scheduledAt, which cannot distinguish a 09:00 class that ran two hours from one that was
+        // cancelled at 09:01. Guarded so a repeated call cannot move the recorded end time, which
+        // matters because the expiry sweep can reach the same session a second time.
+        if (liveClass.getEndedAt() == null) {
+            liveClass.setEndedAt(LocalDateTime.now());
+        }
         LiveClass saved = liveClassRepository.save(liveClass);
 
         createAttendanceFromParticipants(saved, markedBy);
@@ -423,6 +497,40 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     /**
+     * Media Library representation of a finalized recording (mediaType = RECORDING).
+     *
+     * <p>Idempotent: the asset is keyed on source_type = LIVE_CLASS + source_id =
+     * liveClass.id, which is the same origin link the library already exposes through
+     * {@code GET /v1/media/recordings/{sourceType}/{sourceId}}. Reprocessing a session -
+     * which happens because {@code completeSession} can run more than once, e.g. a manual
+     * end followed by the expiry sweep - therefore refreshes the existing row instead of
+     * creating a second one.</p>
+     *
+     * <p>Only a resolved, playable http(s) URL is ever stored. The transient
+     * {@code egress:<id>} marker is a LiveKit bookkeeping value, not a media URL, and must
+     * never reach a learner-facing library.</p>
+     *
+     * <p>Ownership is taken from the live class itself (its institution, its class, its
+     * subject) rather than from any request input, so a recording cannot be filed under
+     * another tenant.</p>
+     */
+    private void publishRecordingToMediaLibrary(LiveClass liveClass, String resolvedUrl) {
+        if (resolvedUrl == null || resolvedUrl.isBlank() || !resolvedUrl.startsWith("http")) {
+            return;
+        }
+        if (liveRecordingMediaPublisher == null) {
+            return;
+        }
+        // Delegated to the publisher rather than inserting here: this method runs inside the
+        // session-ending transaction, and V150 makes (source_type, source_id) unique, so a lost
+        // race - a manual End while the expiry sweep is mid-completion, or a webhook retried on a
+        // second instance - would mark this whole transaction rollback-only and roll back the
+        // attendance and certificate writes above. The publisher inserts in its own REQUIRES_NEW
+        // transaction and resolves a lost race to the sibling's row instead of erroring.
+        liveRecordingMediaPublisher.publishRecordingSafely(liveClass, resolvedUrl, null);
+    }
+
+    /**
      * Stops an active LiveKit Egress, resolves the final file URL and creates the
      * learner-facing Replay row. Everything is best-effort: a recording problem must
      * never roll back ending the class (attendance/certificates above).
@@ -439,8 +547,17 @@ public class LiveClassServiceImpl implements LiveClassService {
                 liveKitService.stopRecording(egressId);
                 url = liveKitService.resolveRecordingUrl(egressId);
                 if (url == null) {
-                    log.warn("Recording URL unresolved for class {} (egress {}); no replay created",
+                    // Recording never produced a usable file. Record it as a real FAILED
+                    // library asset and clear the egress marker: leaving it in place made the
+                    // download endpoint report "still processing" for a recording that will
+                    // never exist.
+                    log.warn("Recording URL unresolved for class {} (egress {}); marked FAILED",
                             liveClass.getId(), egressId);
+                    liveClass.setRecordingUrl(null);
+                    liveClassRepository.save(liveClass);
+                    if (liveRecordingMediaPublisher != null) {
+                        liveRecordingMediaPublisher.markRecordingFailedSafely(liveClass, "egress " + egressId);
+                    }
                     return;
                 }
                 liveClass.setRecordingUrl(url);
@@ -448,8 +565,18 @@ public class LiveClassServiceImpl implements LiveClassService {
             }
 
             if (!url.startsWith("http")) {
+                if (liveRecordingMediaPublisher != null) {
+                    liveClass.setRecordingUrl(null);
+                    liveClassRepository.save(liveClass);
+                    liveRecordingMediaPublisher.markRecordingFailedSafely(liveClass, "unresolved recording location");
+                }
                 return;
             }
+
+            // Media Library representation. This runs before the replay guard on purpose:
+            // reprocessing a session whose replay already exists must still be able to
+            // repair a missing or stale library entry, and it is idempotent either way.
+            publishRecordingToMediaLibrary(liveClass, url);
 
             if (!replayRepository.findByLiveSessionIdAndIsDeletedFalse(liveClass.getId()).isEmpty()) {
                 return;
@@ -890,6 +1017,38 @@ public class LiveClassServiceImpl implements LiveClassService {
                 throw new IllegalArgumentException("Invalid date/time format: " + dateTimeStr
                         + ". Expected format: yyyy-MM-ddTHH:mm:ss");
             }
+        }
+    }
+
+    /**
+     * Trims an optional string, collapsing blank to null.
+     *
+     * <p>Blank is meaningfully different from "absent" for a nullable column: a client sending
+     * {@code ""} for an optional field usually means "clear it", and storing an empty string makes
+     * downstream {@code isBlank()} checks behave inconsistently with {@code == null}.</p>
+     */
+    private static String normaliseOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * Validates an access level against the shared {@code Event} vocabulary.
+     *
+     * <p>Defaults to INSTITUTION rather than PUBLIC, so an unrecognised or absent value can never
+     * widen a class's reach.</p>
+     */
+    private static String normaliseAccessLevel(String value) {
+        if (value == null || value.isBlank()) {
+            return LiveClass.AccessLevel.INSTITUTION.name();
+        }
+        try {
+            return LiveClass.AccessLevel.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT)).name();
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unknown access level: " + value);
         }
     }
 }

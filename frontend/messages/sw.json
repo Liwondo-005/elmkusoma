@@ -522,7 +522,12 @@
     "districtScope": "Kiwango cha wilaya",
     "sendAnnouncement": "Tuma tangazo",
     "exportReport": "Hamisha ripoti",
-    "runDataQuality": "Endesha ubora wa data"
+    "runDataQuality": "Endesha ubora wa data",
+    "publicSite": "Tovuti ya umma na sheria",
+    "viewAllNews": "Habari zote",
+    "backToNews": "Habari zote",
+    "backToHome": "Rudi mwanzo",
+    "news": "Habari"
   },
   "dashboard": {
     "welcomeBack": "Karibu Tena",
@@ -846,7 +851,14 @@
       "back": "Rudi",
       "scoreLabel": "Alama",
       "graded": "Imesahihishwa",
-      "attachments": "Viambatisho"
+      "attachments": "Viambatisho",
+      "awaitingPlacement": "Inasubiri nafasi ya darasa",
+      "awaitingPlacementDesc": "Bado hujapewa darasa. Kazi zako zitaonekana hapa baada ya kuthibitishwa nafasi yako.",
+      "editSubmission": "Hariri submission yangu",
+      "yourFile": "Faili uliyoiwasilisha",
+      "yourAnswer": "Jibu langu",
+      "cancelEdit": "Ghairi",
+      "chooseFile": "Badilisha faili"
     },
     "lessonDetail": {
       "previous": "Iliyotangulia",
@@ -1893,7 +1905,9 @@
       "liveEnter": "Ingiza darasa",
       "liveRelink": "Badilisha muunganisho",
       "liveUnlink": "Ondoa muunganisho",
-      "liveOpenBadge": "Fungua kipindi"
+      "liveOpenBadge": "Fungua kipindi",
+      "paid": "Imelipwa",
+      "free": "Bure"
     },
     "mediaLibrary": {
       "allFilter": "Zote",
@@ -2420,7 +2434,10 @@
       "typeMatching": "Ulinganifu",
       "typeMcq": "Chaguo Nyingi",
       "updatedSuccess": "Kazi imesasishwa",
-      "attachmentPlaceholder": "mf. assignment-file.pdf"
+      "attachmentPlaceholder": "mf. assignment-file.pdf",
+      "colWork": "Kazi",
+      "workFile": "Angalia faili",
+      "workAnswer": "Angalia jibu"
     },
     "attendance": {
       "avgRate": "Wastani",
@@ -2692,7 +2709,31 @@
       "subjectsCovered": "Masomo Yanayofundishwa",
       "emptyTitle": "Bado hakuna walimu",
       "emptyDesc": "Walimu wako wataonekana hapa mara watakapopangiwa madarasa yako."
-    }
+    },
+    "chapters": {
+      "title": "Alama za sehemu",
+      "description": "Weka alama za mambo yanayostahili kurejewa. Wanafunzi huona hizi kando ya rekodi na wanaweza kuruka moja kwa moja.",
+      "recording": "Rekodi",
+      "duration": "Muda {duration}",
+      "noRecording": "Darasa hili bado halina rekodi iliyochapishwa, hivyo hakuna cha kugawa.",
+      "addSection": "Ongeza sehemu",
+      "listSection": "Sehemu",
+      "titleLabel": "Kichwa cha sehemu",
+      "titlePlaceholder": "k.m. Mfano wa kufanya kazi",
+      "positionLabel": "Nafasi",
+      "positionPlaceholder": "dd:mm",
+      "positionHint": "Sekunde kamili kutoka mwanzo, au muda kama 1:30 au 1:02:03.",
+      "add": "Ongeza sehemu",
+      "remove": "Ondoa sehemu",
+      "empty": "Bado hakuna sehemu.",
+      "invalidPosition": "Weka nafasi kwa muda kama 1:30, au kwa sekunde kamili.",
+      "pastEnd": "Kutoka {duration} ni baada ya mwisho wa rekodi hii.",
+      "duplicate": "Tayari kuna sehemu saa {time}.",
+      "added": "Sehemu {title} imeongezwa",
+      "removed": "Sehemu imeondolewa"
+    },
+    "colAverage": "Wastani",
+    "colRemarks": "Maelezo"
   },
   "profile": {
     "title": "Wasifu",
@@ -2793,15 +2834,16 @@
     "absent": "Haihudhurii",
     "late": "Fika Marehemu",
     "excused": "Imesamehewa",
-    "active": "Haiwashiriki",
-    "inactive": "Haijawaka",
+    "active": "Imefunguliwa",
+    "inactive": "Imezimwa",
     "completed": "Imekamilika",
     "pending": "Inasubiri",
     "inProgress": "Inaendelea",
     "notStarted": "Haijaanza",
-    "overdue": "Imechelewa",
+    "overdue": "Imepitwa na wakati",
     "cancelled": "Imefutwa",
-    "scheduled": "Imepangwa"
+    "scheduled": "Imepangwa",
+    "submitted": "Imewasilishwa"
   },
   "auth": {
     "login": "Ingia",
@@ -2946,7 +2988,8 @@
     "statusSuccessSub": "Karibu tena ELMKUSOMA",
     "statusError": "Imeshindwa kuingia.",
     "statusErrorSub": "Tafadhali angalia taarifa zako na ujaribu tena.",
-    "authStatusRegion": "Hali ya uthibitisho"
+    "authStatusRegion": "Hali ya uthibitisho",
+    "verifyEmailNow": "Thibitisha barua pepe yangu"
   },
   "otp": {
     "title": "Thibitisha",
@@ -3645,7 +3688,9 @@
       "title": "Endelea Kujifunza",
       "progress": "Maendeleo",
       "resume": "Endelea"
-    }
+    },
+    "liveClassImageAltNoTeacher": "Darasa la moja kwa moja {title}",
+    "liveClassActionAria": "{action}: {title}"
   },
   "nursery": {
     "myWorld": "Dunia Yangu",
@@ -4272,7 +4317,9 @@
     "yourNextStep": "Hatua yako ifuatayo",
     "yourPerformance": "Utendaji wako",
     "yourProgress": "Maendeleo yako",
-    "yourTeachers": "Walimu wako"
+    "yourTeachers": "Walimu wako",
+    "free": "Bure",
+    "paid": "Yaliyopewa"
   },
   "highered": {
     "myAcademicProfessionalWorld": "Dunia Yangu ya Masomo na Utaalamu",
@@ -4910,7 +4957,9 @@
       "quality": "Ubora",
       "qualityAuto": "Otomatiki",
       "waiting": "Inasubiri video",
-      "disconnected": "Imekatika"
+      "disconnected": "Imekatika",
+      "chapters": "Sehemu",
+      "chaptersAnnounce": "Imefika {time}"
     },
     "subtitle": "Gundua semina, warsha, webinari, na vipindi vya mafunzo",
     "myRegistrations": "Usajili Wangu",
@@ -5711,7 +5760,8 @@
       "permissionMatrix": "Jedwali la Ruhusa",
       "selectAnAdminTo": "Select an msimamizi to hariri their permission list (one permission per line).",
       "savePermissions": "Hifadhi ruhusa",
-      "addAdmin": "Ongeza Msimamizi"
+      "addAdmin": "Ongeza Msimamizi",
+      "failedToLoadPermissions": "Imeshindwa kupakia ruhusa za akaunti hii. Uharibifu umezimwa ili kuepuka kuporoti thamani zisizo na taarifa."
     },
     "analytics": {
       "dataUnavailable": "Data haipatikani",
@@ -5863,7 +5913,9 @@
       "created": "Imeundwa",
       "published2": "Published",
       "draft2": "Draft",
-      "prev": "Prev"
+      "prev": "Prev",
+      "paid": "Imelipwa",
+      "free": "Bure"
     },
     "data": {
       "dataUnavailable": "Data haipatikani",
@@ -5951,7 +6003,10 @@
       "noEventsExistYet": "Hakuna matukio exist yet for mfumo governance.",
       "archive": "Archive",
       "prev": "Prev",
-      "addEvent": "Ongeza Tukio"
+      "addEvent": "Ongeza Tukio",
+      "paid": "Imelipwa",
+      "free": "Bure",
+      "draft": "Rasimu"
     },
     "health": {
       "failedToLoadHealth": "Imeshindwa to pakia hali",
@@ -6653,7 +6708,20 @@
       "subEdit": "Sasisha maelezo ya mtumiaji hapa chini.",
       "titleAdd": "Ongeza Mtumiaji",
       "titleEdit": "Hariri Mtumiaji",
-      "updatedOk": "Mtumiaji amesasishwa kwa mafanikio"
+      "updatedOk": "Mtumiaji amesasishwa kwa mafanikio",
+      "labelInstitution": "Taasisi",
+      "selectInstitution": "Chagua taasisi…",
+      "noInstitutions": "Hakuna taasisi zilizopo",
+      "hintInstitution": "Inahitajika kwa nafasi zenye misingi ya taasisi. Bila hiyo akaunti haiwezi kupata upeo wake na maombi yote ya taasisi yatakataliwa.",
+      "errInstitutionRequired": "Chagua taasisi ambayo akaunti hii inahusika nacho",
+      "institutionsLoadFailed": "Imeshindwa kupakia taasisi",
+      "inviteToggleLabel": "Tuma mwaliko badala ya kuweka nenosiri",
+      "inviteToggleHint": "Mpokeaji hupokea kiungo cha matumizi moja kikichaka baada ya muda, anakonyesha anaamiliki anwani hiyo, kisha huwa na nenosiri lake mwenyewe. Ndio bora kwa akaunti za msimamizi wa mtoa huduma na za jukwaa.",
+      "btnInvite": "Tuma mwaliko",
+      "inviteIssuedTitle": "Mwaliko umeundwa",
+      "inviteIssuedHint": "Ushiriki wa kuchapa umetumwa kwa {email}. Unakomeshwa baada ya muda, na mwaliko huu ndio unaweza kuiamsha - mwingine unaweza kuombwa ikiwa umepoteka.",
+      "inviteTokenLabel": "Kitambulisho cha kiungo",
+      "inviteTokenHint": "Kinaonyeshwa mara moja tu na hakitaorodheshwa tena. Mpelee kwa mpokeaji, au waombe anapate msimu mpya."
     },
     "delegatedWork": {
       "title": "Kazi Yangu Niliyokabidhiwa",
@@ -6932,6 +7000,163 @@
         "fromPlatformHealthEndpoint": "Kutoka kituo cha afya ya jukwaa",
         "joinAsReadOnlyObserver": "Jiunga kama mshikiliaji wa kusoma tu"
       }
+    },
+    "publicSite": {
+      "published": "Imechapishwa. Wageni sasa wanaona toleo hili.",
+      "publishSuccess": "Imechapishwa. Wageni sasa wanaona toleo hili.",
+      "title": "Tovuti ya umma, sheria na msaudo",
+      "subtitle": "Mawasiliano ya mawasilisho kwa wageni, waraka sheria wanazosoma, na sanduku ya ujumbe.",
+      "tabSettings": "Mawasiliano na mitandao",
+      "tabLegal": "Maudhui ya sheria",
+      "tabInbox": "Sanduku ya ujumbe",
+      "loading": "Inapakia...",
+      "loadFailed": "Haikuwezi kupakia. Angalia muunganisho wako na jaribu tena.",
+      "saveFailed": "Haikuwezi kuhifadhi. Angalia muunganisho wako na jaribu tena.",
+      "save": "Hifadhi",
+      "invalidValue": "Thamani hii si katika muundo ambao tovuti inaweza kutumia kwa usalama.",
+      "unsetNotice": "Thamani tupu maana maelezo hayo hayajaochapishwa. Namba za simu, WhatsApp na viungo vya mitandao ambavyo havijasetwa hufichwa badala ya kuonyeshwa kama mifano, kwa hivyo tafadhali weka tu taarifa halisi.",
+      "group": {
+        "PUBLIC_CONTACT": "Mawasiliano ya umma",
+        "PUBLIC_SOCIAL": "Viungo rasmi vya mitandao ya kijamii",
+        "SUPPORT_INTERNAL": "Usambazaji wa msaudo (ha chapishwi kwa umma)",
+        "PUBLIC_LOCATION": "Eneo la ofisi kuu"
+      },
+      "documents": "Waraka",
+      "draft": "Rasimu",
+      "notPublished": "bado haijachapishwa",
+      "createDraft": "Tengeneza rasimu",
+      "editDraft": "Hariri rasimu",
+      "selectDocument": "Chagua waraka kuhariri, au tengeneza rasimu kwa yenye bado haipo.",
+      "draftHeading": "Nakala ya kazi",
+      "draftExplainer": "Mabadiliko yatabadilisha rasimu pekee. Wageni wataendelea kusoma toleo lililochapishwa hadi uchapishwe.",
+      "draftSaved": "Rasimu imehifadhiwa. Chapisha pale unapopelekwa na wageni wauone mabadiliko.",
+      "reverted": "Toleo la awali limerudishwa kwenye rasimu. Chapisha ili kuwa live.",
+      "titleLabel": "Kichwa",
+      "effectiveDateLabel": "Tarehe ya kuanza",
+      "contentLabel": "Yaliyomo",
+      "contentFormatNote": "Maandishi rahisi. Vipara hufuanywa kwa mstari mtu. HTML haipokelewi wala kuonyeshwa kama markup.",
+      "saveDraft": "Hifadhi rasimu",
+      "publish": "Chapisha",
+      "history": "Historia ya vilivyochapishwa",
+      "historyExplainer": "Kila toleo lililochapishwa linahifadhiwa. Kurudisha toleo la awali kunakili kwenye rasimu; hakuna kilichofutwa.",
+      "noVersions": "Hakuna kitu kilichochapishwa bado.",
+      "restoreIntoDraft": "Rudisha kwenye rasimu",
+      "newDocumentBody": "Mahali pa rasimu. Badilisha maandishi haya na maudhui ya sheria yaliyopitiwa kabla ya kuchapisha.",
+      "legalType": {
+        "TERMS": "Masharti na Vigezo",
+        "PRIVACY": "Sera ya Faragha",
+        "COOKIE": "Sera ya Kuki",
+        "SUPPORT_POLICY": "Sera ya Msaudo"
+      },
+      "filterStatus": "Hali",
+      "allStatuses": "Hali zote",
+      "inboxEmpty": "Hakujapokea ujumbe bado.",
+      "selectMessage": "Chagua ujumba ili kuusoma.",
+      "retryNotification": "Jaribu tena kumtaarifa",
+      "status": {
+        "present": "Hudhuria",
+        "absent": "Haihudhurii",
+        "late": "Fika Marehemu",
+        "excused": "Imesamehewa",
+        "active": "Haihudhurii",
+        "inactive": "Haijawaka",
+        "completed": "Imekamilika",
+        "pending": "Inasubiri",
+        "inProgress": "Inaendelea",
+        "notStarted": "Haijaanza",
+        "overdue": "Imechelewa",
+        "cancelled": "Imefutwa",
+        "scheduled": "Imepangwa",
+        "NEW": "Mpya",
+        "IN_PROGRESS": "Inaendelea",
+        "AWAITING_RESPONSE": "Inasubiri jibu",
+        "RESOLVED": "Imesuluhishwa",
+        "CLOSED": "Imefungwa"
+      },
+      "notification": {
+        "SENT": "Huduma ya barua pepe imeiripoti ilipelekwa",
+        "PENDING": "Taarifa inasubiri",
+        "FAILED": "Imeshindwa kutumia taarifa",
+        "NOT_CONFIGURED": "Hakuna mpokeaji aliyewekwa - hakuna aliyeyeambishwa",
+        "QUEUED": "Imewasilishwa kwa huduma ya barua pepe (uhakikiwa wa kupeleka hakuna)"
+      }
+    },
+    "news": {
+      "title": "Habari na Tangazo",
+      "subtitle": "Chapisha habari zinazoonekana kwenye tovuti. Rasimu hazionekani kwa wageni.",
+      "newArticle": "Makala mpya",
+      "refresh": "Onyesha upya",
+      "createHeading": "Tengeneza rasimu",
+      "editHeading": "Hariri makala",
+      "fieldTitle": "Kichwa",
+      "fieldSummary": "Muhtasari",
+      "fieldSummaryHint": "Inaonyeshwa kwenye kadi na orodha. Upeo wa herufi 500.",
+      "fieldBody": "Maandishi kamili",
+      "fieldBodyHint": "Maandishi yenye muundo yanakubaliwa na kusafiwa: herufi nzito, mitala, vichwa, orodha, viungo na manukuu yanabaki; maandishi ya script, mframes na vitendakazi vinavyotengeneza matukio vinachondolewa.",
+      "fieldSlug": "Sehemu ya URL",
+      "fieldSlugHint": "Acha tupu ili kutengenezwa kutoka kichwa. Maneno madogo yaliyounganishwa kwa mstari.",
+      "fieldSlugPlaceholder": "muaka-wa-kwanza-unanza-januari",
+      "fieldCategory": "Kategoria",
+      "fieldAuthor": "Mwandishi au taasisi",
+      "fieldPriority": "Kipaumbele",
+      "fieldScheduled": "Uchapishaji uliopangwa",
+      "fieldScheduledHint": "Acha tupu ili kuchapisha mara moja unapobofya Chapisha.",
+      "fieldExpires": "Inaisha",
+      "fieldExpiresHint": "Baada ya wakati huu makala hutoka kwenye tovuti kiotomatiki.",
+      "fieldCover": "URL ya picha ya kichwa",
+      "fieldCoverHint": "Pakia picha (png, jpg, webp au gif, hadi 5 MB) au bandika URL iliyopo. SVG haikubaliwi kwa sababu inaweza kubeba script.",
+      "fieldCoverPlaceholder": "https://… au /v1/content/courses/cover.jpg",
+      "priorityNormal": "Kawaida",
+      "priorityImportant": "Muhimu",
+      "priorityUrgent": "Haraka",
+      "saveDraft": "Hifadhi rasimu",
+      "saveChanges": "Hifadhi mabadiliko",
+      "cancel": "Ghairi",
+      "loading": "Inapakia makala…",
+      "empty": "Hakuna makala bado. Tengeneza ya kwanza.",
+      "emptyFiltered": "Hakuna makala zinalozingatia vichujio hivi.",
+      "loadFailed": "Hatukuweza kupakia makala.",
+      "saveFailed": "Hatukuweza kuhifadhi makala.",
+      "actionFailed": "Hatendo hilo halikukamilika.",
+      "searchLabel": "Tafuta",
+      "searchPlaceholder": "Tafuta vichwa na maandishi",
+      "statusLabel": "Hali",
+      "statusAll": "Hali zote",
+      "statusDraft": "Rasimu",
+      "statusPublished": "Imechapishwa",
+      "statusArchived": "Imehifadhiwa",
+      "featuredLabel": "Imeonyeshwa",
+      "featuredAny": "Zote",
+      "featuredOnly": "Zilizoonyeshwa tu",
+      "unfeaturedOnly": "Zisizoonyeshwa",
+      "featuredBadge": "Imeonyeshwa",
+      "feature": "Weka alama ya kuonyeshwa",
+      "unfeature": "Ondoa alama ya kuonyeshwa",
+      "edit": "Hariri",
+      "publish": "Chapisha",
+      "unpublish": "Acha kuchapisha",
+      "archive": "Hifadhi",
+      "delete": "Futa",
+      "confirmDelete": "Thibitisha kufuta",
+      "savedNotice": "Makala imehifadhiwa.",
+      "draftCreatedNotice": "Rasimu imeundwa. Bado si ya umma.",
+      "publishedNotice": "Makala imechapishwa.",
+      "unpublishedNotice": "Makala imeachiliwa kuchapishwa.",
+      "archivedNotice": "Makala imehifadhiwa.",
+      "featuredNotice": "Makala imewekwa alama ya kuonyeshwa.",
+      "unfeaturedNotice": "Alama ya kuonyeshwa imeondolewa.",
+      "deletedNotice": "Makala imefutwa.",
+      "publishedAt": "Ilichapishwa {date}",
+      "expiresAt": "Inaisha {date}",
+      "lastModifiedBy": "Na {who}",
+      "paginationLabel": "Kurasa za makala",
+      "pageOf": "Ukurasa {page} kati ya {total}",
+      "previous": "Iliyotangulia",
+      "next": "Ifuatayo",
+      "uploadingCover": "Inapakia picha ya kichwa…",
+      "uploadFailed": "Hatukuweza kupakia picha ya kichwa.",
+      "coverPreviewAlt": "Picha ya kichwa iliyochaguliwa",
+      "clearCover": "Ondoa picha ya kichwa"
     }
   },
   "admin": {
@@ -7038,7 +7263,9 @@
       "chooseImage": "Chagua picha",
       "uploading": "Inapakia…",
       "removeImage": "Ondoa picha",
-      "imageUploadFailed": "Kupakia picha kumeshindwa"
+      "imageUploadFailed": "Kupakia picha kumeshindwa",
+      "paid": "Imelipwa",
+      "free": "Bure"
     },
     "departments": {
       "failedToLoadDepartments": "Imeshindwa to pakia departments",
@@ -7155,7 +7382,10 @@
       "pendingReviews": "Mapitio yanayosubiri",
       "pendingVerifications": "Uthibitisho unaosubiri",
       "noWorkQueue": "Hakuna kinachosubiri wewe",
-      "noWorkQueueHint": "Hakuna rasimu au vitu vinavyosubiri katika shirika hili."
+      "noWorkQueueHint": "Hakuna rasimu au vitu vinavyosubiri katika shirika hili.",
+      "paid": "Imelipwa",
+      "free": "Bure",
+      "draft": "Rasimu"
     },
     "people": {
       "members": "Members ({p0})",
@@ -7303,7 +7533,10 @@
       "noCustomRoles": "Hakuna custom nafasi",
       "createRolesToManage": "Unda nafasi to simamia permissions.",
       "system": "System",
-      "creating": "Inaunda..."
+      "creating": "Inaunda...",
+      "failedToUpdateRole": "Imeshindwa to sasisha nafasi",
+      "saveChanges": "Hifadhi mabadiliko",
+      "editRole": "Hariri nafasi"
     },
     "settings": {
       "noInstitutionContextFound": "Hakuna muktadha wa taasisi.",
@@ -7787,7 +8020,7 @@
     "liveClassesIndex": {
       "badge": "Kujifunza Moja kwa Moja",
       "subtitle": "Jiunge na vipindi vya moja kwa moja, wasiliana na walimu na wanafunzi moja kwa moja. Vinjari vinavyoendelea sasa, vinavyokuja, au pitia vilivyopita.",
-      "title": "Wasiliana nasi"
+      "title": "Masomo ya moja kwa moja"
     },
     "notesIndex": {
       "badge": "Maktaba ya Kidijitali",
@@ -8012,7 +8245,19 @@
       "emptyUpcomingTitle": "Hakuna madarasa yajayo",
       "liveNow": "Mubashara Sasa",
       "past": "Madarasa Yaliyopita",
-      "upcoming": "Madarasa Yajayo"
+      "upcoming": "Madarasa Yajayo",
+      "badgeLiveNow": "INAENDELEA SASA",
+      "badgeStarting": "INAANZA",
+      "badgeRecorded": "IMERECODEDWA",
+      "badgeCancelled": "IMEGHIRIMWA",
+      "endedLabel": "Imalizwa",
+      "watchReplay": "Tazama kurudiwa",
+      "viewSession": "Angalia kipindi",
+      "loading": "Inapakia madarasa ya moja kwa moja",
+      "loadFailed": "Hatukuweza kupakia madarasa ya moja kwa moja",
+      "retry": "Jaribu tena",
+      "signInRequired": "Madarasa ya moja kwa moja yanaopatikana taasisi yako. Ingia ili kuona kilichokuwa kinaendelea, kijaja na vipindi vilivyopita.",
+      "signInAction": "Ingia"
     },
     "liveClassCard": {
       "going": "{count, number} watakaohudhuria",
@@ -8677,7 +8922,30 @@
     "playerDurationAria": "Muda wa sesioni hai",
     "reopenLabel": "Fungua tena",
     "reopenQuestionAria": "Fungua swali tena",
-    "switchingSource": "Inabadilisha chanzo..."
+    "switchingSource": "Inabadilisha chanzo...",
+    "shareMaterialFailed": "Imeshindikana kushiriki nyenzo. Jaribu tena.",
+    "sessionEndedByHostMsg": "Mwalimu wa kiti cha kuendeshwa ameimalisha sessheni hii.",
+    "endSessionFailed": "Imeshindikana kumaliza sessheni. Jaribu tena.",
+    "recordingInProgressMsg": "Kurekodiwa kunaendelea",
+    "recordingStartUnconfirmed": "Serveuru haikubainihi kuwa kurekodiwa kimeanza. Hakuna kinachorekodiwa.",
+    "recordingBusyLabel": "Inarekodiwa...",
+    "recordingUnavailable": "Kurekodiwa hakipatikanani kwenye seva. Omba msimamizi akiiwezeshe.",
+    "recordingNotAllowed": "Mwalimu pekee anaweza kudhibiti kurekodiwa kwa sessheni hii.",
+    "recordingSessionNotFound": "Sessheni hii haipatikanani tena.",
+    "recordingAlreadyActiveMsg": "Kurekodiwa kunaendelea tayari kwa sessheni hii.",
+    "endSessionLabel": "Maliza sessheni",
+    "reactionsLabel": "Mawazo",
+    "muteParticipantAria": "Zima sauti ya {name}",
+    "unmuteParticipantAria": "Washa sauti ya {name}",
+    "removeParticipantAria": "Ondoa {name}",
+    "reactCountAria": "{emoji} alijibu mara {count, plural, one {# moja} other {#}}",
+    "connectionQualityLabel": "Ubora wa muunganisho",
+    "connectionQualityPoor": "Duni",
+    "connectionQualityGood": "Nzuri",
+    "connectionQualityExcellent": "Bora sana",
+    "connectionQualityUnknown": "Inapima",
+    "playerLiveScreenAria": "Skrini ya moja kwa moja",
+    "playerYourScreenAria": "Skrini yako"
   },
   "categories": {
     "admin": "Admin",
@@ -8772,7 +9040,9 @@
       "noInstitution": "Hakuna taasisi",
       "published": "Imechapishwa",
       "searchPlaceholder": "Tafuta kozi kwa kichwa…",
-      "title": "Kozi"
+      "title": "Kozi",
+      "free": "Bure",
+      "paid": "Yaliyopewa"
     },
     "dataQuality": {
       "description": "Matokeo halisi ya ubora wa data yaliyogunduliwa katika mamlaka yako (viungo vilivyokosekana, marudio, mapengo).",
@@ -9222,7 +9492,7 @@
       "meetingUrl": "Kiungo cha kikao",
       "contentUrl": "Kiungo cha maudhui",
       "access": "Upatikanaji",
-      "free": "Bila malipo",
+      "free": "Bure",
       "paid": "Kwa malipo",
       "visibility": "Mwonekano",
       "published": "Imechapishwa",
@@ -9275,7 +9545,8 @@
         "ABSENT": "Hayupo",
         "LATE": "Amefika kuchelewa",
         "EXCUSED": "Ameidhinishwa"
-      }
+      },
+      "noLearnersAvailable": "Hakuna wanafunzi walioandikishwa kwa mwalimu huyu bado"
     },
     "dashboard": {
       "title": "Dashibodi ya Mtoa Huduma",
@@ -9617,5 +9888,66 @@
     "emptyTitle": "Hakuna kitu cha kuonyesha bado",
     "emptyDesc": "Kanzidata huja baada ya shulea kuchapisha matokeo, uhudhurishaji, kozi na mafanikio.",
     "sourceNote": "Kila kitu hapa kinatoka kwenye rekodi za shule ya mtoto wako."
+  },
+  "siteContact": {
+    "messageTooShort": "Tafadhali andika angalau herufi 20 ili tuweze kukusaidia vizuri.",
+    "submitFailed": "Hatukuweza kutuma ujumbe wako. Tafadhali jaribu tena.",
+    "receivedTitle": "Ujumbe umepokelewa",
+    "storedReference": "Kumbukumbu yako ni {reference}. Iweka kwa mazungumzo yoyote yaliyoendelea.",
+    "notified": "Huduma yetu ya barua pepe imepokea ujumbe wako. Uhakikiwa wa kupeleka kwetu hapa hakuna.",
+    "storedNotNotified": "Ujumbe wako umehifadhiwa kwa kumbukumbu iliyo juu, lakini anwani ya msaudo bado haijasarazishwa, kwa hivyo hakuna aliyeyeambishwa. Tafadhali tutumie barua pepe moja kwa moja kwa anwani iliyo kwenye ukurasa huu.",
+    "storedNotNotifiedFailed": "Ujumbe wako umehifadhiwa kwa kumbukumbu iliyo juu, lakini kumpeleka taarifa kwa timu ya msaudo kumeshindwa. Tafadhali tutumie barua pepe moja kwa moja ili tusikose.",
+    "categoryLabel": "Hili ni kuhusu nini?",
+    "categoryRequired": "Tafadhali chagua kategoria.",
+    "category": {
+      "GENERAL": "Hoji ya kawaida",
+      "SUPPORT": "Msaudo wa kiufunzi",
+      "PARTNERSHIP": "Ushirikiano",
+      "FEEDBACK": "Maoni",
+      "COMPLAINT": "Malalamiko"
+    },
+    "whatsappOpensChat": "Hufungua mazungumzo unayotuma mwenyewe. Hakuna chochote kinachotumwa kiotomatiki.",
+    "sending": "Inatuma...",
+    "sendAnother": "Tuma ujumbe mwingine",
+    "queued": "Ujumbe wako umehifadhiwa na kuwasilishwa kwa huduma yetu ya barua pepe. Uhakikiwa wa kupeleka hapa hakuna — ikiwa hatujibu ndani ya siku, tafadhali wasiliana nasi moja kwa moja kwa anwani iliyo kwenye ukurasa huu.",
+    "socialGroupLabel": "ELMKUSOMA katika mitandao ya kijamii",
+    "whatsappDefaultMessage": "Habari ELMKUSOMA, nina swali."
+  },
+  "siteLocation": {
+    "eyebrow": "Eneo letu",
+    "fallbackName": "Ofisi Kuu ya ELMKUSOMA",
+    "viewOnMap": "Tazama kwenye Ramani",
+    "getDirections": "Pata Maelekezo",
+    "mapNotAvailable": "Eneo halisi la ramani bado halijathibitishwa. Chuo kinaonyeshwa hapo juu; mahali halisi ya ofisi kutapatikana baada ya kuthibitishwa."
+  },
+  "siteSocial": {
+    "groupLabel": "Mitandao ya kijamii ya ELMKUSOMA",
+    "followOn": "Fuata ELMKUSOMA kwenye {platform}",
+    "whatsapp": "Ongea na ELMKUSOMA kwa WhatsApp"
+  },
+  "legal": {
+    "loading": "Inapakia toleo lililochapishwa la sasa...",
+    "versionMeta": "Toleo {version} · linaanza {effectiveDate}",
+    "noPublishedVersion": "Hakuna tofeo lililochapishwa bado kwenye mfumo, kwa hivyo maandishi yaliyojiriwa hapa chini yanaonyeshwa. Msimamizi wa Jukwaa lazima aupithe na achapishie toleo rasmi kabla ya ukurasa huu kukubaliwa kama masharti yanayotumika."
+  },
+  "news": {
+    "sectionTitle": "Habari za Karibuni",
+    "sectionSubtitle": "Tangazo na taarifa kutoka ELMKUSOMA.",
+    "archiveTitle": "Habari na Tangazo",
+    "archiveSubtitle": "Kila kitu ELMKUSOMA imechapisha, kipya kabisa kwanza.",
+    "readMore": "Soma zaidi",
+    "newBadge": "Mpya",
+    "featuredBadge": "Imeonyeshwa",
+    "loading": "Inapakia habari…",
+    "loadError": "Hatukuweza kupakia habari kwa sasa. Tafadhali jaribu tena baadaye.",
+    "emptyState": "Hakuna habari bado. Tafadhali rudi baadaye.",
+    "notFoundTitle": "Makala haukupatikana",
+    "notFoundBody": "Makala hii inaweza kutokuwa imeondolewa, kuhifadhiwa, au muda wake umeisha.",
+    "lastUpdated": "Imeupdatedi {date}",
+    "resultCount": "Makala {count}",
+    "paginationLabel": "Kurasa za habari",
+    "pageOf": "Ukurasa {page} kati ya {total}",
+    "previous": "Iliyotangulia",
+    "next": "Ifuatayo"
   }
 }

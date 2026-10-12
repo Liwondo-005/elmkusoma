@@ -31,6 +31,7 @@ import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.grading.domain.ReportCard;
 import tz.elmkusoma.grading.repository.ReportCardRepository;
 import tz.elmkusoma.learning.domain.Assignment;
+import tz.elmkusoma.learning.domain.AssignmentSubmission;
 import tz.elmkusoma.learning.repository.AssignmentRepository;
 import tz.elmkusoma.learning.repository.LessonProgressRepository;
 import tz.elmkusoma.parent.domain.Parent;
@@ -63,6 +64,7 @@ public class ParentDashboardServiceImpl implements ParentDashboardService {
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final AttendanceSummaryRepository attendanceSummaryRepository;
     private final AssignmentRepository assignmentRepository;
+    private final tz.elmkusoma.learning.repository.AssignmentSubmissionRepository assignmentSubmissionRepository;
     private final ReportCardRepository reportCardRepository;
     private final LessonProgressRepository lessonProgressRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -255,6 +257,15 @@ public class ParentDashboardServiceImpl implements ParentDashboardService {
         List<ParentAssignmentResponse.AssignmentItem> completed = new ArrayList<>();
         List<ParentAssignmentResponse.AssignmentItem> overdue = new ArrayList<>();
 
+        // Audit B-25: `completed` was declared and returned empty on every call -- the method never
+        // looked at assignment_submissions at all, so a parent always saw 0 completed regardless of
+        // what their child had actually submitted and been graded for.
+        java.util.Map<UUID, AssignmentSubmission> submissionsByAssignment = new java.util.HashMap<>();
+        for (AssignmentSubmission sub : assignmentSubmissionRepository
+                .findByStudentIdAndIsDeletedFalse(studentId)) {
+            submissionsByAssignment.putIfAbsent(sub.getAssignmentId(), sub);
+        }
+
         for (Assignment a : allAssignments) {
             String subjectName = a.getClassGroupId() != null ? resolveClassName(a.getClassGroupId()) : "General";
             ParentAssignmentResponse.AssignmentItem item = ParentAssignmentResponse.AssignmentItem.builder()
@@ -265,7 +276,19 @@ public class ParentDashboardServiceImpl implements ParentDashboardService {
                     .totalMarks(a.getTotalMarks())
                     .build();
 
-            if (a.getDueDate() != null && a.getDueDate().isBefore(java.time.LocalDateTime.now())) {
+            AssignmentSubmission submission = submissionsByAssignment.get(a.getId());
+            boolean graded = submission != null
+                    && submission.getGrade() != null
+                    && "GRADED".equalsIgnoreCase(String.valueOf(submission.getStatus()));
+            if (graded) {
+                item.setStatus("COMPLETED");
+                item.setObtainedMarks(submission.getGrade());
+                item.setRemarks(submission.getFeedback());
+                completed.add(item);
+            } else if (submission != null) {
+                item.setStatus("SUBMITTED");
+                pending.add(item);
+            } else if (a.getDueDate() != null && a.getDueDate().isBefore(java.time.LocalDateTime.now())) {
                 item.setStatus("OVERDUE");
                 overdue.add(item);
             } else {

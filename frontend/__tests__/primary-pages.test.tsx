@@ -174,19 +174,22 @@ describe("Components — Primary", () => {
 })
 
 describe("Components — Live Learning", () => {
-  it("should have primary-live-classroom component", async () => {
-    const plc = await import("@/components/live/primary-live-classroom")
-    expect(plc.PrimaryLiveClassroom).toBeDefined()
+  // These assertions cover the LIVE classroom components the product actually renders.
+  // The old suite pinned PrimaryLiveClassroom / LiveInteractivePanel / ActivityCreator,
+  // which are unreferenced duplicates of the real classroom (no page imported them).
+  it("should have live-classroom component", async () => {
+    const lc = await import("@/components/live/live-classroom")
+    expect(lc.LiveClassroom).toBeDefined()
   })
 
-  it("should have live-interactive-panel component", async () => {
-    const lip = await import("@/components/live/live-interactive-panel")
-    expect(lip.LiveInteractivePanel).toBeDefined()
+  it("should have live-video-player component", async () => {
+    const vp = await import("@/components/live/live-video-player")
+    expect(vp.LiveVideoPlayer).toBeDefined()
   })
 
-  it("should have activity-creator component", async () => {
-    const ac = await import("@/components/live/activity-creator")
-    expect(ac.ActivityCreator).toBeDefined()
+  it("should have live-classes-browser component", async () => {
+    const b = await import("@/components/live/live-classes-browser")
+    expect(b.LiveClassesBrowser).toBeDefined()
   })
 })
 

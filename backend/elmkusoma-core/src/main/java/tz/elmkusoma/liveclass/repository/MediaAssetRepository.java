@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import tz.elmkusoma.liveclass.domain.MediaAsset;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -17,6 +18,19 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, UUID> {
     List<MediaAsset> findByInstitutionIdAndMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(UUID institutionId, String mediaType);
 
     List<MediaAsset> findBySourceTypeAndSourceIdAndIsDeletedFalse(String sourceType, UUID sourceId);
+
+    /** Recordings targeted at one class (V149). */
+    List<MediaAsset> findByInstitutionIdAndClassGroupIdAndMediaTypeAndIsDeletedFalse(
+            UUID institutionId, UUID classGroupId, String mediaType);
+
+    /** Recording assets belonging to a class, used to authorise class-level access. */
+    List<MediaAsset> findByClassGroupIdAndMediaTypeAndIsDeletedFalse(UUID classGroupId, String mediaType);
+
+    /** Idempotent lookup for the single asset a live class recording publishes into. */
+    Optional<MediaAsset> findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(String sourceType, UUID sourceId);
+
+    /** Teacher's assets inside one institution (the previous lookup ignored the tenant). */
+    List<MediaAsset> findByTeacherIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID teacherId, UUID institutionId);
 
     List<MediaAsset> findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID teacherId);
 

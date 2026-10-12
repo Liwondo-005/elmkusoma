@@ -43,6 +43,8 @@ export default function PlatformSettingsPage() {
   const [features, setFeatures] = useState<FeatureStatus[]>([])
   const [policies, setPolicies] = useState<PolicyFlag[]>([])
   const [govError, setGovError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<Record<string, string>>({})
+  const [savedKey, setSavedKey] = useState<string | null>(null)
   const [busyFeature, setBusyFeature] = useState<string | null>(null)
 
   const loadGov = useCallback(async () => {
@@ -66,11 +68,24 @@ export default function PlatformSettingsPage() {
     const value = edits[key]
     if (value === undefined) return
     setSaving(key)
+    setSaveError(prev => { const n = { ...prev }; delete n[key]; return n })
+    setSavedKey(null)
     try {
       const updated = await platformAdminApi.updateConfig(key, value)
       setConfigs(prev => prev.map(c => c.configKey === key ? { ...c, configValue: updated.configValue } : c))
       setEdits(prev => { const n = { ...prev }; delete n[key]; return n })
+      setSavedKey(key)
       if (key === "platform.maintenance.enabled") loadGov()
+    } catch (e: any) {
+      // A failed save must be visible. Previously this had try/finally with no catch, so a
+      // rejected request — validation, authorisation, or the network — failed silently: the
+      // button stopped spinning, the input kept the rejected text, and nothing said why. An
+      // administrator could reasonably conclude the save had worked, which is how a rejected
+      // value ends up looking like a missing link on the public site.
+      //
+      // The edit is deliberately NOT discarded: the typed value stays so it can be corrected,
+      // and the message says what the server objected to.
+      setSaveError(prev => ({ ...prev, [key]: e?.message || "Save failed" }))
     } finally { setSaving(null) }
   }
 
@@ -219,27 +234,40 @@ export default function PlatformSettingsPage() {
               </div>
               <div className="divide-y divide-border">
                 {configs.filter(c => c.category === cat).map(c => (
-                  <div key={c.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{c.configKey}</p>
-                      {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
+                  <div key={c.id} className="px-5 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">{c.configKey}</p>
+                        {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {c.isSensitive ? (
+                          <span className="text-xs text-muted-foreground font-mono">****</span>
+                        ) : (
+                          <input
+                            value={edits[c.configKey] ?? c.configValue ?? ""}
+                            onChange={e => setEdits({ ...edits, [c.configKey]: e.target.value })}
+                            aria-label={c.configKey}
+                            aria-invalid={Boolean(saveError[c.configKey])}
+                            className="w-48 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-mono"
+                          />
+                        )}
+                        {edits[c.configKey] !== undefined && (
+                          <button onClick={() => handleSave(c.configKey)} disabled={saving === c.configKey} className="rounded-lg bg-primary px-2 py-1.5 text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                            {saving === c.configKey ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {c.isSensitive ? (
-                        <span className="text-xs text-muted-foreground font-mono">****</span>
-                      ) : (
-                        <input
-                          value={edits[c.configKey] ?? c.configValue ?? ""}
-                          onChange={e => setEdits({ ...edits, [c.configKey]: e.target.value })}
-                          className="w-48 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-mono"
-                        />
-                      )}
-                      {edits[c.configKey] !== undefined && (
-                        <button onClick={() => handleSave(c.configKey)} disabled={saving === c.configKey} className="rounded-lg bg-primary px-2 py-1.5 text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                          {saving === c.configKey ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
-                        </button>
-                      )}
-                    </div>
+                    {saveError[c.configKey] && (
+                      <p role="alert" className="mt-2 flex items-center gap-1.5 text-xs text-red-600">
+                        <AlertCircle className="size-3.5 shrink-0" />
+                        <span>Not saved: {saveError[c.configKey]}</span>
+                      </p>
+                    )}
+                    {!saveError[c.configKey] && savedKey === c.configKey && edits[c.configKey] === undefined && (
+                      <p role="status" className="mt-2 text-xs text-emerald-600">Saved</p>
+                    )}
                   </div>
                 ))}
               </div>

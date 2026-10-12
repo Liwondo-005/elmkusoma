@@ -26,5 +26,7 @@ public class ProgramResponse {
     private LocalDateTime endDate;
     private Integer maxParticipants;
     private Boolean isPublished;
+    private UUID courseId;
+    private Boolean enrollmentOpen;
     private LocalDateTime createdAt;
 }

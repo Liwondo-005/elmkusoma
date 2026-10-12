@@ -37,6 +37,7 @@ public class Transcript extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private TranscriptStatus status = TranscriptStatus.DRAFT;
 
     @Column(name = "total_subjects")

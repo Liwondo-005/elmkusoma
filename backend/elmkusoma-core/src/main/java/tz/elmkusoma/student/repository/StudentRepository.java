@@ -18,6 +18,9 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
 
     Optional<Student> findByUserIdAndIsDeletedFalse(UUID userId);
 
+    /** Added for NFE ecosystem linking (audit X-2): resolve a student profile and reject soft-deleted rows. */
+    Optional<Student> findByIdAndIsDeletedFalse(UUID id);
+
     List<Student> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
     List<Student> findByInstitutionIdAndStatusAndIsDeletedFalse(UUID institutionId, StudentStatus status);

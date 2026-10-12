@@ -30,8 +30,10 @@ public class StudentClassAssignment extends BaseEntity {
     private UUID termId;
 
     @Column(name = "assigned_date", nullable = false)
+    @Builder.Default
     private LocalDateTime assignedDate = LocalDateTime.now();
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 }

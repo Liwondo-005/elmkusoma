@@ -17,4 +17,14 @@ room:
   empty_timeout: 300
   max_participants: 10000
 
-webhook: {}
+# Webhooks are how ELMKUSOMA learns about egress (recording) lifecycle and room close.
+# Without these urls the server emits nothing and the recording -> Replay pipeline and
+# the event LIVE -> ENDED transition never fire. Values come from the environment so the
+# same compose file works locally and in deployment.
+#
+# NOTE: the api_key/api_secret below are the dev keys above; override both in any real
+# deployment (LIVEKIT_API_KEY / LIVEKIT_API_SECRET) so webhook signatures are verifiable.
+webhook:
+  api_key: ${LIVEKIT_API_KEY:-devkey}
+  urls:
+    - ${LIVEKIT_WEBHOOK_URL:-http://host.docker.internal:8080/v1/webhooks/livekit}

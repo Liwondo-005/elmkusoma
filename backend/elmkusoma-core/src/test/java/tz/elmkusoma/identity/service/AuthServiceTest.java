@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,8 +28,10 @@ import tz.elmkusoma.identity.dto.response.AuthResponse;
 import tz.elmkusoma.identity.repository.EmailVerificationTokenRepository;
 import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 import tz.elmkusoma.identity.repository.RevokedTokenRepository;
+import tz.elmkusoma.identity.service.PasswordPolicy;
 import tz.elmkusoma.identity.service.impl.AuthServiceImpl;
 import tz.elmkusoma.parent.repository.ParentRepository;
+import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
@@ -87,6 +90,16 @@ class AuthServiceTest {
     @Mock
     private MfaService mfaService;
 
+    // Concrete collaborator, so @InjectMocks would otherwise inject null.
+
+
+    @Spy
+
+
+    private PasswordPolicy passwordPolicy = new PasswordPolicy();
+
+
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -120,6 +133,16 @@ class AuthServiceTest {
                 .isActive(true)
                 .isEmailVerified(false)
                 .build();
+
+        // Audit B-27: registration only assigns the HQ scope when that institution really exists.
+        // The old code fabricated the id even when the lookup came back empty, and the stub below
+        // encoded that fiction. Mocking a real HQ institution keeps the original intent.
+        when(institutionRepository.findByIdAndIsDeletedFalse(
+                UUID.fromString("a0000000-0000-0000-0000-000000000001")))
+                .thenReturn(Optional.of(Institution.builder()
+                        .id(UUID.fromString("a0000000-0000-0000-0000-000000000001"))
+                        .name("ELMKUSOMA National HQ")
+                        .build()));
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtTokenProvider.generateAccessTokenWithClaims(
@@ -161,6 +184,13 @@ class AuthServiceTest {
             captured[0] = user;
             return user;
         });
+        // Audit B-27: the HQ institution must exist for that scope to be assigned.
+        when(institutionRepository.findByIdAndIsDeletedFalse(
+                UUID.fromString("a0000000-0000-0000-0000-000000000001")))
+                .thenReturn(Optional.of(Institution.builder()
+                        .id(UUID.fromString("a0000000-0000-0000-0000-000000000001"))
+                        .name("ELMKUSOMA National HQ")
+                        .build()));
         when(jwtTokenProvider.generateAccessTokenWithClaims(
                 eq("veta-student@example.com"), any(UUID.class), eq("STUDENT"),
                 eq(UUID.fromString("a0000000-0000-0000-0000-000000000001")), any()))

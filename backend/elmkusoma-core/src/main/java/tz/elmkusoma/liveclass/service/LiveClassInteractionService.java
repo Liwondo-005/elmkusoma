@@ -879,7 +879,11 @@ public class LiveClassInteractionService {
             UUID userId, UUID classId, Map<String, Object> body) {
         LiveClass lc = loadClass(classId);
         if (lc == null) return err(404, "Live class not found");
-        if (!canReadClass(lc, userId)) return err(403, "Access denied");
+        // Sharing material pushes content to every participant of the room, so it is a
+        // presenter action: class teacher only (previously any enrolled learner could do it).
+        if (!isClassTeacher(lc, userId)) {
+            return err(403, "Only the teacher of this class can share material");
+        }
         LiveClassSharedMedia media = LiveClassSharedMedia.builder()
                 .liveClassId(classId)
                 .sharedBy(userId)
@@ -914,15 +918,56 @@ public class LiveClassInteractionService {
         LiveClass lc = loadClass(classId);
         if (lc == null) return err(404, "Live class not found");
         if (!isParticipant(classId, userId)) return err(403, "Access denied");
-        LiveClassAttendanceDetail detail = LiveClassAttendanceDetail.builder()
-                .liveClassId(classId)
-                .userId(userId)
-                .build();
-        if (body.get("joinedAt") != null) detail.setJoinedAt(LocalDateTime.parse((String) body.get("joinedAt")));
-        if (body.get("leftAt") != null) detail.setLeftAt(LocalDateTime.parse((String) body.get("leftAt")));
-        if (body.get("totalSeconds") != null) detail.setTotalSeconds((Integer) body.get("totalSeconds"));
-        if (body.get("percentage") != null) detail.setPercentage(new java.math.BigDecimal(body.get("percentage").toString()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(attendanceDetailRepository.save(detail)));
+
+        // Watch time is SERVER-derived. A client-supplied totalSeconds/percentage previously
+        // wrote straight into the attendance record that later drives PRESENT/LATE derivation,
+        // so any participant could claim an arbitrary attendance duration.
+        LiveClassParticipant participant = participantRepository
+                .findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId)
+                .orElse(null);
+        if (participant == null || participant.getJoinedAt() == null) {
+            return err(400, "No recorded attendance for this participant in this class");
+        }
+
+        LocalDateTime joinedAt = participant.getJoinedAt();
+        LocalDateTime leftAt = LocalDateTime.now();
+        // Reject a client that claims a longer session than the class has actually been running.
+        LocalDateTime sessionStart = lc.getStartedAt() != null ? lc.getStartedAt() : lc.getScheduledAt();
+        if (sessionStart != null && leftAt.isBefore(sessionStart)) {
+            return err(400, "Invalid attendance window");
+        }
+        long totalSeconds = Math.max(0L, java.time.Duration.between(joinedAt, leftAt).getSeconds());
+        // Never exceed the class's own wall-clock length.
+        Integer durationMinutes = lc.getDurationMinutes();
+        if (durationMinutes != null && durationMinutes > 0) {
+            totalSeconds = Math.min(totalSeconds, durationMinutes * 60L);
+        }
+
+        LiveClassAttendanceDetail existing = attendanceDetailRepository
+                .findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId)
+                .orElseGet(() -> LiveClassAttendanceDetail.builder()
+                        .liveClassId(classId)
+                        .userId(userId)
+                        .build());
+
+        existing.setJoinedAt(joinedAt);
+        existing.setLeftAt(leftAt);
+        existing.setTotalSeconds((int) Math.min(totalSeconds, Integer.MAX_VALUE));
+        existing.setPercentage(computeAttendancePercentage(existing.getTotalSeconds(),
+                lc.getDurationMinutes() != null ? lc.getDurationMinutes() : 60));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(attendanceDetailRepository.save(existing)));
+    }
+
+    /** Attendance percentage as a percentage of the scheduled session length, capped at 100. */
+    private static java.math.BigDecimal computeAttendancePercentage(Integer totalSeconds, int durationMinutes) {
+        if (totalSeconds == null || durationMinutes <= 0) {
+            return java.math.BigDecimal.ZERO;
+        }
+        java.math.BigDecimal pct = java.math.BigDecimal.valueOf(totalSeconds)
+                .multiply(java.math.BigDecimal.valueOf(100))
+                .divide(java.math.BigDecimal.valueOf(durationMinutes * 60L), 2, java.math.RoundingMode.HALF_UP);
+        return pct.min(java.math.BigDecimal.valueOf(100));
     }
 
     public ResponseEntity<ApiResponse<List<LiveClassAttendanceDetail>>> getAttendanceDetail(UUID userId, UUID classId) {

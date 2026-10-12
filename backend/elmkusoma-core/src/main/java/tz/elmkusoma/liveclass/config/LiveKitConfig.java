@@ -6,7 +6,10 @@ import org.springframework.context.annotation.Configuration;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "livekit")
+// The computed helpers below (isConfigured/isIngressEnabled/isEgressEnabled) expose JavaBean
+// read-only properties that have no matching configuration key. Without ignoreInvalidFields a
+// stray value bound to one of them aborts the whole application context.
+@ConfigurationProperties(prefix = "livekit", ignoreInvalidFields = true)
 public class LiveKitConfig {
 
     private ServerConfig server = new ServerConfig();
@@ -71,5 +74,26 @@ public class LiveKitConfig {
 
     public boolean isEgressEnabled() {
         return isConfigured() && egress.isEnabled();
+    }
+
+    /**
+     * Setter for the computed {@link #isEgressEnabled()} property.
+     *
+     * <p>{@code LIVEKIT_EGRESS_ENABLED} was previously unusable: Spring relaxed-binds it to the
+     * top-level {@code egressEnabled} property, found only the getter above, and aborted startup
+     * with "No setter found for property: egress-enabled". That made it impossible to enable
+     * recording at all - the flag had to stay unset, so every recording start was refused.</p>
+     *
+     * <p>This setter forwards to the real nested config, so both {@code livekit.egress-enabled}
+     * and {@code livekit.egress.enabled} now work and mean the same thing. The read side stays
+     * {@link #isEgressEnabled()}, which additionally requires API credentials.</p>
+     */
+    public void setEgressEnabled(boolean enabled) {
+        egress.setEnabled(enabled);
+    }
+
+    /** Same fix as {@link #setEgressEnabled(boolean)} for the ingress flag. */
+    public void setIngressEnabled(boolean enabled) {
+        ingress.setEnabled(enabled);
     }
 }

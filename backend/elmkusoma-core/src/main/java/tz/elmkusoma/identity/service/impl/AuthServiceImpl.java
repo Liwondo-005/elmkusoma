@@ -30,6 +30,7 @@ import tz.elmkusoma.identity.repository.RevokedTokenRepository;
 import tz.elmkusoma.identity.repository.VerificationCodeRepository;
 import tz.elmkusoma.identity.service.AuthService;
 import tz.elmkusoma.identity.service.MfaService;
+import tz.elmkusoma.identity.service.PasswordPolicy;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
@@ -63,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final MfaService mfaService;
+    private final PasswordPolicy passwordPolicy;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl = "http://localhost:3000";
@@ -137,6 +139,10 @@ public class AuthServiceImpl implements AuthService {
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
 
+    /** Audit B-04: OTP gate on login. Enabled in application-prod.yml, off for dev/test/e2e. */
+    @Value("${elmkusoma.identity.require-verified-email:false}")
+    private boolean requireVerifiedEmail;
+
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
@@ -157,8 +163,9 @@ public class AuthServiceImpl implements AuthService {
                             RateLimitService rateLimitService,
                             EventPublisherService eventPublisherService,
                             NotificationService notificationService,
-                            AuditService auditService,
-                            MfaService mfaService) {
+AuditService auditService,
+                             MfaService mfaService,
+                             PasswordPolicy passwordPolicy) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -181,6 +188,7 @@ public class AuthServiceImpl implements AuthService {
         this.notificationService = notificationService;
         this.auditService = auditService;
         this.mfaService = mfaService;
+        this.passwordPolicy = passwordPolicy;
     }
 
     private void auditRecoveryEvent(User user, SecurityEvent.SecurityEventType type,
@@ -211,32 +219,14 @@ public class AuthServiceImpl implements AuthService {
             User.Role.OTHER_LEARNER
     );
 
-    private static final java.util.Set<String> COMMON_PASSWORDS = java.util.Set.of(
-            "password", "password1", "password12", "password123",
-            "12345678", "123456789", "qwerty", "qwerty123", "abc12345",
-            "letmein", "letmein123", "welcome", "welcome123", "admin123",
-            "user12345", "test12345", "changeme", "changeme123", "iloveyou123",
-            "football123", "monkey123", "dragon123", "elmkusoma", "elmkusoma123",
-            "tanzania", "tanzania123");
-
-    /**
-     * Minimal breached-obvious-password screen. Exact (case-insensitive)
-     * dictionary match plus the account's own email local-part.
-     */
+/**
+ * The password screen now lives in {@link PasswordPolicy} so every entry point that sets a
+ * secret shares one dictionary. The old copy distinguished "too common" from "contains your
+ * email address" in its message; the shared policy folds both into one rejection, because
+ * which rule fired tells an attacker which word to swap out.
+ */
     private void rejectCommonPassword(String email, String password) {
-        if (password == null) {
-            return;
-        }
-        String lowered = password.toLowerCase();
-        if (COMMON_PASSWORDS.contains(lowered)) {
-            throw new IllegalArgumentException("Password is too common. Choose a less predictable password.");
-        }
-        if (email != null && email.contains("@")) {
-            String localPart = email.substring(0, email.indexOf('@')).toLowerCase();
-            if (!localPart.isBlank() && (lowered.equals(localPart) || lowered.contains(localPart))) {
-                throw new IllegalArgumentException("Password must not contain your email address.");
-            }
-        }
+        passwordPolicy.rejectWeak(email, password);
     }
 
     private User.Role resolveRegistrationRole(String requestedRole) {
@@ -327,7 +317,14 @@ public class AuthServiceImpl implements AuthService {
         UUID instId = user.getInstitutionId();
         if (instId == null) {
             instId = resolveDefaultInstitutionId();
-            user.setInstitutionId(instId);
+            if (instId == null) {
+                // Audit B-27: no organisation could be resolved. Do not fabricate one -- the
+                // account is created without a scope and the learner sees "awaiting placement".
+                log.warn("Registered {} with no resolvable institution; awaiting placement",
+                        request.getEmail());
+            } else {
+                user.setInstitutionId(instId);
+            }
         }
         user = userRepository.save(user);
 
@@ -382,10 +379,20 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    /**
+     * Audit B-27: this used to {@code orElse(HQ_INSTITUTION_ID)}, fabricating an organisation id
+     * even when that institution did not exist. The account then carried a scope that resolved to
+     * nothing, passed organization checks, and every tenant-scoped list came back empty with no
+     * indication that the learner was unplaced.
+     *
+     * <p>Now the id is only returned when the HQ institution actually exists. A learner with no
+     * resolvable organisation is registered without a scope and surfaces the existing
+     * "awaiting placement" state instead of silently pretending to belong somewhere.
+     */
     private UUID resolveDefaultInstitutionId() {
         return institutionRepository.findByIdAndIsDeletedFalse(HQ_INSTITUTION_ID)
                 .map(tz.elmkusoma.shared.domain.Institution::getId)
-                .orElse(HQ_INSTITUTION_ID);
+                .orElse(null);
     }
 
     private void ensureMembership(User user, UUID institutionId, User.Role role) {
@@ -514,6 +521,18 @@ public class AuthServiceImpl implements AuthService {
             throw new ForbiddenException("Account is deactivated. Please contact support.");
         }
 
+// Audit B-04: OTP verification is the gate for unverified accounts.
+        //
+        // Deliberately configuration-gated (elmkusoma.identity.require-verified-email, ON in
+        // application-prod.yml, OFF for dev/test/e2e). A hard gate would lock out the existing
+        // unverified accounts in this environment - including seeded and e2e fixtures - so the
+        // control is enabled where it protects real users and stays opt-in elsewhere.
+        // Runs before the MFA step-up below: an unverified account must not receive a challenge.
+        if (requireVerifiedEmail && !Boolean.TRUE.equals(user.getIsEmailVerified())) {
+            throw new ForbiddenException(
+                    "Email not verified. Please verify your email before signing in.");
+        }
+
         // Step-up: accounts with a verified authenticator never receive a full
         // session from a password alone — only a 5-minute MFA challenge.
         if (mfaService != null && mfaService.hasVerifiedFactor(user.getId())) {
@@ -528,6 +547,7 @@ public class AuthServiceImpl implements AuthService {
                     .mfaToken(mfaToken)
                     .build();
         }
+
         String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
                 user.getEmail(), user.getId(), user.getRole().name(), user.getInstitutionId(),
                 user.getSecurityVersion());
@@ -1067,6 +1087,18 @@ public class AuthServiceImpl implements AuthService {
         verificationCode.setAttempts(verificationCode.getAttempts() + 1);
         verificationCode.setUsed(true);
         verificationCodeRepository.save(verificationCode);
+
+        // Audit B-04: verifying a code now actually verifies the ACCOUNT. Previously the code was
+        // consumed and nothing else happened, so is_email_verified stayed false forever and the
+        // flag no consumer ever read.
+        userRepository.findByEmailAndIsDeletedFalse(email).ifPresent(user -> {
+            if (!Boolean.TRUE.equals(user.getIsEmailVerified())) {
+                user.setIsEmailVerified(true);
+                user.setUpdatedAt(java.time.LocalDateTime.now());
+                userRepository.save(user);
+                log.info("Email verified for account {}", email);
+            }
+        });
     }
 
     private String resolveLoginClientIp() {

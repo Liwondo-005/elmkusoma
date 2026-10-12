@@ -24,18 +24,29 @@ import java.util.UUID;
 public class NfeCertificateServiceImpl implements NfeCertificateService {
 
     private final NfeCertificateRepository certificateRepository;
+    private final tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
 
     @Override
     public NfeCertificateResponse createCertificate(UUID institutionId, UUID providerId, NfeCertificateRequest request) {
+        // B-15: provider and learner must both belong to the caller's institution. Previously the
+        // providerId came straight from the path and learnerId was never checked, so a row could
+        // reference another tenant.
+        UUID ownedProviderId = scopeValidator.requireOwnedProvider(institutionId, providerId).getId();
+        UUID learnerId = scopeValidator.requireOwnedLearner(institutionId, request.getLearnerId());
+        UUID programId = scopeValidator.requireOwnedProgram(institutionId, request.getProgramId());
+
         NfeCertificate certificate = NfeCertificate.builder()
-                .providerId(providerId)
-                .learnerId(request.getLearnerId())
-                .programId(request.getProgramId())
+                .providerId(ownedProviderId)
+                .learnerId(learnerId)
+                .programId(programId)
                 .certificateType(NfeCertificate.CertificateType.valueOf(request.getCertificateType()))
                 .title(request.getTitle())
                 .studentName(request.getStudentName())
-                .serialNumber(request.getSerialNumber())
-                .verificationCode(request.getVerificationCode())
+                // B-17: human-facing identifiers are generated server-side. They were client-supplied
+                // with no uniqueness check, and a duplicate made the public verification endpoint
+                // throw IncorrectResultSizeDataAccessException (500).
+                .serialNumber(resolveSerial(request.getSerialNumber(), institutionId))
+                .verificationCode(resolveVerificationCode(request.getVerificationCode(), institutionId))
                 .issuedAt(request.getIssuedAt())
                 .expiryDate(request.getExpiryDate())
                 .status(request.getStatus() != null ? NfeCertificate.CertificateStatus.valueOf(request.getStatus()) : NfeCertificate.CertificateStatus.DRAFT)
@@ -43,8 +54,29 @@ public class NfeCertificateServiceImpl implements NfeCertificateService {
                 .build();
         certificate.setInstitutionId(institutionId);
 
-        NfeCertificate saved = certificateRepository.save(certificate);
+        NfeCertificate saved;
+        try {
+            saved = certificateRepository.save(certificate);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // The unique indexes added in V130 now make this a clean conflict instead of a 500.
+            throw new IllegalStateException("A certificate with this serial number or verification code already exists");
+        }
         return mapToResponse(saved);
+    }
+
+    private String resolveSerial(String requested, UUID institutionId) {
+        if (requested != null && !requested.isBlank()) {
+            return requested.trim();
+        }
+        return "NFE/" + java.time.Year.now().getValue() + "/"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    private String resolveVerificationCode(String requested, UUID institutionId) {
+        if (requested != null && !requested.isBlank()) {
+            return requested.trim();
+        }
+        return "NFE-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 
     @Override
@@ -88,8 +120,12 @@ public class NfeCertificateServiceImpl implements NfeCertificateService {
         NfeCertificate certificate = certificateRepository.findByIdAndInstitutionId(certificateId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("NFE Certificate", "id", certificateId));
 
-        if (request.getLearnerId() != null) certificate.setLearnerId(request.getLearnerId());
-        if (request.getProgramId() != null) certificate.setProgramId(request.getProgramId());
+        if (request.getLearnerId() != null) {
+            certificate.setLearnerId(scopeValidator.requireOwnedLearner(institutionId, request.getLearnerId()));
+        }
+        if (request.getProgramId() != null) {
+            certificate.setProgramId(scopeValidator.requireOwnedProgram(institutionId, request.getProgramId()));
+        }
         if (request.getCertificateType() != null) certificate.setCertificateType(NfeCertificate.CertificateType.valueOf(request.getCertificateType()));
         if (request.getTitle() != null) certificate.setTitle(request.getTitle());
         if (request.getStudentName() != null) certificate.setStudentName(request.getStudentName());

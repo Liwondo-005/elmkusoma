@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -36,4 +37,10 @@ public class ProgramRequest {
     private Integer maxParticipants;
 
     private Boolean isPublished;
+
+    /** Ecosystem link (audit B-11): optional platform course this program delivers. */
+    private UUID courseId;
+
+    /** When true, learners of the linked course may enrol on this program. */
+    private Boolean enrollmentOpen;
 }

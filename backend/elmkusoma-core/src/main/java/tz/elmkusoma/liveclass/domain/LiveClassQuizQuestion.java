@@ -25,6 +25,7 @@ public class LiveClassQuizQuestion extends BaseEntity {
     private String questionText;
 
     @Column(name = "question_type", length = 20)
+    @Builder.Default
     private String questionType = "MULTIPLE_CHOICE";
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -35,5 +36,6 @@ public class LiveClassQuizQuestion extends BaseEntity {
     private String correctAnswer;
 
     @Column(name = "display_order")
+    @Builder.Default
     private Integer displayOrder = 0;
 }

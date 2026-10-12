@@ -26,12 +26,16 @@ public class MaterialServiceImpl implements MaterialService {
 
     private final NfeMaterialRepository materialRepository;
     private final OwnershipGuard ownershipGuard;
+    private final tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
 
     @Override
     public MaterialResponse createMaterial(UUID institutionId, MaterialRequest request) {
+        // B-15: provider/program references are tenant-validated server-side.
+        UUID providerId = scopeValidator.requireOwnedProvider(institutionId, request.getProviderId()).getId();
+        UUID programId = scopeValidator.requireOwnedProgram(institutionId, request.getProgramId());
         NfeMaterial material = NfeMaterial.builder()
-                .providerId(request.getProviderId())
-                .programId(request.getProgramId())
+                .providerId(providerId)
+                .programId(programId)
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .materialType(NfeMaterial.MaterialType.valueOf(request.getMaterialType()))
@@ -88,8 +92,14 @@ public class MaterialServiceImpl implements MaterialService {
                 .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
         ownershipGuard.verifyInstitution(material.getInstitutionId(), institutionId);
 
-        if (request.getProviderId() != null) material.setProviderId(request.getProviderId());
-        if (request.getProgramId() != null) material.setProgramId(request.getProgramId());
+        // B-16: providerId is an ownership column. Repointing it is rejected rather than silently ignored.
+        if (request.getProviderId() != null && !request.getProviderId().equals(material.getProviderId())) {
+            throw new IllegalArgumentException("providerId cannot be changed after creation");
+        }
+        // programId is tenant-validated.
+        if (request.getProgramId() != null) {
+            material.setProgramId(scopeValidator.requireOwnedProgram(institutionId, request.getProgramId()));
+        }
         if (request.getTitle() != null) material.setTitle(request.getTitle());
         if (request.getDescription() != null) material.setDescription(request.getDescription());
         if (request.getMaterialType() != null) material.setMaterialType(NfeMaterial.MaterialType.valueOf(request.getMaterialType()));

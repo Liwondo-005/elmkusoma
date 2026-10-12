@@ -57,6 +57,14 @@ public class MediaAsset extends BaseEntity {
     @Column(name = "course_id")
     private java.util.UUID courseId;
 
+    /**
+     * Class this asset belongs to (V149). Nullable: provider uploads and event media have
+     * no class. Recordings inherit it from the live class they were recorded for, which is
+     * what makes "recordings for this class" queryable without joining live_classes.
+     */
+    @Column(name = "class_group_id")
+    private java.util.UUID classGroupId;
+
     @Column(name = "subject_id")
     private java.util.UUID subjectId;
 

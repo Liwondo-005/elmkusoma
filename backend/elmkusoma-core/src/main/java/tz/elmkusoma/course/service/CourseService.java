@@ -16,6 +16,7 @@ import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.domain.LearnerEnrollment;
+import tz.elmkusoma.course.controller.CourseThumbnailController;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerEnrollmentRepository;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
@@ -45,10 +46,40 @@ public class CourseService {
 
     // ── Course CRUD ──
 
+    /**
+     * Refuses a thumbnail that points at another institution's upload.
+     *
+     * <p>{@code thumbnailUrl} is client-supplied, so without this any course author could set a
+     * published course's image to another school's upload — or to any path that happens to
+     * resolve. Only references this platform issued, under the caller's own institution
+     * directory, are accepted; external URLs supplied by the institution are left alone because
+     * they reference nothing of ours.</p>
+     */
+    private String validateThumbnailOwnership(String reference, UUID institutionId) {
+        if (reference == null || reference.isBlank()) {
+            return reference;
+        }
+        if (!CourseThumbnailController.isPlatformImageReference(reference)) {
+            return reference;
+        }
+        UUID owner = CourseThumbnailController.institutionOf(reference);
+        if (owner == null) {
+            // A platform-shaped reference with no institution segment is a pre-partitioning
+            // upload, which is still resolvable. Leave it alone rather than breaking old rows.
+            return reference;
+        }
+        if (!owner.equals(institutionId)) {
+            throw new ForbiddenException("course image", "use");
+        }
+        return reference;
+    }
+
     public CourseResponse createCourse(CourseRequest request, UUID institutionId, UUID userId) {
         if (courseRepository.existsByInstitutionIdAndTitleAndIsDeletedFalse(institutionId, request.getTitle())) {
             throw new IllegalArgumentException("Course with title '" + request.getTitle() + "' already exists");
         }
+
+        String thumbnailUrl = validateThumbnailOwnership(request.getThumbnailUrl(), institutionId);
 
         Course course = Course.builder()
                 .title(request.getTitle())
@@ -56,7 +87,7 @@ public class CourseService {
                 .subjectId(request.getSubjectId())
                 .level(request.getLevel() != null ? request.getLevel() : "ALL_LEVELS")
                 .category(request.getCategory())
-                .thumbnailUrl(request.getThumbnailUrl())
+                .thumbnailUrl(thumbnailUrl)
                 .isPublished(request.getIsPublished() != null ? request.getIsPublished() : false)
                 .isFeatured(request.getIsFeatured() != null ? request.getIsFeatured() : false)
                 .build();
@@ -112,7 +143,9 @@ public class CourseService {
         if (request.getSubjectId() != null) course.setSubjectId(request.getSubjectId());
         if (request.getLevel() != null) course.setLevel(request.getLevel());
         if (request.getCategory() != null) course.setCategory(request.getCategory());
-        if (request.getThumbnailUrl() != null) course.setThumbnailUrl(request.getThumbnailUrl());
+        if (request.getThumbnailUrl() != null) {
+            course.setThumbnailUrl(validateThumbnailOwnership(request.getThumbnailUrl(), institutionId));
+        }
         if (request.getIsPublished() != null) course.setIsPublished(request.getIsPublished());
         if (request.getIsFeatured() != null) course.setIsFeatured(request.getIsFeatured());
 

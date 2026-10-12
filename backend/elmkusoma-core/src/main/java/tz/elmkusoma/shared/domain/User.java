@@ -41,9 +41,11 @@ public class User extends BaseEntity {
     private UUID institutionId;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "is_email_verified", nullable = false)
+    @Builder.Default
     private Boolean isEmailVerified = false;
 
     /**
