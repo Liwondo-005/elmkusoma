@@ -161,7 +161,7 @@ public class CertificateController {
         // endpoint on this same controller already checks the parent-student link, so this was an
         // inconsistency rather than a deliberate policy.
         if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
-            if (response.getStudentId() != null && !response.getStudentId().equals(userId)) {
+            if (!isOwnCertificate(userId, response.getStudentId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("Access denied"));
             }
@@ -172,6 +172,25 @@ public class CertificateController {
             }
         }
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * True when this authenticated user owns the certificate.
+     *
+     * <p>The certificate's studentId is a students.id, which is NOT the same identifier as the
+     * authenticated users.id. Comparing the two directly denied every real student access to their
+     * own certificate, because the two values could never be equal.</p>
+     *
+     * <p>So the caller's user id is resolved to their student row first, and ownership is then
+     * compared on the same identifier space as the certificate. This mirrors what the transcript
+     * endpoint on this controller already does.</p>
+     */
+    private boolean isOwnCertificate(UUID callerUserId, UUID certificateStudentId) {
+        if (certificateStudentId == null) {
+            return false;
+        }
+        var student = studentRepository.findByUserIdAndIsDeletedFalse(callerUserId).orElse(null);
+        return student != null && certificateStudentId.equals(student.getId());
     }
 
     /**
@@ -203,7 +222,10 @@ public class CertificateController {
         Page<CertificateResponse> response;
         if (studentId != null) {
             if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
-                if (!studentId.equals(userId)) {
+                // Same identifier-space trap as the single-certificate path: studentId here is a
+                // students.id, while userId is a users.id, so comparing them directly meant no
+                // student could ever list their own certificates.
+                if (!isOwnCertificate(userId, studentId)) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
                             .body(ApiResponse.error("Access denied: cannot view other students' certificates"));
                 }
