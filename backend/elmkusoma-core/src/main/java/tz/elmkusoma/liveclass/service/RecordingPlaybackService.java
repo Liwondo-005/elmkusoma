@@ -25,10 +25,18 @@ import java.util.regex.Pattern;
  *
  * <p>Core deliberately owns no S3/B2 client, and this class does not add one. The recording
  * location persisted by the publication pipeline is always an http(s) URL rebuilt from the
- * configured egress endpoint, so a plain HTTP GET is sufficient - which is also what
+ * configured egress endpoint, so the fetch is a single HTTP GET - which is also what
  * {@link MediaProxyService} already does for media-library resources. Keeping the fetch on
  * HTTP means no second storage abstraction, no second credential store, and no bucket ever
  * becomes public.</p>
+ *
+ * <p>One correction to that plan, because the assumption above proved false in production:
+ * the bucket is private, so an <em>unsigned</em> GET is answered with 401 and the caller turns
+ * that into a 502 - the recorded lesson never plays at all. The request is therefore signed
+ * with AWS Signature Version 4 by {@link RecordingStorageSigner}, reusing the egress
+ * credentials this process already holds for the writer. The bucket stays private, no
+ * credential is added, and no S3 client is introduced: the signature is three extra headers on
+ * the connection opened here.</p>
  *
  * <p>What this class guarantees:</p>
  * <ul>
@@ -60,13 +68,16 @@ public class RecordingPlaybackService {
             "Last-Modified", "ETag");
 
     private final LiveKitConfig liveKitConfig;
+    private final RecordingStorageSigner storageSigner;
     private final int connectTimeoutMs;
     private final int readTimeoutMs;
 
     public RecordingPlaybackService(LiveKitConfig liveKitConfig,
+                                    RecordingStorageSigner storageSigner,
                                     @Value("${app.recording-playback.connect-timeout-ms:5000}") int connectTimeoutMs,
                                     @Value("${app.recording-playback.read-timeout-ms:60000}") int readTimeoutMs) {
         this.liveKitConfig = liveKitConfig;
+        this.storageSigner = storageSigner;
         this.connectTimeoutMs = connectTimeoutMs;
         this.readTimeoutMs = readTimeoutMs;
     }
@@ -113,6 +124,13 @@ public class RecordingPlaybackService {
             connection.setRequestProperty("Accept-Encoding", "identity");
             if (isSingleRange(rangeHeader)) {
                 connection.setRequestProperty("Range", rangeHeader.trim());
+            }
+            // Sign the request so a private bucket will serve it. The signer decides for
+            // itself whether this target is the configured endpoint and refuses to sign
+            // anything else, so an untrusted location can never obtain a signature - or see
+            // the credentials that produce one.
+            for (Map.Entry<String, String> signed : storageSigner.headersFor(uri).entrySet()) {
+                connection.setRequestProperty(signed.getKey(), signed.getValue());
             }
 
             int status = connection.getResponseCode();

@@ -12,9 +12,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import tz.elmkusoma.learning.domain.VideoTutorial;
 import tz.elmkusoma.learning.dto.VideoTutorialRequest;
+import tz.elmkusoma.learning.dto.VideoTutorialResponse;
 import tz.elmkusoma.learning.repository.VideoTutorialProgressRepository;
 import tz.elmkusoma.learning.repository.VideoTutorialRepository;
+import tz.elmkusoma.liveclass.domain.MediaAsset;
+import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
 import tz.elmkusoma.liveclass.service.MediaProxyService;
+import tz.elmkusoma.liveclass.service.RecordingPlaybackUrls;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.util.List;
@@ -41,6 +45,10 @@ class VideoTutorialAccessSecurityTest {
     private UserRepository userRepository;
     @Mock
     private MediaProxyService mediaProxyService;
+    @Mock
+    private MediaAssetRepository mediaAssetRepository;
+    @Mock
+    private RecordingPlaybackUrls recordingPlaybackUrls;
 
     @InjectMocks
     private VideoTutorialService service;
@@ -323,5 +331,57 @@ class VideoTutorialAccessSecurityTest {
                 lessonId, null, null, null, null, 0, 20);
 
         verify(videoTutorialRepository).findVisibleByLessonId(lessonId, studentVisibilities);
+    }
+
+    /**
+     * A live class recording must be filed under the application's playback route.
+     *
+     * <p>The Video Library renders {@code recordingUrl} as a direct link, so storing the private
+     * object URL reproduced the Media Library's Backblaze {@code UnauthorizedAccess} failure one
+     * screen over - and leaked the bucket and object key into client-facing JSON as well.</p>
+     */
+    @Test
+    void attachRecording_ofALiveClassAsset_storesThePlaybackRouteNotTheStorageUrl() {
+        UUID classId = UUID.randomUUID();
+        MediaAsset asset = MediaAsset.builder()
+                .title("Live class recording")
+                .mediaType("RECORDING")
+                .fileUrl("https://s3.test-region.backblazeb2.com/private-bucket/liveclass/rec.mp4")
+                .sourceType("LIVE_CLASS")
+                .sourceId(classId)
+                .build();
+        when(recordingPlaybackUrls.forLiveClass(classId))
+                .thenReturn("http://localhost:3000/v1/live-session/classes/" + classId + "/recording/playback");
+        when(videoTutorialRepository.findByRecordingUrlAndInstitutionIdAndIsDeletedFalse(any(), any()))
+                .thenReturn(List.of());
+        when(videoTutorialRepository.save(any(VideoTutorial.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        VideoTutorialResponse response = service.attachRecording(asset, institutionId, creatorId);
+
+        assertNotNull(response.getRecordingUrl());
+        assertTrue(response.getRecordingUrl().endsWith("/recording/playback"),
+                "a live class recording must be represented by the authorised playback route");
+        assertFalse(response.getRecordingUrl().contains("backblazeb2.com"),
+                "the video library stored the private bucket URL for a live class recording");
+        assertNull(response.getRecordingObjectKey(), "a storage object key must never reach a client");
+        assertNull(response.getRecordingBucket(), "a storage bucket name must never reach a client");
+    }
+
+    /** Ordinary teacher-uploaded media keeps its direct URL - nothing about it changes. */
+    @Test
+    void attachRecording_ofATeacherUpload_keepsTheDirectUrl() {
+        MediaAsset upload = MediaAsset.builder()
+                .title("Teacher upload")
+                .mediaType("DOCUMENT")
+                .fileUrl("https://cdn.example/lesson-notes.pdf")
+                .build();
+        when(videoTutorialRepository.findByRecordingUrlAndInstitutionIdAndIsDeletedFalse(any(), any()))
+                .thenReturn(List.of());
+        when(videoTutorialRepository.save(any(VideoTutorial.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        VideoTutorialResponse response = service.attachRecording(upload, institutionId, creatorId);
+
+        assertEquals("https://cdn.example/lesson-notes.pdf", response.getRecordingUrl(),
+                "non-live-class media must keep its existing direct URL behaviour");
     }
 }

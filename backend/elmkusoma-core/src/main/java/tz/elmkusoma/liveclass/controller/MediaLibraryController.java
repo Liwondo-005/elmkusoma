@@ -31,6 +31,31 @@ public class MediaLibraryController {
     private final tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
     private final tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository participantRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
+    private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
+
+    /** Server-written origin that marks an asset as a live-class recording. */
+    private static final String SOURCE_LIVE_CLASS = "LIVE_CLASS";
+
+    /**
+     * Application-owned playback path for a LIVE_CLASS asset, or {@code null} for any other
+     * asset.
+     *
+     * <p>The class id is read from the persisted {@code source_id} written by the recording
+     * hand-off - never from client input - so a caller cannot point playback at another class's
+     * object key. The resulting path is the ordinary authorised
+     * {@code /v1/live-session/classes/{id}/recording/playback} endpoint, which re-checks
+     * authentication, institution, ownership and participation on every request (including each
+     * Range request). Fail-closed: if the frontend URL is unavailable, return {@code null} rather
+     * than falling back to the storage location.</p>
+     */
+    private String liveClassPlaybackUrl(MediaAsset asset) {
+        if (asset == null || asset.getSourceId() == null) {
+            return null;
+        }
+        return SOURCE_LIVE_CLASS.equalsIgnoreCase(asset.getSourceType())
+                ? recordingPlaybackUrls.forLiveClass(asset.getSourceId())
+                : null;
+    }
 
     /**
      * Records whose class-level target must be enforced rather than merely filtered in the UI.
@@ -354,12 +379,18 @@ public class MediaLibraryController {
     }
 
     private MediaAssetResponse toResponse(MediaAsset asset) {
+        String playbackUrl = liveClassPlaybackUrl(asset);
         return MediaAssetResponse.builder()
                 .id(asset.getId())
                 .title(asset.getTitle())
                 .description(asset.getDescription())
                 .mediaType(asset.getMediaType())
-                .fileUrl(asset.getFileUrl())
+                // A private-bucket object URL is not playable by a browser: opening it returns
+                // Backblaze's UnauthorizedAccess XML. LIVE_CLASS recordings are served only by
+                // the authorised application playback route, so the storage location is never
+                // serialised for them. Every other asset keeps its existing URL behaviour.
+                .fileUrl(playbackUrl != null ? null : asset.getFileUrl())
+                .playbackUrl(playbackUrl)
                 .thumbnailUrl(asset.getThumbnailUrl())
                 .durationSeconds(asset.getDurationSeconds())
                 .fileSizeBytes(asset.getFileSizeBytes())
@@ -416,7 +447,14 @@ public class MediaLibraryController {
                     .body(ApiResponse.error("Media asset not found"));
         }
         Map<String, Object> download = new java.util.HashMap<>();
-        download.put("downloadUrl", asset.getFileUrl() != null ? asset.getFileUrl() : "");
+        // Same rule as the detail view: for a live-class recording the browser must be sent to
+        // the authorised application playback route, never to the private object URL. Anything
+        // else keeps its existing direct-link behaviour.
+        String playbackUrl = liveClassPlaybackUrl(asset);
+        String url = playbackUrl != null ? playbackUrl
+                : (asset.getFileUrl() != null ? asset.getFileUrl() : "");
+        download.put("downloadUrl", url);
+        download.put("playbackUrl", playbackUrl != null);
         download.put("assetId", asset.getId());
         return ResponseEntity.ok(ApiResponse.success(download));
     }

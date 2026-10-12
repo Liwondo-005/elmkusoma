@@ -16,6 +16,8 @@ interface MediaAsset {
   description: string | null
   mediaType: string
   fileUrl: string | null
+  /** Authorised application playback route; set for live class recordings, null otherwise. */
+  playbackUrl: string | null
   thumbnailUrl: string | null
   durationSeconds: number | null
   fileSizeBytes: number | null
@@ -31,6 +33,18 @@ interface MediaAsset {
   subjectId: string | null
   tags: string | null
   createdAt: string
+}
+
+/**
+ * What "Open" navigates to.
+ *
+ * A live class recording lives in a private bucket, so its stored object URL is not a playback
+ * URL - opening one returns Backblaze's UnauthorizedAccess XML. For those the backend only ever
+ * exposes `playbackUrl`, the application's own authorised route that re-checks entitlement on
+ * every request. Every other asset keeps its existing `fileUrl` behaviour untouched.
+ */
+function openableUrl(item: MediaAsset): string | null {
+  return item.playbackUrl ?? item.fileUrl
 }
 
 function formatDuration(seconds: number | null): string {
@@ -273,12 +287,12 @@ export default function TeacherMediaLibraryPage() {
                   </div>
                 )}
 
-                {item.fileUrl && (
+                {openableUrl(item) && (
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full mt-3"
-                    onClick={() => window.open(item.fileUrl!, "_blank")}
+                    onClick={() => window.open(openableUrl(item)!, "_blank")}
                   >
                     <Play className="h-4 w-4 mr-1" />
                     {t("mediaLibrary.open")}

@@ -41,10 +41,30 @@ public class VideoTutorialService {
     private final UserRepository userRepository;
     private final MediaProxyService mediaProxyService;
     private final MediaAssetRepository mediaAssetRepository;
+    private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
 
     private static final List<String> STUDENT_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION");
     private static final List<String> TEACHER_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
     private static final List<String> ADMIN_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
+
+    /**
+     * What the Video Library should store for a Media Library asset's playable location.
+     *
+     * <p>A {@code LIVE_CLASS} asset's {@code file_url} is a private object-store URL. It is not
+     * playable by a browser - Backblaze answers {@code UnauthorizedAccess} - and it must never
+     * reach a client, so those recordings are represented only by the application's own
+     * authorised playback route, keyed by the persisted {@code source_id}. Every other asset
+     * keeps its existing direct-URL behaviour untouched.</p>
+     */
+    private String liveClassRecordingUrl(MediaAsset asset) {
+        if (asset == null) {
+            return null;
+        }
+        if (asset.getSourceId() != null && "LIVE_CLASS".equalsIgnoreCase(asset.getSourceType())) {
+            return recordingPlaybackUrls.forLiveClass(asset.getSourceId());
+        }
+        return asset.getFileUrl();
+    }
 
     // Create Video Tutorial
     @Transactional
@@ -81,7 +101,7 @@ public class VideoTutorialService {
     @Transactional
     public VideoTutorialResponse attachRecording(tz.elmkusoma.liveclass.domain.MediaAsset asset,
                                                  UUID institutionId, String userId) {
-        String recordingUrl = asset.getFileUrl();
+        String recordingUrl = liveClassRecordingUrl(asset);
         if (recordingUrl != null && !recordingUrl.isBlank()
                 && !videoTutorialRepository
                         .findByRecordingUrlAndInstitutionIdAndIsDeletedFalse(recordingUrl, institutionId)

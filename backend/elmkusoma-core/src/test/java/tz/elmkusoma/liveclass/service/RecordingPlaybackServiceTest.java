@@ -103,7 +103,7 @@ class RecordingPlaybackServiceTest {
         LiveKitConfig config = new LiveKitConfig();
         config.getEgress().setEndpoint(endpoint);
         config.getEgress().setOutputBucket(BUCKET);
-        service = new RecordingPlaybackService(config, 2000, 5000);
+        service = new RecordingPlaybackService(config, new RecordingStorageSigner(config), 2000, 5000);
     }
 
     @AfterAll
