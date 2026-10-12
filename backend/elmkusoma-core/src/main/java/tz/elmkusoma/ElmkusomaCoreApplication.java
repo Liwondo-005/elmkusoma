@@ -89,12 +89,30 @@ public class ElmkusomaCoreApplication {
         return findEnvFile(new File("."));
     }
 
-    /** Package-visible for tests, which supply an isolated temporary directory. */
+    /**
+     * Package-visible for tests, which supply an isolated temporary directory.
+     *
+     * <p>The directory is canonicalised first. Production calls this with {@code new File(".")},
+     * whose absolute form is {@code <working-dir>/.} - a path whose last name component is the
+     * literal {@code "."}. Taking the parent of <em>that</em> string yields the working
+     * directory itself instead of its parent, which silently disabled the {@code ../.env}
+     * branch and left {@code backend/.env} invisible when the module directory
+     * ({@code backend/elmkusoma-core}) is the working directory - the normal way the service
+     * is launched. Canonicalising collapses the trailing {@code "."} so the parent lookup sees
+     * the real one.</p>
+     */
     static File findEnvFile(File workingDir) {
-        File local = new File(workingDir, ".env");
+        File base;
+        try {
+            base = workingDir.getCanonicalFile();
+        } catch (IOException e) {
+            base = workingDir.getAbsoluteFile();
+        }
+
+        File local = new File(base, ".env");
         if (isUsable(local)) return local;
 
-        File parent = workingDir.getAbsoluteFile().getParentFile();
+        File parent = base.getParentFile();
         if (parent != null) {
             File parentEnv = new File(parent, ".env");
             if (isUsable(parentEnv) && isUsable(new File(parent, BACKEND_ROOT_MARKER))) {

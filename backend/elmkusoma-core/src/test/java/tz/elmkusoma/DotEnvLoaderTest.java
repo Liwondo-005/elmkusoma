@@ -53,6 +53,35 @@ class DotEnvLoaderTest {
     }
 
     /**
+     * The regression this fix exists for. Production calls {@code findEnvFile()} with
+     * {@code new File(".")} - a path whose absolute form ends in a literal {@code "."}
+     * ({@code backend/elmkusoma-core/.}). Parent-taking that string returned the working
+     * directory itself, so the {@code ../.env} branch never looked at the real parent and
+     * {@code backend/.env} was never loaded. Running the module directory the normal way then
+     * failed at startup with an unresolvable {@code ${JWT_SECRET}}.
+     *
+     * <p>The other parent test above passes a clean {@code <parent>/elmkusoma-core} path, whose
+     * parent resolves correctly - which is why the broken behaviour was not caught.</p>
+     */
+    @Test
+    void findEnvFile_findsTheBackendRootWhenTheWorkingDirectoryIsGivenAsADotPath(@TempDir File parent)
+            throws IOException {
+        write(new File(parent, ".env.example"), "# template\n");
+        write(new File(parent, ".env"), "SENTINEL=from-backend-root\n");
+        File module = new File(parent, "elmkusoma-core");
+        assertTrue(module.mkdirs());
+
+        File dotPath = new File(module, ".");
+        assertEquals(module.getAbsolutePath() + File.separator + ".",
+                dotPath.getAbsolutePath(),
+                "the precondition: this path really does end in a literal '.'");
+
+        File found = ElmkusomaCoreApplication.findEnvFile(dotPath);
+        assertNotNull(found, "../.env must be found when the working directory is given as <dir>/.");
+        assertEquals(new File(parent, ".env").getAbsoluteFile(), found.getAbsoluteFile());
+    }
+
+    /**
      * The regression this guard exists for: without a marker, {@code ../.env} would walk out of
      * the project and load whatever happens to sit in an unrelated parent directory.
      */
