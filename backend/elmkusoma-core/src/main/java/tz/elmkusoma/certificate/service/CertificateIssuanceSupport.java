@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.audit.service.PlatformAuditScope;
 import tz.elmkusoma.certificate.domain.Certificate;
 
 import java.util.Locale;
@@ -80,7 +81,9 @@ public class CertificateIssuanceSupport {
                                         String source, String detail) {
         try {
             auditService.recordAuditLog(
-                    certificate.getInstitutionId(),
+                    certificate.getInstitutionId() != null
+                            ? certificate.getInstitutionId()
+                            : PlatformAuditScope.PLATFORM_INSTITUTION_ID,
                     actorUserId,
                     SYSTEM_ACTOR_EMAIL,
                     SYSTEM_ACTOR_ROLE,
@@ -97,9 +100,11 @@ public class CertificateIssuanceSupport {
         } catch (Exception e) {
             // The certificate is already saved; failing the caller's transaction here would roll
             // back an expiry sweep or an attendance record that is independently correct. The
-            // failure is logged loudly rather than silently swallowed.
+            // failure is logged loudly rather than silently swallowed, with the throwable itself:
+            // e.getMessage() is null for an NPE, which would have logged only ": null" and given no
+            // indication of what actually went wrong.
             log.error("Failed to audit automatic certificate issuance {} ({}): {}",
-                    certificate.getSerialNumber(), source, e.getMessage());
+                    certificate.getSerialNumber(), source, e.getMessage(), e);
         }
     }
 }

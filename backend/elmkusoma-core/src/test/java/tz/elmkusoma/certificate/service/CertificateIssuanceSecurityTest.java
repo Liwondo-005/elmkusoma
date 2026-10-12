@@ -9,7 +9,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
+import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.audit.service.PlatformAuditScope;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.CertificateSignatory;
 import tz.elmkusoma.certificate.domain.CertificateTemplate;
@@ -44,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -253,7 +256,37 @@ class CertificateIssuanceSecurityTest {
     }
 
     @Test
-    void issue_refusesWhenTheTemplateWasDeactivatedDuringReview() {
+    void verify_anUnknownCode_isStillAudited() {
+        // Brute-force guessing a verification code is exactly what the audit trail exists to reveal.
+        // audit_logs.institution_id is NOT NULL, so this used to attempt an insert with a null
+        // institution, fail on the constraint, and be swallowed by the catch - leaving failed
+        // lookups completely unaudited while the code claimed otherwise.
+        when(certificateRepository.findByVerificationCodeAndIsDeletedFalse("NO-SUCH-CODE"))
+                .thenReturn(Optional.empty());
+
+        var response = certificateService.verifyCertificate("NO-SUCH-CODE", "1.2.3.4");
+
+        assertFalse(response.isValid());
+        verify(auditService).recordAuditLog(
+                eq(PlatformAuditScope.PLATFORM_INSTITUTION_ID), isNull(), isNull(), eq("PUBLIC"),
+                eq("Certificate"), isNull(), isNull(), eq(AuditLog.AuditAction.VIEW), isNull(), any());
+    }
+
+    @Test
+    void verify_anUnknownCode_staysVerifiableWhenTheAuditWriteFails() {
+        // Auditing must never turn a public verification into a 500.
+        when(certificateRepository.findByVerificationCodeAndIsDeletedFalse("NO-SUCH-CODE"))
+                .thenReturn(Optional.empty());
+        org.mockito.Mockito.doThrow(new RuntimeException("audit db down"))
+                .when(auditService).recordAuditLog(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        var response = certificateService.verifyCertificate("NO-SUCH-CODE", "1.2.3.4");
+
+        assertFalse(response.isValid(), "verification must still answer even if the audit write fails");
+    }
+
+    @Test
+    void issue_isRefusedWhenTheTemplateWasDeactivatedDuringReview() {
         // Generation checks isActive, but issuance did not. A certificate drafted against a
         // template can sit in review for weeks while that template is withdrawn, then be issued
         // from it anyway - producing documents the institution has already disowned.

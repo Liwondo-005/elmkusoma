@@ -21,6 +21,7 @@ import tz.elmkusoma.certificate.repository.*;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.domain.SecurityEvent;
 import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.audit.service.PlatformAuditScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import tz.elmkusoma.exception.ForbiddenException;
@@ -670,10 +671,21 @@ public class CertificateService {
                 .build();
     }
 
+    /**
+     * Records a public verification attempt.
+     *
+     * <p>The institution scope falls back to the platform scope rather than null. An unknown code
+     * belongs to no school, but it is exactly the event an operator needs to see, and
+     * {@code audit_logs.institution_id} is NOT NULL - so passing null failed the insert and the
+     * catch below swallowed it. Failed lookups were therefore not recorded at all, which is the
+     * one case the surrounding comment claimed to cover.</p>
+     */
     private void auditVerification(UUID institutionId, Certificate certificate,
                                    String outcome, boolean valid) {
         try {
-            auditService.recordAuditLog(institutionId, null, null, "PUBLIC",
+            auditService.recordAuditLog(
+                    institutionId != null ? institutionId : PlatformAuditScope.PLATFORM_INSTITUTION_ID,
+                    null, null, "PUBLIC",
                     "Certificate",
                     certificate == null ? null : certificate.getId(),
                     certificate == null ? null : certificate.getSerialNumber(),
@@ -681,7 +693,7 @@ public class CertificateService {
                     java.util.Map.of("outcome", outcome, "valid", valid));
         } catch (Exception e) {
             // Audit must never turn a public verification into a 500.
-            log.warn("Failed to audit certificate verification ({}): {}", outcome, e.getMessage());
+            log.warn("Failed to audit certificate verification ({}): {}", outcome, e.getMessage(), e);
         }
     }
 
