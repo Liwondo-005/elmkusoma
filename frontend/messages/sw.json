@@ -9393,5 +9393,63 @@
     "excused": "Imetolewa",
     "pending": "Inasubiri",
     "inProgress": "Inaendelea"
+  },
+  "certificates": {
+    "approval": {
+      "title": "Uthibitisho wa Cheti",
+      "subtitle": "Pitia na idhinisha vyeti kabla ya kutolewa.",
+      "queueTitle": "Inasubiri uamuzi wako",
+      "queueEmpty": "Hakuna kinachosubiri uthibitisho.",
+      "queueEmptyHint": "Vyeti huja hapa baada ya kuwasilishwa kwa ukaguzi.",
+      "stage": "Hatua",
+      "stagePreparation": "Maandalizi",
+      "stageValidation": "Uthibitisho wa ushahidi",
+      "stageApproval": "Uthibitisho wa taasisi",
+      "status": "Uamuzi",
+      "statusPending": "Inasubiri",
+      "statusApproved": "Imeidhinishwa",
+      "statusRejected": "Imekataliwa",
+      "statusWithdrawn": "Imebatilishwa",
+      "award": "Tuzo",
+      "recipient": "Mpokeaji",
+      "submittedBy": "Aliwasilisha",
+      "decidedBy": "Aliidhinisha",
+      "decidedAt": "Iliamuliwa",
+      "notDecidedYet": "Bado haijamuliwa",
+      "reason": "Sababu",
+      "reasonForRejection": "Ni nini kinapaswa kubadilika kabla ya uthibitisho?",
+      "reasonPlaceholder": "Eleza kilichokoseka au kukosewa ili mwaandaaji ajue la kurekebisha.",
+      "reasonRequired": "Kukatala kunapaswa kueleza kinachopaswa kubadilika.",
+      "templateVersion": "Toleo la kielelezo",
+      "templateVersionChanged": "Kielelezo kimebadilika baada ya uthibitisho huu. Pitia muundo wa sasa kabla ya kuamua.",
+      "approve": "Idhinisha",
+      "reject": "Kataa",
+      "withdraw": "Batilisha uthibitisho",
+      "withdrawTitle": "Batilisha uthibitisho huu?",
+      "withdrawBody": "Kubatilisha kurudisha cheti kwenye ukaguzi. Uamuzi utabaki kwenye kumbukumbu.",
+      "cancel": "Ghairi",
+      "confirm": "Thibitisha",
+      "submitForApproval": "Wasilisha kwa uthibitisho",
+      "submitHint": "Kupeleka hapa huhamishia cheti kwenye ukaguzi. Hakutaweza kutolewa hadi kila hatua inayohitajika kuthibitishwa.",
+      "issue": "Toa cheti",
+      "issueBlocked": "Kutolewa kumezuiwa hadi kila hatua inayohitajika kuthibitishwa.",
+      "history": "Historia ya maamizi",
+      "historyEmpty": "Hakuna maamizi yaliyorekodiwa bado.",
+      "actionFailed": "Kitendo hiki kisingeweza kukamilishwa.",
+      "noPermission": "Huna ruhusa yako ya kuamua hatua hii."
+    },
+    "status": {
+      "DRAFT": "Rasimu",
+      "PENDING_APPROVAL": "Inasubiri uthibitisho",
+      "APPROVED": "Imeidhinishwa, inasubiri kutolewa",
+      "ISSUED": "Imetolewa",
+      "REVOKED": "Imebatilishwa"
+    },
+    "type": {
+      "COMPLETION": "Cheti cha ukamilishaji",
+      "ACHIEVEMENT": "Cheti cha mafanikio",
+      "PARTICIPATION": "Cheti cha ushiriki",
+      "TRANSCRIPT": "Rejeleja"
+    }
   }
 }

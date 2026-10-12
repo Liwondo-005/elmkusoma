@@ -368,6 +368,9 @@ export interface Certificate {
   status: string
   verificationCode: string
   courseOrProgramme: string | null
+  serialNumber: string | null
+  certificateType?: string | null
+  skills?: string[] | null
 }
 
 export interface EventItem {

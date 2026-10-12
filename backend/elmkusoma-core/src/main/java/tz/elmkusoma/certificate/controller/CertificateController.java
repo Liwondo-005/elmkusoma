@@ -233,6 +233,21 @@ public class CertificateController {
             response = certificateService.getCertificatesByStudent(studentId, institutionId,
                     PageRequest.of(page, size));
         } else {
+            // Omitting studentId means "the whole institution", which is an institutional view.
+            //
+            // Previously any role could reach it, so a learner calling /v1/certificates with no
+            // parameter received every certificate in their school: other students' names, serials,
+            // grades and completion dates. The endpoint's role check admitted STUDENT/PARENT, but
+            // the ownership checks below only ever ran on the studentId branch.
+            //
+            // Learner-facing callers are therefore required to name a student, and the student
+            // branch above resolves their own record.
+            if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)
+                    || "PARENT".equals(userRole)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error(
+                                "Access denied: name the student whose certificates you are requesting"));
+            }
             response = certificateService.getCertificatesByInstitution(institutionId, PageRequest.of(page, size));
         }
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -307,9 +322,7 @@ public class CertificateController {
         // Reuse the detail endpoint so the tenant check happens before anything is disclosed.
         certificateService.getCertificateById(certificateId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(
-                certificateApprovalService.history(certificateId).stream()
-                        .map(CertificateApprovalResponse::from)
-                        .toList()));
+                certificateApprovalService.historyWithContext(certificateId)));
     }
 
     @GetMapping("/approval-queue")
@@ -318,9 +331,7 @@ public class CertificateController {
     public ResponseEntity<ApiResponse<List<CertificateApprovalResponse>>> approvalQueue(
             @RequestAttribute("institutionId") UUID institutionId) {
         return ResponseEntity.ok(ApiResponse.success(
-                certificateApprovalService.pendingForInstitution(institutionId).stream()
-                        .map(CertificateApprovalResponse::from)
-                        .toList()));
+                certificateApprovalService.pendingQueue(institutionId)));
     }
 
     // â”€â”€ Transcript Endpoints â”€â”€

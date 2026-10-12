@@ -120,4 +120,13 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
                                         @Param("templateId") UUID templateId,
                                         @Param("certificateType") Certificate.CertificateType certificateType,
                                         @Param("title") String title);
+
+    /**
+     * Loads many certificates at once, skipping soft-deleted rows.
+     *
+     * <p>Used by the approval queue, which renders a list of pending decisions. Each decision needs
+     * the certificate's serial, title and recipient to be reviewable at all, and resolving them one
+     * at a time would make a single page view into one query per row.</p>
+     */
+    List<Certificate> findByIdInAndIsDeletedFalse(List<UUID> ids);
 }

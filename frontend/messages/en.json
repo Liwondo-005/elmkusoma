@@ -9400,5 +9400,63 @@
     "excused": "Excused",
     "pending": "Pending",
     "inProgress": "In progress"
+  },
+  "certificates": {
+    "approval": {
+      "title": "Certificate approvals",
+      "subtitle": "Review and authorise certificates before they are released.",
+      "queueTitle": "Awaiting your decision",
+      "queueEmpty": "Nothing is waiting for approval.",
+      "queueEmptyHint": "Certificates appear here once they have been submitted for review.",
+      "stage": "Stage",
+      "stagePreparation": "Preparation",
+      "stageValidation": "Evidence validation",
+      "stageApproval": "Institutional approval",
+      "status": "Decision",
+      "statusPending": "Pending",
+      "statusApproved": "Approved",
+      "statusRejected": "Refused",
+      "statusWithdrawn": "Withdrawn",
+      "award": "Award",
+      "recipient": "Recipient",
+      "submittedBy": "Submitted by",
+      "decidedBy": "Decided by",
+      "decidedAt": "Decided",
+      "notDecidedYet": "Not decided yet",
+      "reason": "Reason",
+      "reasonForRejection": "What must change before this can be approved?",
+      "reasonPlaceholder": "Explain what is missing or wrong, so the preparer knows what to fix.",
+      "reasonRequired": "A refusal must say what must change.",
+      "templateVersion": "Template version",
+      "templateVersionChanged": "The template changed after this was approved. Review the current design before deciding.",
+      "approve": "Approve",
+      "reject": "Refuse",
+      "withdraw": "Withdraw approval",
+      "withdrawTitle": "Withdraw this approval?",
+      "withdrawBody": "Withdrawing returns the certificate to review. The decision stays on record.",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "submitForApproval": "Submit for approval",
+      "submitHint": "Submitting moves this certificate into review. It cannot be released until every required stage is approved.",
+      "issue": "Release certificate",
+      "issueBlocked": "Release is blocked until every required stage is approved.",
+      "history": "Decision history",
+      "historyEmpty": "No decisions recorded yet.",
+      "actionFailed": "That action could not be completed.",
+      "noPermission": "You do not have permission to decide this stage."
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "PENDING_APPROVAL": "Awaiting approval",
+      "APPROVED": "Approved, awaiting release",
+      "ISSUED": "Issued",
+      "REVOKED": "Revoked"
+    },
+    "type": {
+      "COMPLETION": "Certificate of completion",
+      "ACHIEVEMENT": "Certificate of achievement",
+      "PARTICIPATION": "Certificate of participation",
+      "TRANSCRIPT": "Transcript"
+    }
   }
 }

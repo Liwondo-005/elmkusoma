@@ -12,6 +12,7 @@ import tz.elmkusoma.certificate.domain.CertificateApproval.ApprovalStage;
 import tz.elmkusoma.certificate.domain.CertificateApproval.DecisionStatus;
 import tz.elmkusoma.certificate.domain.CertificateTemplate;
 import tz.elmkusoma.certificate.domain.CertificateTemplate.TemplateFamily;
+import tz.elmkusoma.certificate.dto.CertificateApprovalResponse;
 import tz.elmkusoma.certificate.repository.CertificateApprovalRepository;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.certificate.repository.CertificateTemplateRepository;
@@ -361,6 +362,43 @@ public class CertificateApprovalService {
     public List<CertificateApproval> pendingForInstitution(UUID institutionId) {
         return approvalRepository.findByInstitutionIdAndIsDeletedFalseAndDecisionStatusOrderByCreatedAtAsc(
                 institutionId, DecisionStatus.PENDING);
+    }
+
+    /**
+     * The review queue, with each decision joined to the certificate it is about.
+     *
+     * <p>A reviewer cannot judge a decision without knowing whose award it is and what the award is,
+     * so a list of bare approval rows is not actionable. The certificates are fetched in one query
+     * and attached, rather than resolved per row, which would make one page view into an N+1.</p>
+     */
+    public List<CertificateApprovalResponse> pendingQueue(UUID institutionId) {
+        List<CertificateApproval> pending = pendingForInstitution(institutionId);
+        if (pending.isEmpty()) {
+            return List.of();
+        }
+        java.util.Map<UUID, Certificate> byId = new java.util.HashMap<>();
+        certificateRepository.findByIdInAndIsDeletedFalse(
+                        pending.stream().map(CertificateApproval::getCertificateId).distinct().toList())
+                .forEach(certificate -> byId.put(certificate.getId(), certificate));
+
+        return pending.stream()
+                .map(approval -> CertificateApprovalResponse.from(approval, byId.get(approval.getCertificateId())))
+                .toList();
+    }
+
+    /**
+     * The full decision history for one certificate, each decision joined to the certificate.
+     *
+     * <p>Same reasoning as the queue: the history is only auditable if each entry says which award
+     * it refers to.</p>
+     */
+    public List<CertificateApprovalResponse> historyWithContext(UUID certificateId) {
+        List<CertificateApproval> history = history(certificateId);
+        if (history.isEmpty()) {
+            return List.of();
+        }
+        Certificate certificate = certificateRepository.findByIdAndIsDeletedFalse(certificateId).orElse(null);
+        return history.stream().map(approval -> CertificateApprovalResponse.from(approval, certificate)).toList();
     }
 
     /** Dates are used by the queue view; kept here so the controller does not import java.time. */

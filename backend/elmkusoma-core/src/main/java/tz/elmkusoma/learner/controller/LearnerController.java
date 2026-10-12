@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.course.domain.*;
 import tz.elmkusoma.course.repository.*;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
@@ -79,6 +80,7 @@ public class LearnerController {
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final LearnerGoalRepository learningGoalRepository;
+    private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
 
     /** Video visibilities every learner may see; PRIVATE/DRAFT stay creator-only. */
     private static final java.util.Set<String> OPEN_VIDEO_VISIBILITIES =
@@ -795,7 +797,15 @@ public class LearnerController {
     @Operation(summary = "List my issued certificates")
     public ResponseEntity<ApiResponse<List<Certificate>>> myCertificates(
             @RequestAttribute("userId") UUID userId) {
-        List<Certificate> certificates = certificateRepository.findIssuedByStudentId(userId);
+        // certificates.student_id is a students.id, but the authenticated principal is a users.id.
+        // Querying with the user id compared two unrelated identifiers, so a learner saw none of
+        // their own certificates. Resolve the student record first, as the certificate controller
+        // does, so the comparison happens in one identifier space.
+        Student student = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (student == null) {
+            return ResponseEntity.ok(ApiResponse.success(List.of()));
+        }
+        List<Certificate> certificates = certificateRepository.findIssuedByStudentId(student.getId());
         return ResponseEntity.ok(ApiResponse.success(certificates));
     }
 
@@ -804,8 +814,14 @@ public class LearnerController {
     public ResponseEntity<ApiResponse<Certificate>> myCertificateDetail(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID certificateId) {
+        Student student = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (student == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Certificate not found"));
+        }
         return certificateRepository.findById(certificateId)
-                .filter(c -> c.getStudentId().equals(userId) && !Boolean.TRUE.equals(c.getIsDeleted()))
+                .filter(c -> c.getStudentId().equals(student.getId())
+                        && !Boolean.TRUE.equals(c.getIsDeleted()))
                 .map(c -> ResponseEntity.ok(ApiResponse.success(c)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Certificate not found")));
     }

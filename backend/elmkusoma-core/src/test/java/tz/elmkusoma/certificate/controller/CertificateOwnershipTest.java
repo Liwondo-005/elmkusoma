@@ -155,8 +155,44 @@ class CertificateOwnershipTest {
     }
 
     @Test
-    @DisplayName("a linked parent can read their child's certificate")
-    void aLinkedParentCanReadTheChildsCertificate() {
+    @DisplayName("a student without a studentId parameter is refused the institution-wide list")
+    void aStudentCannotListTheWholeInstitution() {
+        // Omitting studentId selects the unfiltered branch, which returns every certificate in the
+        // institution: other students' names, serials, grades and completion dates. The endpoint
+        // admits STUDENT, but the ownership checks only ever ran when studentId was present, so
+        // the learner-facing call /v1/certificates (no params) returned the whole school.
+        ResponseEntity<ApiResponse<org.springframework.data.domain.Page<CertificateResponse>>> response =
+                controller.getCertificates(null, institutionId, userId, "STUDENT", 0, 20);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
+                "an unnamed student is an institution-wide query and must not be served to a learner");
+    }
+
+    @Test
+    @DisplayName("a parent without a studentId parameter is refused the institution-wide list")
+    void aParentCannotListTheWholeInstitution() {
+        ResponseEntity<ApiResponse<org.springframework.data.domain.Page<CertificateResponse>>> response =
+                controller.getCertificates(null, institutionId, userId, "PARENT", 0, 20);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
+                "a parent must name a linked child, not receive every certificate in the school");
+    }
+
+    @Test
+    @DisplayName("an administrator keeps the institution-wide list")
+    void anAdministratorKeepsTheInstitutionWideList() {
+        when(certificateService.getCertificatesByInstitution(eq(institutionId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of()));
+
+        ResponseEntity<ApiResponse<org.springframework.data.domain.Page<CertificateResponse>>> response =
+                controller.getCertificates(null, institutionId, userId, "ADMIN", 0, 20);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "the unfiltered branch exists for staff, and is still reachable by staff");
+    }
+
+    @Test
+    @DisplayName("a linked parent can read their child's certificate")    void aLinkedParentCanReadTheChildsCertificate() {
         UUID certificateId = UUID.randomUUID();
         UUID parentRowId = UUID.randomUUID();
 
