@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import { Users, Loader2, Search, UserCheck, UserX, Plus, Pencil, Trash2, Key, RotateCcw, AlertCircle, RefreshCw, Mail, Shield, ShieldAlert } from "lucide-react"
 import { platformAdminApi, type UserSummary, type PageResponse } from "@/lib/platform-admin-api"
 import { UserFormModal } from "@/components/platform-admin/user-form-modal"
+import { formatDate as fmtDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 const ROLES = ["", "STUDENT", "TEACHER", "PARENT", "OTHER_LEARNER", "ADMIN", "INSTITUTION_ADMIN", "PROVIDER_ADMIN"]
 const PAGE_SIZE = 20
@@ -15,6 +17,7 @@ export default function PlatformUsersPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
   const ts = useTranslations("status");
+  const locale = useLocale()
   const router = useRouter()
   const [data, setData] = useState<PageResponse<UserSummary> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -148,7 +151,7 @@ const editingForModal = editing ? {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  const formatDate = (d: string) => fmtDate(d, locale, { day: "2-digit", month: "short", year: "numeric" })
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

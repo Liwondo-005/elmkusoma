@@ -97,6 +97,7 @@ function HealthDot({ status }: { status: string }) {
 export default function PlatformAdminDashboard() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
+  const tn = useTranslations("nav");
   const [dash, setDash] = useState<EnhancedDashboard | null>(null)
   const [attention, setAttention] = useState<AttentionItem[]>([])
   const [activity, setActivity] = useState<ActivityFeed[]>([])
@@ -146,10 +147,10 @@ export default function PlatformAdminDashboard() {
         <h2 className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3">{t("dashboard.platformOverview")}</h2>
         {loading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div> : dash ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <PrimaryKpi icon={Users} label="Total Users" value={dash.totalUsers} sub={`${dash.totalStudents} students · ${dash.totalTeachers} educators`} href="/dashboard/platform-admin/users" accent="#2563eb" />
-            <PrimaryKpi icon={Building2} label="Institutions" value={dash.totalInstitutions} sub="Schools · Colleges · TVET · Universities" href="/dashboard/platform-admin/institutions" accent="#059669" />
-            <PrimaryKpi icon={Radio} label="Live Classes" value={dash.totalLiveClasses} sub={`${dash.activeLiveClasses} active now`} href="/dashboard/platform-admin/live-classes" accent="#7c3aed" />
-            <PrimaryKpi icon={FileCheck} label="Certificates" value={dash.totalCertificates} sub="Issued & verified" href="/dashboard/platform-admin/certificates" accent="#d97706" />
+            <PrimaryKpi icon={Users} label={t("health.totalUsers")} value={dash.totalUsers} sub={t("shared.kpi.studentsEducators", { p0: dash.totalStudents, p1: dash.totalTeachers })} href="/dashboard/platform-admin/users" accent="#2563eb" />
+            <PrimaryKpi icon={Building2} label={t("dashboard.institutions")} value={dash.totalInstitutions} sub={t("shared.kpi.institutionMix")} href="/dashboard/platform-admin/institutions" accent="#059669" />
+            <PrimaryKpi icon={Radio} label={t("shared.kpi.liveClasses")} value={dash.totalLiveClasses} sub={t("shared.kpi.activeNow", { p0: dash.activeLiveClasses })} href="/dashboard/platform-admin/live-classes" accent="#7c3aed" />
+            <PrimaryKpi icon={FileCheck} label={t("certificates.certificates")} value={dash.totalCertificates} sub={t("shared.kpi.issuedVerified")} href="/dashboard/platform-admin/certificates" accent="#d97706" />
           </div>
         ) : <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{t("dashboard.dataUnavailable")}</div>}
       </div>
@@ -157,10 +158,10 @@ export default function PlatformAdminDashboard() {
       {/* Operational */}
       {loading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div> : dash ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <OperationalCard icon={AlertTriangle} label="Open Incidents" value={dash.openIncidents || 0} sub="Requires resolution" href="/dashboard/platform-admin/incidents" color="bg-red-50 border-red-200 text-red-700" />
-          <OperationalCard icon={ShieldAlert} label="Pending Verification" value={dash.pendingVerifications || 0} sub="Awaiting review" href="/dashboard/platform-admin/verifications" color="bg-amber-50 border-amber-200 text-amber-700" />
-          <OperationalCard icon={Package} label="Active Services" value={dash.activeServices || 0} sub="Enabled catalogue" href="/dashboard/platform-admin/services" color="bg-teal-50 border-teal-200 text-teal-700" />
-          <OperationalCard icon={Bell} label="Notifications" value={dash.totalNotifications || 0} sub="Platform broadcasts" href="/dashboard/platform-admin/communications" color="bg-violet-50 border-violet-200 text-violet-700" />
+          <OperationalCard icon={AlertTriangle} label={t("shared.kpi.openIncidents")} value={dash.openIncidents || 0} sub={t("shared.kpi.requiresResolution")} href="/dashboard/platform-admin/incidents" color="bg-red-50 border-red-200 text-red-700" />
+          <OperationalCard icon={ShieldAlert} label={t("verifications.pendingVerifications")} value={dash.pendingVerifications || 0} sub={t("shared.kpi.awaitingReview")} href="/dashboard/platform-admin/verifications" color="bg-amber-50 border-amber-200 text-amber-700" />
+          <OperationalCard icon={Package} label={t("shared.kpi.activeServices")} value={dash.activeServices || 0} sub={t("shared.kpi.enabledCatalogue")} href="/dashboard/platform-admin/services" color="bg-teal-50 border-teal-200 text-teal-700" />
+          <OperationalCard icon={Bell} label={tn("notifications")} value={dash.totalNotifications || 0} sub={t("shared.kpi.platformBroadcasts")} href="/dashboard/platform-admin/communications" color="bg-violet-50 border-violet-200 text-violet-700" />
         </div>
       ) : null}
 

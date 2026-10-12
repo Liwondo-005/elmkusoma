@@ -36,40 +36,29 @@ type ProfessionalDevGoal = {
 }
 
 const STATUS_OPTIONS = [
-  { value: "ALL", label: "All Status" },
-  { value: "NOT_STARTED", label: "Not Started" },
-  { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "COMPLETED", label: "Completed" },
-  { value: "ON_HOLD", label: "On Hold" },
-  { value: "CANCELLED", label: "Cancelled" },
+  { value: "ALL", labelKey: "goalStatus.all" },
+  { value: "NOT_STARTED", labelKey: "goalStatus.not_started" },
+  { value: "IN_PROGRESS", labelKey: "goalStatus.in_progress" },
+  { value: "COMPLETED", labelKey: "goalStatus.completed" },
+  { value: "ON_HOLD", labelKey: "goalStatus.on_hold" },
+  { value: "CANCELLED", labelKey: "goalStatus.cancelled" },
 ]
 
 const TYPE_OPTIONS = [
-  { value: "ALL", label: "All Types" },
-  { value: "SKILL_DEVELOPMENT", label: "Skill Development" },
-  { value: "CERTIFICATION", label: "Certification" },
-  { value: "INTERNSHIP", label: "Internship" },
-  { value: "RESEARCH", label: "Research" },
-  { value: "CONFERENCE", label: "Conference" },
-  { value: "PUBLICATION", label: "Publication" },
-  { value: "NETWORKING", label: "Networking" },
-  { value: "LEADERSHIP", label: "Leadership" },
-  { value: "COMMUNICATION", label: "Communication" },
-  { value: "TECHNICAL", label: "Technical" },
+  { value: "ALL", labelKey: "goalType.all" },
+  { value: "SKILL_DEVELOPMENT", labelKey: "goalType.skillDevelopment" },
+  { value: "CERTIFICATION", labelKey: "goalType.certification" },
+  { value: "INTERNSHIP", labelKey: "goalType.internship" },
+  { value: "RESEARCH", labelKey: "goalType.research" },
+  { value: "CONFERENCE", labelKey: "goalType.conference" },
+  { value: "PUBLICATION", labelKey: "goalType.publication" },
+  { value: "NETWORKING", labelKey: "goalType.networking" },
+  { value: "LEADERSHIP", labelKey: "goalType.leadership" },
+  { value: "COMMUNICATION", labelKey: "goalType.communication" },
+  { value: "TECHNICAL", labelKey: "goalType.technical" },
 ]
 
-const GOAL_TYPE_OPTIONS = [
-  { value: "SKILL_DEVELOPMENT", label: "Skill Development" },
-  { value: "CERTIFICATION", label: "Certification" },
-  { value: "INTERNSHIP", label: "Internship" },
-  { value: "RESEARCH", label: "Research" },
-  { value: "CONFERENCE", label: "Conference" },
-  { value: "PUBLICATION", label: "Publication" },
-  { value: "NETWORKING", label: "Networking" },
-  { value: "LEADERSHIP", label: "Leadership" },
-  { value: "COMMUNICATION", label: "Communication" },
-  { value: "TECHNICAL", label: "Technical" },
-]
+const GOAL_TYPE_OPTIONS = TYPE_OPTIONS.filter((opt) => opt.value !== "ALL")
 
 const statusColors: Record<string, string> = {
   NOT_STARTED: "bg-muted text-muted-foreground",
@@ -106,18 +95,37 @@ const typeIconMap: Record<string, React.ReactNode> = {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const tu = useTranslations("learnerUi")
+  const label = tu(`goalStatus.${status.toLowerCase()}`)
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
         statusColors[status] || "bg-muted text-muted-foreground"
       }`}
     >
-      {status.replace(/_/g, " ")}
+      {label}
     </span>
   )
 }
 
+const GOAL_TYPE_LABEL_KEYS: Record<string, string> = {
+  SKILL_DEVELOPMENT: "goalType.skillDevelopment",
+  CERTIFICATION: "goalType.certification",
+  INTERNSHIP: "goalType.internship",
+  RESEARCH: "goalType.research",
+  CONFERENCE: "goalType.conference",
+  PUBLICATION: "goalType.publication",
+  NETWORKING: "goalType.networking",
+  LEADERSHIP: "goalType.leadership",
+  COMMUNICATION: "goalType.communication",
+  TECHNICAL: "goalType.technical",
+}
+
 function TypeBadge({ goalType }: { goalType: string }) {
+  const tu = useTranslations("learnerUi")
+  const label = GOAL_TYPE_LABEL_KEYS[goalType]
+    ? tu(GOAL_TYPE_LABEL_KEYS[goalType])
+    : goalType.replace(/_/g, " ")
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
@@ -125,16 +133,17 @@ function TypeBadge({ goalType }: { goalType: string }) {
       }`}
     >
       {typeIconMap[goalType]}
-      {goalType.replace(/_/g, " ")}
+      {label}
     </span>
   )
 }
 
 function ProgressBar({ percent, label }: { percent: number; label?: string }) {
+  const tc = useTranslations("common")
   return (
     <div className="w-full">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{label || "Progress"}</span>
+        <span className="text-muted-foreground">{label || tc("progress")}</span>
         <span className="font-semibold text-foreground">{percent}%</span>
       </div>
       <div
@@ -156,6 +165,7 @@ function ProgressBar({ percent, label }: { percent: number; label?: string }) {
 export default function ProfessionalDevPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
+  const tu = useTranslations("learnerUi")
   const { user, loading: authLoading } = useAuth()
   const [goals, setGoals] = useState<ProfessionalDevGoal[]>([])
   const [loading, setLoading] = useState(true)
@@ -291,7 +301,7 @@ export default function ProfessionalDevPage() {
 
   if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || tu("fallbackName")
 
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
@@ -375,7 +385,7 @@ export default function ProfessionalDevPage() {
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {tu(opt.labelKey)}
               </option>
             ))}
           </select>
@@ -389,7 +399,7 @@ export default function ProfessionalDevPage() {
           >
             {TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {tu(opt.labelKey)}
               </option>
             ))}
           </select>
@@ -408,7 +418,7 @@ export default function ProfessionalDevPage() {
                 type="text"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
-                placeholder="e.g. AWS Solutions Architect Certification"
+                placeholder={tu("goalForm.titlePlaceholder")}
                 aria-label={t("professionalDev.title")}
                 className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
@@ -424,7 +434,7 @@ export default function ProfessionalDevPage() {
                 >
                   {GOAL_TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {tu(opt.labelKey)}
                     </option>
                   ))}
                 </select>
@@ -445,7 +455,7 @@ export default function ProfessionalDevPage() {
               <textarea
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Describe your goal..."
+                placeholder={tu("goalForm.descriptionPlaceholder")}
                 rows={3}
                 aria-label={t("professionalDev.description")}
                 className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
@@ -458,7 +468,7 @@ export default function ProfessionalDevPage() {
                   type="text"
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
-                  placeholder="e.g. Cloud Computing"
+                  placeholder={tu("goalForm.categoryPlaceholder")}
                   aria-label={t("professionalDev.category")}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
@@ -469,7 +479,7 @@ export default function ProfessionalDevPage() {
                   type="text"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  placeholder="Additional notes..."
+                  placeholder={tu("goalForm.notesPlaceholder")}
                   aria-label={t("professionalDev.notes")}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />

@@ -5,9 +5,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react"
 import { ShieldAlert, Loader2, CheckCircle2, Globe, Clock } from "lucide-react"
 import { platformAdminApi, type SecurityEventItem } from "@/lib/platform-admin-api"
+import { formatDateTime as fmtDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 export default function SecurityCenterPage() {
   const t = useTranslations("platformAdmin");
+  const locale = useLocale()
   const [events, setEvents] = useState<SecurityEventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -53,7 +56,7 @@ export default function SecurityCenterPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  const formatDate = (d: string) => fmtDateTime(d, locale, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
   const unresolved = events.filter((e) => !e.resolved)
 

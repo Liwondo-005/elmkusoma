@@ -93,7 +93,7 @@ export default function PlatformResourcesPage() {
                         onClick={() => archiveAction(r.id, "ARCHIVE")}
                         disabled={acting === r.id}
                         className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"
-                        title="Archive resource"
+                        title={t("shared.resources.archiveResource")}
                       >
                         {acting === r.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} {t("resources.archive")}</button>
                     </td>

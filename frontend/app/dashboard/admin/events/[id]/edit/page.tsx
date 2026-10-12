@@ -172,7 +172,7 @@ export default function EditEventPage() {
         rescheduledFrom: data.rescheduledFrom || "",
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load event")
+      setError(err instanceof Error ? err.message : t("admin.form.loadError"))
     } finally {
       setLoading(false)
     }
@@ -216,7 +216,7 @@ export default function EditEventPage() {
       })
       router.push("/dashboard/admin/events")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update event")
+      setError(err instanceof Error ? err.message : t("admin.form.updateError"))
     } finally {
       setSaving(false)
     }
@@ -234,7 +234,7 @@ export default function EditEventPage() {
       }
       loadEvent()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Action failed")
+      setError(err instanceof Error ? err.message : t("admin.form.actionError"))
     } finally {
       setActionLoading(null)
     }
@@ -540,9 +540,9 @@ export default function EditEventPage() {
               aria-label={t("admin.form.formatLabel")}
             >
               <option value="">{t("admin.form.formatPlaceholder")}</option>
-              <option value="LIVE">Live</option>
-              <option value="RECORDED">Recorded</option>
-              <option value="HYBRID">Hybrid</option>
+              <option value="LIVE">{t("admin.formats.LIVE")}</option>
+              <option value="RECORDED">{t("admin.formats.RECORDED")}</option>
+              <option value="HYBRID">{t("admin.formats.HYBRID")}</option>
             </select>
           </div>
           <div>
@@ -554,10 +554,10 @@ export default function EditEventPage() {
               aria-label={t("admin.form.difficultyLabel")}
             >
               <option value="">{t("admin.form.difficultyPlaceholder")}</option>
-              <option value="BEGINNER">Beginner</option>
-              <option value="INTERMEDIATE">Intermediate</option>
-              <option value="ADVANCED">Advanced</option>
-              <option value="EXPERT">Expert</option>
+              <option value="BEGINNER">{t("admin.difficulties.BEGINNER")}</option>
+              <option value="INTERMEDIATE">{t("admin.difficulties.INTERMEDIATE")}</option>
+              <option value="ADVANCED">{t("admin.difficulties.ADVANCED")}</option>
+              <option value="EXPERT">{t("admin.difficulties.EXPERT")}</option>
             </select>
           </div>
         </div>
@@ -625,7 +625,7 @@ export default function EditEventPage() {
             className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             aria-label={t("admin.form.rescheduledFromLabel")}
           />
-          <p className="mt-1 text-xs text-muted-foreground">Event ID this was rescheduled from</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("admin.form.rescheduledFromHint")}</p>
         </div>
 
         {/* Recording Toggle */}
@@ -665,7 +665,7 @@ export default function EditEventPage() {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <Calendar className="size-4 text-muted-foreground" />
-            Status History
+            {t("admin.statusHistory")}
           </h3>
           <div className="space-y-3">
             {event.statusHistory.map((entry, i) => (
@@ -677,7 +677,7 @@ export default function EditEventPage() {
                   {new Date(entry.timestamp).toLocaleString()}
                 </span>
                 {entry.changedBy && (
-                  <span className="text-xs text-muted-foreground">by {entry.changedBy}</span>
+                  <span className="text-xs text-muted-foreground">{t("admin.statusChangedBy", { name: entry.changedBy })}</span>
                 )}
               </div>
             ))}

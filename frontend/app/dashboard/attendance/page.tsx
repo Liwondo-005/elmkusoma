@@ -6,11 +6,14 @@ import { useTranslations } from "next-intl"
 import { dashboardApi, type AttendanceSummary } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { BarChart3, CheckCircle, XCircle, Clock, AlertTriangle, Calendar, Star, TrendingUp } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function AttendancePage() {
   const { user } = useRequireAuth()
   const t = useTranslations("primary")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const [summary, setSummary] = useState<AttendanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const level = user?.learningLevel as LearningLevel | null
@@ -181,7 +184,7 @@ export default function AttendancePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">
-                      {record.date ? new Date(record.date).toLocaleDateString("en-US", {
+                      {record.date ? formatDate(record.date, locale, {
                         weekday: "short",
                         month: "short",
                         day: "numeric",
@@ -253,7 +256,7 @@ export default function AttendancePage() {
                 {summary.records.map((record) => (
                   <tr key={record.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 font-medium text-foreground">
-                      {record.date ? new Date(record.date).toLocaleDateString("en-US", {
+                      {record.date ? formatDate(record.date, locale, {
                         weekday: "short",
                         year: "numeric",
                         month: "short",

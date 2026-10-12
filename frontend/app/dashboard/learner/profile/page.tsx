@@ -25,6 +25,7 @@ export default function LearnerProfilePage() {
   const t = useTranslations("profile")
   const tc = useTranslations("common")
   const tr = useTranslations("roles")
+  const tu = useTranslations("learnerUi")
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -109,7 +110,7 @@ export default function LearnerProfilePage() {
         <div className="flex items-center gap-4 mb-6">
           <div className="flex size-16 items-center justify-center rounded-full bg-primary/10">
             {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="size-16 rounded-full object-cover" />
+              <img src={avatarUrl} alt={tu("profile.avatarAlt")} className="size-16 rounded-full object-cover" />
             ) : (
               <User className="size-8 text-primary/40" />
             )}
@@ -147,7 +148,7 @@ export default function LearnerProfilePage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">{t("learningLevel")}</label>
-            <p className="text-sm text-foreground">{user?.learningLevel || "Not set"}</p>
+            <p className="text-sm text-foreground">{user?.learningLevel || tu("profile.notSet")}</p>
           </div>
           {user?.phone && (
             <div>

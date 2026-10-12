@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
+import { formatDate as fmtDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 /**
  * Professional certificate document (screen preview + print-to-PDF).
@@ -61,16 +63,17 @@ export const CERTIFICATE_TOKENS: { token: string; label: string }[] = [
   { token: "{{skills}}", label: "Skills list (comma separated)" },
 ]
 
-function formatDate(value?: string | null): string {
+function formatDate(value: string | null | undefined, locale?: string): string {
   if (!value) return "—"
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+  const formatted = fmtDate(value, locale, { day: "2-digit", month: "long", year: "numeric" })
+  if (!formatted) return value
+  return formatted
 }
 
 function buildContext(
   certificate: DocumentCertificate,
-  extras: { institutionName?: string | null; logoUrl?: string | null } = {}
+  extras: { institutionName?: string | null; logoUrl?: string | null } = {},
+  locale?: string
 ): Record<string, string> {
   const course = certificate.courseOrProgramme || certificate.courseTitle || ""
   const values: Record<string, string> = {
@@ -82,9 +85,9 @@ function buildContext(
     "certificate.type": certificate.certificateType || "",
     "certificate.status": certificate.status || "",
     "certificate.grade": certificate.grade || "",
-    "certificate.issueDate": certificate.issueDate ? formatDate(certificate.issueDate) : "",
-    "certificate.completionDate": certificate.completionDate ? formatDate(certificate.completionDate) : "",
-    "certificate.expiryDate": certificate.expiryDate ? formatDate(certificate.expiryDate) : "",
+    "certificate.issueDate": certificate.issueDate ? formatDate(certificate.issueDate, locale) : "",
+    "certificate.completionDate": certificate.completionDate ? formatDate(certificate.completionDate, locale) : "",
+    "certificate.expiryDate": certificate.expiryDate ? formatDate(certificate.expiryDate, locale) : "",
     "certificate.description": certificate.description || "",
     "course.title": course,
     "institution.name": extras.institutionName || "",
@@ -135,6 +138,7 @@ export function CertificateDocument({
   sample = false,
   className = "",
 }: CertificateDocumentProps) {
+  const locale = useLocale()
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [origin, setOrigin] = useState<string>("")
 
@@ -163,7 +167,7 @@ export function CertificateDocument({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [certificate.verificationCode])
 
-  const context = buildContext(certificate, { institutionName, logoUrl })
+  const context = buildContext(certificate, { institutionName, logoUrl }, locale)
   const heading = TYPE_HEADINGS[certificate.certificateType] || "CERTIFICATE"
   const statement = certificate.description
     ? expandCertificateTokens(certificate.description, context)
@@ -235,7 +239,7 @@ export function CertificateDocument({
               <p className="text-[10px] uppercase tracking-widest text-neutral-400">Certificate No.</p>
               <p className="font-mono text-xs font-semibold text-neutral-700">{certificate.serialNumber}</p>
               <p className="mt-1 text-[10px] uppercase tracking-widest text-neutral-400">Issued</p>
-              <p className="text-xs font-medium text-neutral-700">{formatDate(certificate.issueDate || certificate.completionDate)}</p>
+              <p className="text-xs font-medium text-neutral-700">{formatDate(certificate.issueDate || certificate.completionDate, locale)}</p>
             </div>
           </div>
 
@@ -253,8 +257,8 @@ export function CertificateDocument({
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-neutral-500">
               {certificate.grade ? <span>Grade: <strong className="text-neutral-700">{certificate.grade}</strong></span> : null}
               {certificate.instructorName ? <span>Instructor: <strong className="text-neutral-700">{certificate.instructorName}</strong></span> : null}
-              <span>Completed: <strong className="text-neutral-700">{formatDate(certificate.completionDate)}</strong></span>
-              {certificate.expiryDate ? <span>Valid until: <strong className="text-neutral-700">{formatDate(certificate.expiryDate)}</strong></span> : null}
+              <span>Completed: <strong className="text-neutral-700">{formatDate(certificate.completionDate, locale)}</strong></span>
+              {certificate.expiryDate ? <span>Valid until: <strong className="text-neutral-700">{formatDate(certificate.expiryDate, locale)}</strong></span> : null}
             </div>
             {certificate.skills && certificate.skills.length > 0 ? (
               <p className="mt-2 max-w-2xl text-xs text-neutral-500">
@@ -321,7 +325,7 @@ export function CertificateDocument({
 
           {isRevoked && certificate.revokedReason ? (
             <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-1.5 text-center text-xs font-semibold text-red-700">
-              This certificate was revoked on {formatDate(certificate.revokedAt)}: {certificate.revokedReason}
+              This certificate was revoked on {formatDate(certificate.revokedAt, locale)}: {certificate.revokedReason}
             </p>
           ) : null}
         </div>

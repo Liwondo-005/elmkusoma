@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl"
 import { learnerApi, isReplayFailed, type ReplayItem, LearnerApiError } from "@/lib/learner-api"
 import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
 import { Search, Play, CalendarDays, Loader2, XCircle, ArrowRight, Eye, RefreshCw, AlertCircle, Clock } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate } from "@/lib/format-date"
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600)
@@ -24,8 +26,8 @@ function formatPosition(seconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+function formatDate(d: string, locale: string) {
+  return fmtDate(d, locale, { month: "short", day: "numeric", year: "numeric" })
 }
 
 const EVENT_TYPES = ["SEMINAR", "WORKSHOP", "WEBINAR", "TRAINING", "CONFERENCE", "LECTURE"]
@@ -34,6 +36,7 @@ export default function ReplaysPage() {
   const t = useTranslations("events")
   const tc = useTranslations("common")
   const { lazyLoadImages } = useLowBandwidth()
+  const locale = useLocale()
 
   const [replays, setReplays] = useState<ReplayItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -225,7 +228,7 @@ export default function ReplaysPage() {
                   </div>
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(replay.recordedAt)}</span>
+                  <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(replay.recordedAt, locale)}</span>
                   <span className="flex items-center gap-1"><Eye className="size-3" /> {replay.viewCount} {t("replays.viewCount")}</span>
                 </div>
               </Link>
@@ -261,7 +264,7 @@ export default function ReplaysPage() {
                 <h3 className="mt-3 line-clamp-2 text-sm font-semibold group-hover:text-primary">{replay.title}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">{replay.eventTitle}</p>
                 <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><CalendarDays className="size-3" aria-hidden="true" /> {formatDate(replay.recordedAt)}</span>
+                  <span className="flex items-center gap-1"><CalendarDays className="size-3" aria-hidden="true" /> {formatDate(replay.recordedAt, locale)}</span>
                   <span className="flex items-center gap-1"><Eye className="size-3" aria-hidden="true" /> {replay.viewCount} {t("replays.viewCount")}</span>
                 </div>
               </Link>
@@ -315,7 +318,7 @@ export default function ReplaysPage() {
                   </div>
                 )}
                 <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(replay.recordedAt)}</span>
+                  <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(replay.recordedAt, locale)}</span>
                   <span className="flex items-center gap-1"><Eye className="size-3" /> {replay.viewCount} {t("replays.viewCount")}</span>
                 </div>
               </Link>

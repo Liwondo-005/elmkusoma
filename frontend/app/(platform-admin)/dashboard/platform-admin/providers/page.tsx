@@ -25,6 +25,8 @@ function verificationStyle(v: string | null): string {
 export default function ProvidersPage() {
   const t = useTranslations("platformAdmin");
   const ts = useTranslations("status");
+  const tc = useTranslations("common");
+  const tn = useTranslations("nav");
   const [providers, setProviders] = useState<ProviderRegistryItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -79,7 +81,7 @@ export default function ProvidersPage() {
           <p className="mt-1 text-sm text-muted-foreground">{t("providers.organizationsContentProvidersAnd")}</p>
         </div>
         <button onClick={() => load(page)} className="inline-flex items-center gap-2 self-start rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted sm:self-center">
-          <RefreshCw className="size-4" /> Refresh</button>
+          <RefreshCw className="size-4" /> {t("shared.common.refresh")}</button>
       </div>
 
       {error && (
@@ -89,7 +91,7 @@ export default function ProvidersPage() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-4">
-        {[["Total providers", counts.total, "text-foreground"], ["Verified", counts.verified, "text-green-700"], ["Pending verification", counts.pending, "text-amber-700"], ["Suspended", counts.suspended, "text-red-600"]].map(([label, n, cls]) => (
+        {[[t("shared.providers.totalProviders"), counts.total, "text-foreground"], [t("shared.providers.verified"), counts.verified, "text-green-700"], [t("verifications.pendingVerifications"), counts.pending, "text-amber-700"], [t("shared.providers.suspended"), counts.suspended, "text-red-600"]].map(([label, n, cls]) => (
           <div key={label as string} className="rounded-2xl border border-border bg-card p-4 shadow-xs">
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className={`mt-1 text-2xl font-bold ${cls}`}>{n}</p>
@@ -99,7 +101,7 @@ export default function ProvidersPage() {
 
       {attention.length > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-900"><TriangleAlert className="size-4" /> Requires attention ({attention.length})</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-900"><TriangleAlert className="size-4" /> {t("shared.providers.requiresAttention", { p0: attention.length })}</h2>
           <ul className="mt-2 space-y-1.5">
             {attention.slice(0, 8).map((a) => (
               <li key={`${a.providerId}-${a.category}`} className="text-xs text-amber-900">
@@ -114,28 +116,28 @@ export default function ProvidersPage() {
       <div className="flex flex-col gap-3 lg:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search providers by name, code, or city…" value={search} onChange={(e) => setSearch(e.target.value)}
+          <input type="text" placeholder={t("shared.providers.searchProvidersByName")} value={search} onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
         </div>
         <div className="flex flex-wrap gap-2">
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20">
-            <option value="">All types</option>
+            <option value="">{tc("allTypes")}</option>
             {PROVIDER_TYPES.map((ty) => <option key={ty} value={ty}>{ty}</option>)}
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20">
-            <option value="">All statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="SUSPENDED">Suspended</option>
-            <option value="DEACTIVATED">Deactivated</option>
-            <option value="ARCHIVED">Archived</option>
+            <option value="">{t("shared.common.allStatuses")}</option>
+            <option value="ACTIVE">{t("shared.common.active")}</option>
+            <option value="SUSPENDED">{t("shared.providers.suspended")}</option>
+            <option value="DEACTIVATED">{t("shared.providers.deactivated")}</option>
+            <option value="ARCHIVED">{t("shared.providers.archived")}</option>
           </select>
           <select value={verificationFilter} onChange={(e) => setVerificationFilter(e.target.value)} className="rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20">
-            <option value="">All verifications</option>
-            <option value="VERIFIED">Verified</option>
-            <option value="PENDING">Pending</option>
-            <option value="CHANGES_REQUIRED">Changes required</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="NONE">None</option>
+            <option value="">{t("shared.providers.allVerifications")}</option>
+            <option value="VERIFIED">{t("shared.providers.verified")}</option>
+            <option value="PENDING">{ts("pending")}</option>
+            <option value="CHANGES_REQUIRED">{t("shared.providers.changesRequired")}</option>
+            <option value="REJECTED">{t("shared.common.rejected")}</option>
+            <option value="NONE">{tc("none")}</option>
           </select>
         </div>
       </div>
@@ -155,12 +157,12 @@ export default function ProvidersPage() {
               <table className="w-full min-w-[760px]">
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Provider</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Verification</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admins</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("shared.providers.provider")}</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("certificates.type")}</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("providers.status")}</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tn("verification")}</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tn("admins")}</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("providers.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -183,7 +185,7 @@ export default function ProvidersPage() {
                       <td className="px-5 py-3.5 text-right">
                         <Link href={`/dashboard/platform-admin/providers/${p.id}`}
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
-                          <Eye className="size-3.5" /> Govern
+                          <Eye className="size-3.5" /> {t("shared.providers.govern")}
                         </Link>
                       </td>
                     </tr>
@@ -193,10 +195,10 @@ export default function ProvidersPage() {
             </div>
           </div>
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Page {page + 1} of {totalPages} · {total} providers</span>
+            <span>{t("shared.providers.pageOfWithTotal", { p0: page + 1, p1: totalPages, p2: total })}</span>
             <div className="flex gap-2">
-              <button disabled={page <= 0} onClick={() => load(page - 1)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50">Prev</button>
-              <button disabled={page + 1 >= totalPages} onClick={() => load(page + 1)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50">Next</button>
+              <button disabled={page <= 0} onClick={() => load(page - 1)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50">{tc("previous")}</button>
+              <button disabled={page + 1 >= totalPages} onClick={() => load(page + 1)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50">{tc("next")}</button>
             </div>
           </div>
         </>

@@ -1,11 +1,11 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { Play } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { usePublicCourses } from "@/lib/public-stats"
 import { buttonVariants } from "@/components/ui/button"
+import { CourseThumbnail } from "@/components/course-thumbnail"
 import { cn } from "@/lib/utils"
 
 export function CoursesSection() {
@@ -37,13 +37,9 @@ export function CoursesSection() {
               className="group overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg"
             >
               <div className="relative aspect-[16/10] overflow-hidden">
-                <Image
-                  src={course.thumbnailUrl || "/placeholder.svg"}
-                  alt={course.title}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
+                {/* The aspect-ratio box above means the card never shifts whether the image
+                    loads, fails, or there is none. */}
+                <CourseThumbnail src={course.thumbnailUrl} alt={course.title} className="transition-transform duration-500 group-hover:scale-105" />
                 {course.category && (
                   <span className="absolute left-3 top-3 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">
                     {course.category}

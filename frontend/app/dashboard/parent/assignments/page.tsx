@@ -6,11 +6,14 @@ import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, AlertTriangle, CheckCircle, Clock } from "lucide-react"
 import { parentApi, type AssignmentData } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentAssignmentsPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const [assignments, setAssignments] = useState<AssignmentData | null>(null)
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<"pending" | "overdue" | "completed">("pending")
@@ -92,7 +95,7 @@ export default function ParentAssignmentsPage() {
               </div>
               {item.dueDate && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {t("assignments.dueLabel", { date: new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) })}
+                  {t("assignments.dueLabel", { date: formatDate(item.dueDate, locale, { month: "short", day: "numeric", year: "numeric" }) })}
                 </p>
               )}
               {item.obtainedMarks != null && (

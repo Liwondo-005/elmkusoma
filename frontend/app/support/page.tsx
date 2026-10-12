@@ -9,11 +9,11 @@ import {
   AlertCircle,
   Mail,
   Phone,
-  MessageSquare,
   CheckCircle,
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
+import { BrandIcon } from "@/components/social-links"
 import { publicSiteApi, type ContactReceipt } from "@/lib/public-site-api"
 import { useSiteSettings, telHref, whatsappClickToChat } from "@/hooks/use-site-settings"
 
@@ -120,8 +120,10 @@ export default function SupportPage() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
                   >
+                    {/* The WhatsApp mark, not a generic speech bubble: the support page is
+                        where a visitor is most likely to be looking for a way to reach a person. */}
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
-                      <MessageSquare className="size-5" />
+                      <BrandIcon name="whatsapp" className="size-5" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">{t("support.whatsapp")}</p>

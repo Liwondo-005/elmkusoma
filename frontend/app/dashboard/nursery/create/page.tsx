@@ -115,7 +115,7 @@ export default function CreateStudioPage() {
               <button
                 key={color}
                 onClick={() => { setSelectedColor(color); setIsErasing(false); setSelectedStamp(null) }}
-                aria-label={`Color ${color}`}
+                aria-label={t("colorLabel", { color })}
                 aria-pressed={selectedColor === color && !isErasing}
                 className={`size-10 rounded-full border-2 transition-transform hover:scale-110 ${
                   selectedColor === color && !isErasing ? "border-gray-800 scale-110" : "border-gray-200"
@@ -152,7 +152,7 @@ export default function CreateStudioPage() {
                 <button
                   key={stamp}
                   onClick={() => { setSelectedStamp(selectedStamp === stamp ? null : stamp); setIsErasing(false) }}
-                  aria-label={`Stamp ${stamp}`}
+                  aria-label={t("stampLabel", { stamp })}
                   aria-pressed={selectedStamp === stamp}
                   className={`flex size-10 items-center justify-center rounded-xl text-xl transition-all ${
                     selectedStamp === stamp ? "bg-primary/10 ring-2 ring-primary" : "bg-gray-50 hover:bg-gray-100"
@@ -171,7 +171,7 @@ export default function CreateStudioPage() {
               className="w-full cursor-crosshair"
               onMouseMove={handleDraw}
               onDoubleClick={clearCanvas}
-              aria-label="Drawing canvas"
+              aria-label={t("drawingCanvas")}
             />
           </div>
           <p className="text-center text-[10px] text-gray-400">{t("doubleClickClear")}</p>
@@ -184,7 +184,7 @@ export default function CreateStudioPage() {
               <button
                 key={note}
                 onClick={() => playNote(note)}
-                aria-label={`${note} note`}
+                aria-label={t("noteLabel", { note })}
                 className={`flex h-32 flex-col items-center justify-center rounded-2xl font-bold transition-all ${
                   playingNote === note
                     ? "scale-95 bg-primary text-white shadow-lg"

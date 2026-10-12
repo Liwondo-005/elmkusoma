@@ -23,6 +23,8 @@ import {
   Bell
 } from "lucide-react"
 import type { LearnerNotification } from "@/lib/learner-api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function LearnerDashboardPage() {
   const { user, loading: authLoading } = useAuth()
@@ -37,6 +39,7 @@ export default function LearnerDashboardPage() {
 const t = useTranslations("dashboard")
 const tc = useTranslations("common")
 const th = useTranslations("highered")
+  const locale = useLocale()
 
   useEffect(() => {
     if (!user) return
@@ -266,7 +269,7 @@ const th = useTranslations("highered")
               </span>
               {dash.whatsNext.deadline && (
                 <span className="text-[10px] text-muted-foreground">
-                  {t("due", { date: new Date(dash.whatsNext.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })}
+                  {t("due", { date: formatDate(dash.whatsNext.deadline, locale, { month: "short", day: "numeric" }) })}
                 </span>
               )}
             </div>
@@ -867,6 +870,7 @@ function TodayTaskRow({ item }: { item: TodayItem }) {
 }
 
 function StudyTaskRow({ task }: { task: StudyTask }) {
+  const locale = useLocale()
   const priorityColors: Record<string, string> = {
     LOW: "bg-muted text-muted-foreground",
     MEDIUM: "bg-blue-500/10 text-blue-600",
@@ -883,7 +887,7 @@ function StudyTaskRow({ task }: { task: StudyTask }) {
           <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${priorityColors[task.priority] || "bg-muted text-muted-foreground"}`}>{task.priority}</span>
           {task.scheduledDate && (
             <span className="text-[10px] text-muted-foreground">
-              {new Date(task.scheduledDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              {formatDate(task.scheduledDate, locale, { month: "short", day: "numeric" })}
             </span>
           )}
         </div>

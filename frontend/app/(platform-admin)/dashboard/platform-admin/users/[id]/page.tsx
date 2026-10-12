@@ -6,11 +6,14 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, UserCheck, UserX, Mail, Calendar, Shield, Building2 } from "lucide-react"
 import { platformAdminApi, type UserSummary } from "@/lib/platform-admin-api"
+import { formatDate as fmtDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 export default function UserDetailPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
   const ts = useTranslations("status");
+  const locale = useLocale()
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
@@ -43,7 +46,7 @@ export default function UserDetailPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  const formatDate = (d: string) => fmtDate(d, locale, { day: "2-digit", month: "short", year: "numeric" })
 
   const getInitials = (u: UserSummary) =>
     `${u.firstName?.[0] || ""}${u.lastName?.[0] || ""}`.toUpperCase() || "U"

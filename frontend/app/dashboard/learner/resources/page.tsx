@@ -11,6 +11,8 @@ import Link from "next/link"
 export default function LearnerResourcesPage({ basePath = "/dashboard/learner/resources" }: { basePath?: string }) {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
+  const tl = useTranslations("learner")
+  const tu = useTranslations("learnerUi")
   const { user, loading: authLoading } = useAuth()
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
@@ -247,29 +249,29 @@ export default function LearnerResourcesPage({ basePath = "/dashboard/learner/re
                 </div>
               </div>
               <p className="mt-2 text-[10px] text-muted-foreground">
-                Added {new Date(resource.createdAt).toLocaleDateString()}
+                {tl("res.addedOn", { date: new Date(resource.createdAt).toLocaleDateString() })}
               </p>
             </Link>
           ))}
         </div>
         <div className="flex items-center justify-between pt-4">
-          <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+          <span className="text-xs text-muted-foreground">{tu("resources.pageOf", { page, total: totalPages })}</span>
           <div className="flex gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              aria-label="Previous page"
+              aria-label={tc("previous")}
               className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Previous
+              {tc("previous")}
             </button>
             <button
               onClick={() => setPage((p) => p + 1)}
               disabled={page >= totalPages}
-              aria-label="Next page"
+              aria-label={tc("next")}
               className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
+              {tc("next")}
             </button>
           </div>
         </div>
@@ -279,9 +281,9 @@ export default function LearnerResourcesPage({ basePath = "/dashboard/learner/re
 
       {basePath === "/dashboard/learner/resources" && (
         <div className="rounded-xl border border-border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">Can't find what you need?</p>
+          <p className="text-sm text-muted-foreground">{tu("resources.cantFind")}</p>
           <Link href="/dashboard/learner/search" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-            Try Search <ArrowRight className="size-3" />
+            {tu("resources.trySearch")} <ArrowRight className="size-3" />
           </Link>
         </div>
       )}

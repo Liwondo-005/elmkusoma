@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
 import { useTranslations } from "next-intl"
-import { useSiteSettings, telHref, whatsappClickToChat } from "@/hooks/use-site-settings"
+import { SocialLinks } from "@/components/social-links"
+import { telHref, useSiteSettings } from "@/hooks/use-site-settings"
 
 export function SiteFooter() {
   const tNav = useTranslations("nav")
@@ -14,22 +15,6 @@ export function SiteFooter() {
   const contactPhone = value("public.contact.phone")
   const contactAddress = value("public.contact.address")
   const phoneHref = telHref(contactPhone)
-  const whatsappHref = whatsappClickToChat(value("public.contact.whatsapp"))
-
-  // Rendered only when an administrator has configured a real, validated URL. Nothing here
-  // invents an account: an unconfigured platform shows no social links at all rather than a
-  // link to the bare facebook.com domain.
-  const socialLinks = [
-    { key: "public.social.facebook" as const, label: "Facebook" },
-    { key: "public.social.instagram" as const, label: "Instagram" },
-    { key: "public.social.youtube" as const, label: "YouTube" },
-    { key: "public.social.linkedin" as const, label: "LinkedIn" },
-    { key: "public.social.tiktok" as const, label: "TikTok" },
-    { key: "public.social.x" as const, label: "X" },
-  ]
-    .map((social) => ({ ...social, href: value(social.key) }))
-    .filter((social): social is { key: typeof social.key; label: string; href: string } =>
-      Boolean(social.href))
 
   const columns = [
     {
@@ -124,35 +109,13 @@ export function SiteFooter() {
                 </Link>
               </li>
             </ul>
-            {socialLinks.length > 0 && (
-              <div className="mt-5 flex flex-wrap gap-4">
-                {socialLinks.map((social) => (
-                  <a
-                    key={social.key}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                    aria-label={social.label}
-                  >
-                    {social.label}
-                  </a>
-                ))}
-                {/* Click-to-chat only: this opens a chat the visitor sends, it does not
-                    deliver anything to the support team in the background. */}
-                {whatsappHref && (
-                  <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                    aria-label="WhatsApp"
-                  >
-                    WhatsApp
-                  </a>
-                )}
-              </div>
-            )}
+            {/* Social and WhatsApp come from one shared component so the footer, contact page
+                and support page can never drift apart or disagree on which platforms exist.
+                Each link renders only when an administrator has configured a real, validated
+                URL — nothing here invents an account or links to a bare domain root. */}
+            <div className="mt-5">
+              <SocialLinks variant="icon" includeWhatsApp />
+            </div>
           </div>
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">

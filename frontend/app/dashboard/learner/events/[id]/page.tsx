@@ -32,9 +32,11 @@ import {
   Globe,
   WifiOff,
 } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate, formatTime as fmtTime } from "@/lib/format-date"
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", {
+function formatDate(d: string, locale: string) {
+  return fmtDate(d, locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -42,8 +44,8 @@ function formatDate(d: string) {
   })
 }
 
-function formatTime(d: string) {
-  return new Date(d).toLocaleTimeString("en-US", {
+function formatTime(d: string, locale: string) {
+  return fmtTime(d, locale, {
     hour: "2-digit",
     minute: "2-digit",
   })
@@ -106,6 +108,7 @@ export default function EventDetailPage() {
   const t = useTranslations("events")
   const tc = useTranslations("common")
   const { isLowBandwidth } = useLowBandwidth()
+  const locale = useLocale()
 
   const [event, setEvent] = useState<EventItem | null>(null)
   const [materials, setMaterials] = useState<EventMaterial[]>([])
@@ -417,16 +420,16 @@ export default function EventDetailPage() {
             <div className="flex items-start gap-3">
               <CalendarDays className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
               <div>
-                <p className="font-medium text-foreground">{formatDate(event.startsAt)}</p>
+                <p className="font-medium text-foreground">{formatDate(event.startsAt, locale)}</p>
                 <p className="text-sm text-muted-foreground">
-                  {formatTime(event.startsAt)}
-                  {event.endsAt ? ` - ${formatTime(event.endsAt)}` : ""}
+                  {formatTime(event.startsAt, locale)}
+                  {event.endsAt ? ` - ${formatTime(event.endsAt, locale)}` : ""}
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Clock className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
-              <p className="text-foreground">{event.durationMinutes || 60} min</p>
+              <p className="text-foreground">{t("card.minutes", { count: event.durationMinutes || 60 })}</p>
             </div>
             {event.location && (
               <div className="flex items-start gap-3">
@@ -702,7 +705,7 @@ export default function EventDetailPage() {
                       <div>
                         <p className="text-sm font-medium text-foreground">{mat.title}</p>
                         {mat.durationMinutes && (
-                          <p className="text-xs text-muted-foreground">{mat.durationMinutes} min</p>
+                          <p className="text-xs text-muted-foreground">{t("card.minutes", { count: mat.durationMinutes })}</p>
                         )}
                       </div>
                     </div>

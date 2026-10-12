@@ -35,6 +35,7 @@ function SettingRow({ label, value }: { label: string; value: string }) {
 
 export default function PlatformSettingsPage() {
   const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [configs, setConfigs] = useState<PlatformConfigItem[]>([])
   const [loading, setLoading] = useState(true)
   const [edits, setEdits] = useState<Record<string, string>>({})
@@ -126,12 +127,12 @@ export default function PlatformSettingsPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <InfoCard icon={Globe} label="Platform" value="ELMKUSOMA" color="bg-blue-100 text-blue-700" />
-        <InfoCard icon={Server} label="Environment" value={process.env.NODE_ENV === "production" ? "Production" : "Development"} color="bg-amber-100 text-amber-700" />
-        <InfoCard icon={Database} label="Database" value="PostgreSQL 18" color="bg-emerald-100 text-emerald-700" />
-        <InfoCard icon={Shield} label="Auth" value="JWT + RBAC" color="bg-purple-100 text-purple-700" />
-        <InfoCard icon={Zap} label="Realtime" value="WebSocket" color="bg-red-100 text-red-700" />
-        <InfoCard icon={Server} label="Architecture" value="Modular Monolith" color="bg-cyan-100 text-cyan-700" />
+        <InfoCard icon={Globe} label={tc("platform")} value="ELMKUSOMA" color="bg-blue-100 text-blue-700" />
+        <InfoCard icon={Server} label={t("shared.settings.environment")} value={process.env.NODE_ENV === "production" ? t("shared.settings.production") : t("shared.settings.development")} color="bg-amber-100 text-amber-700" />
+        <InfoCard icon={Database} label={t("dashboard.database")} value="PostgreSQL 18" color="bg-emerald-100 text-emerald-700" />
+        <InfoCard icon={Shield} label={t("shared.settings.auth")} value="JWT + RBAC" color="bg-purple-100 text-purple-700" />
+        <InfoCard icon={Zap} label={t("shared.settings.realtime")} value="WebSocket" color="bg-red-100 text-red-700" />
+        <InfoCard icon={Server} label={t("shared.settings.architecture")} value={t("shared.settings.modularMonolith")} color="bg-cyan-100 text-cyan-700" />
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -151,7 +152,7 @@ export default function PlatformSettingsPage() {
                 <span className="block text-xs text-muted-foreground">{p.description}</span>
               </span>
               <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${p.value === "true" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
-                {p.value === "true" ? "ON" : "OFF"}
+                {p.value === "true" ? t("shared.settings.on") : t("shared.settings.off")}
               </span>
             </button>
           ))}
@@ -194,30 +195,30 @@ export default function PlatformSettingsPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("settings.systemInformation")}</h2>
         <div className="space-y-2">
-          <SettingRow label="Platform Name" value="ELMKUSOMA" />
-          <SettingRow label="Backend" value="Spring Boot 3.4 / Java 17" />
-          <SettingRow label="Frontend" value="Next.js 16 / React 19" />
-          <SettingRow label="Database" value="PostgreSQL 18" />
-          <SettingRow label="Cache" value="Redis" />
-          <SettingRow label="Message Queue" value="RabbitMQ" />
-          <SettingRow label="Video" value="LiveKit" />
-          <SettingRow label="Storage" value="MinIO" />
-          <SettingRow label="Migration" value="Flyway (87 migrations)" />
-          <SettingRow label="ORM" value="Hibernate / JPA" />
+          <SettingRow label={t("shared.settings.platformName")} value="ELMKUSOMA" />
+          <SettingRow label={t("shared.settings.backend")} value="Spring Boot 3.4 / Java 17" />
+          <SettingRow label={t("shared.settings.frontend")} value="Next.js 16 / React 19" />
+          <SettingRow label={t("dashboard.database")} value="PostgreSQL 18" />
+          <SettingRow label={t("shared.settings.cache")} value="Redis" />
+          <SettingRow label={t("shared.settings.messageQueue")} value="RabbitMQ" />
+          <SettingRow label={t("shared.settings.video")} value="LiveKit" />
+          <SettingRow label={t("media.storage")} value="MinIO" />
+          <SettingRow label={t("shared.settings.migration")} value={t("shared.settings.flywayMigrations")} />
+          <SettingRow label={t("shared.settings.orm")} value="Hibernate / JPA" />
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("settings.securityConfiguration")}</h2>
         <div className="space-y-2">
-          <SettingRow label="Authentication" value="JWT with refresh tokens (1h access / 7d refresh)" />
-          <SettingRow label="Password Hashing" value="BCrypt" />
-          <SettingRow label="Authorization" value="Role-Based Access Control (13 roles)" />
-          <SettingRow label="API Protection" value="Role-based @PreAuthorize on admin APIs" />
-          <SettingRow label="Multi-Tenancy" value="Institution-scoped data isolation" />
-          <SettingRow label="Soft Delete" value="Enabled (is_deleted flag)" />
-          <SettingRow label="Audit Logging" value="Enabled on admin, config & security writes" />
-          <SettingRow label="IDOR Prevention" value="InstitutionScopeService validation" />
+          <SettingRow label={t("shared.settings.authentication")} value={t("shared.settings.jwtWithRefreshTokens")} />
+          <SettingRow label={t("shared.settings.passwordHashing")} value="BCrypt" />
+          <SettingRow label={t("shared.settings.authorization")} value={t("shared.settings.roleBasedAccessControl")} />
+          <SettingRow label={t("shared.settings.apiProtection")} value={t("shared.settings.roleBasedPreAuthorize")} />
+          <SettingRow label={t("shared.settings.multiTenancy")} value={t("shared.settings.institutionScopedIsolation")} />
+          <SettingRow label={t("shared.settings.softDelete")} value={t("shared.settings.enabledIsDeletedFlag")} />
+          <SettingRow label={t("shared.settings.auditLogging")} value={t("shared.settings.enabledOnAdminConfigSecurityWrites")} />
+          <SettingRow label={t("shared.settings.idorPrevention")} value={t("shared.settings.institutionScopeValidation")} />
         </div>
       </div>
 

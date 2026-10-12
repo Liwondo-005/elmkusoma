@@ -16,10 +16,13 @@ import {
   type SubjectPerformanceItem,
 } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate } from "@/lib/format-date"
 
 export default function ParentPortfolioPage() {
   const tp = useTranslations("parentPortfolio")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const [attendance, setAttendance] = useState<AttendanceData | null>(null)
   const [results, setResults] = useState<ResultData | null>(null)
   const [subjects, setSubjects] = useState<SubjectPerformanceItem[]>([])
@@ -216,7 +219,7 @@ export default function ParentPortfolioPage() {
               <h2 className="text-base font-semibold text-foreground">{tp("achievementsTitle")}</h2>
               <div className="mt-4 space-y-2">
                 {achievementList.slice(0, 8).map((achievement) => (
-                  <AchievementRow key={achievement.id} achievement={achievement} label={tp("earnedOn", { date: formatDate(achievement.achievedAt) })} />
+                  <AchievementRow key={achievement.id} achievement={achievement} label={tp("earnedOn", { date: fmtDate(achievement.achievedAt, locale, { day: "numeric", month: "short", year: "numeric" }) })} />
                 ))}
               </div>
             </section>
@@ -312,8 +315,4 @@ function pickLatestReport(reportCards: ReportCardItem[]): ReportCardItem | null 
   const withDates = reportCards.filter((rc) => !!rc.publishedAt)
   if (withDates.length === 0) return reportCards[0]
   return withDates.reduce((latest, current) => (new Date(current.publishedAt as string).getTime() > new Date(latest.publishedAt as string).getTime() ? current : latest))
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
 }

@@ -27,6 +27,8 @@ import {
   EyeOff,
   Loader2,
 } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 type Notification = {
   id: string
@@ -86,6 +88,7 @@ function mapNotification(n: LearnerNotification): Notification {
 }
 
 function useTimeAgo(t: ReturnType<typeof useTranslations>) {
+  const locale = useLocale()
   return useCallback(
     (dateStr: string): string => {
       const now = Date.now()
@@ -100,9 +103,9 @@ function useTimeAgo(t: ReturnType<typeof useTranslations>) {
       if (diffHr < 24) return t("hoursAgo", { count: diffHr, s: diffHr > 1 ? "s" : "" })
       if (diffDay === 1) return t("yesterday")
       if (diffDay < 7) return t("daysAgo", { count: diffDay })
-      return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      return formatDate(dateStr, locale, { month: "short", day: "numeric", year: "numeric" })
     },
-    [t]
+    [t, locale]
   )
 }
 

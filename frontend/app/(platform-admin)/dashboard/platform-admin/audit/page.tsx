@@ -5,12 +5,15 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react"
 import { ScrollText, Loader2, User } from "lucide-react"
 import { platformAdminApi, type AuditLogEntry } from "@/lib/platform-admin-api"
+import { formatDateTime as fmtDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 const PAGE_SIZE = 20
 
 export default function AuditLogsPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
+  const locale = useLocale()
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +60,7 @@ export default function AuditLogsPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  const formatDate = (d: string) => fmtDateTime(d, locale, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

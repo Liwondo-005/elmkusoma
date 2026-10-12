@@ -92,7 +92,7 @@ export default function PlatformMediaPage() {
                   <tr key={m.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium text-foreground">{m.title}</td>
                     <td className="px-4 py-3 text-muted-foreground">{m.mediaType ?? "—"}</td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{m.status ?? "Unknown"}</span></td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{m.status ?? t("shared.media.unknownStatus")}</span></td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{m.institutionId ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : "—"}</td>
                     <td className="px-4 py-3 text-right">
@@ -100,7 +100,7 @@ export default function PlatformMediaPage() {
                         onClick={() => archiveMedia(m.id)}
                         disabled={acting === m.id}
                         className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"
-                        title="Archive media asset"
+                        title={t("shared.media.archiveMediaAsset")}
                       >
                         {acting === m.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} {t("media.archive")}</button>
                     </td>

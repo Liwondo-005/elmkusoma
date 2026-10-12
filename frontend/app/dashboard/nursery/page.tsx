@@ -7,6 +7,8 @@ import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { nurseryApi, type NurseryActivity, type NurseryMilestone, type NurseryStory } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 import {
   Sparkles, BookOpen, Palette, Puzzle, Music,
   Trophy, Heart, ArrowRight, Sun, Moon, CloudSun,
@@ -58,6 +60,7 @@ export default function NurseryHomePage() {
   const router = useRouter()
   const t = useTranslations("nursery")
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [activities, setActivities] = useState<NurseryActivity[]>([])
   const [milestones, setMilestones] = useState<NurseryMilestone[]>([])
   const [stories, setStories] = useState<NurseryStory[]>([])
@@ -276,7 +279,7 @@ export default function NurseryHomePage() {
                 <p className="text-xs text-gray-500">
                   {continueLearning.status === "IN_PROGRESS"
                     ? "You were working on this"
-                    : `Scheduled for ${new Date(continueLearning.activityDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                    : `Scheduled for ${formatDate(continueLearning.activityDate, locale, { month: "short", day: "numeric" })}`
                   }
                 </p>
               </div>

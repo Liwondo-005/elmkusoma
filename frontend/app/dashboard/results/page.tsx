@@ -156,7 +156,7 @@ export default function ResultsPage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-2xl font-extrabold text-foreground">{result.averageMark?.toFixed(1) ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground">{tg("colAverage")}</p>
+                      <p className="text-xs text-muted-foreground">{tg("grading.colAverage")}</p>
                     </div>
                     {result.classRank && (
                       <div className="text-right">
@@ -181,7 +181,7 @@ export default function ResultsPage() {
                             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">{tm("marks")}</th>
                             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">{t("grade")}</th>
                             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">{t("pointsLabel")}</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{tg("colRemarks")}</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{tg("grading.colRemarks")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -205,7 +205,7 @@ export default function ResultsPage() {
                     {result.remarks && (
                       <div className="mt-4 space-y-2">
                         <div className="rounded-xl bg-muted/50 p-3">
-                          <p className="text-xs font-medium text-muted-foreground">{tg("colRemarks")}</p>
+                          <p className="text-xs font-medium text-muted-foreground">{tg("grading.colRemarks")}</p>
                           <p className="mt-1 text-sm text-foreground">{result.remarks}</p>
                         </div>
                       </div>
@@ -402,7 +402,7 @@ function PrimaryResultsView({
                     <p className="text-2xl font-extrabold text-foreground">
                       {result.averageMark?.toFixed(1) ?? "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">{tg("colAverage")}</p>
+                    <p className="text-xs text-muted-foreground">{tg("grading.colAverage")}</p>
                   </div>
                   {result.overallGrade && (
                     <div className="text-right">
