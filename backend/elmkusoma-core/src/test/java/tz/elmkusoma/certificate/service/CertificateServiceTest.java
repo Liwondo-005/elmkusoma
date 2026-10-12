@@ -50,6 +50,12 @@ class CertificateServiceTest {
     @Mock
     private CertificateMapper certificateMapper;
     @Mock
+    private tz.elmkusoma.certificate.repository.CertificateSignatorySnapshotRepository signatorySnapshotRepository;
+    // The approval gate is mocked so this class keeps testing the pre-existing lifecycle behaviour.
+    // The gate itself is covered end to end by CertificateApprovalServiceTest.
+    @Mock
+    private CertificateApprovalService approvalService;
+    @Mock
     private AuditService auditService;
     @Mock
     private StudentRepository studentRepository;
@@ -226,7 +232,7 @@ class CertificateServiceTest {
     }
 
     @Test
-    void issueCertificate_whenNotDraft_shouldThrow() {
+    void issueCertificate_whenAlreadyIssued_shouldThrow() {
         Certificate certificate = Certificate.builder()
                 .status(CertificateStatus.ISSUED)
                 .build();
@@ -239,7 +245,9 @@ class CertificateServiceTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> certificateService.issueCertificate(
                         certificateId, institutionId, issuedByUserId, "admin@test.com", "ADMIN"));
-        assertTrue(exception.getMessage().contains("DRAFT"));
+        // The guard no longer says "only DRAFT", because a certificate in review is issuable once
+        // its approvals are in. An already-issued or revoked one is not.
+        assertTrue(exception.getMessage().contains("ISSUED"), exception.getMessage());
     }
 
     @Test

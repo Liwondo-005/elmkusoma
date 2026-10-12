@@ -61,7 +61,7 @@ public class EventServiceImpl implements EventService {
 
     private static final Logger log = LoggerFactory.getLogger(EventServiceImpl.class);
 
-    /** IANA default for wall-clock event times when no timezone is supplied (§96). */
+    /** IANA default for wall-clock event times when no timezone is supplied (Â§96). */
     public static final String DEFAULT_TIMEZONE = "Africa/Dar_es_Salaam";
 
     private static final Set<EventStatus> LEARNER_VISIBLE_STATUSES = EnumSet.of(
@@ -87,6 +87,7 @@ public class EventServiceImpl implements EventService {
     private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
     private final CertificateRepository certificateRepository;
     private final CertificateTemplateRepository certificateTemplateRepository;
+    private final tz.elmkusoma.certificate.service.CertificateIssuanceSupport certificateIssuanceSupport;
     private final LearnerNotificationRepository notificationRepository;
     private final LearnerEnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
@@ -100,6 +101,7 @@ public class EventServiceImpl implements EventService {
                             tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository,
                             CertificateRepository certificateRepository,
                             CertificateTemplateRepository certificateTemplateRepository,
+                            tz.elmkusoma.certificate.service.CertificateIssuanceSupport certificateIssuanceSupport,
                             LearnerNotificationRepository notificationRepository,
                             LearnerEnrollmentRepository enrollmentRepository,
                             NotificationService notificationService,
@@ -112,6 +114,7 @@ public class EventServiceImpl implements EventService {
         this.institutionRepository = institutionRepository;
         this.certificateRepository = certificateRepository;
         this.certificateTemplateRepository = certificateTemplateRepository;
+        this.certificateIssuanceSupport = certificateIssuanceSupport;
         this.notificationRepository = notificationRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.notificationService = notificationService;
@@ -119,9 +122,9 @@ public class EventServiceImpl implements EventService {
     }
 
     // ==================== Status helpers ====================
-    // §23 dual vocabulary: LiveClass statuses map to EventStatus as
-    // SCHEDULED→PUBLISHED/REGISTRATION_OPEN, LIVE→LIVE, ENDED→ENDED,
-    // CANCELLED→CANCELLED (no mapping applied unless an Event is linked to a LiveClass).
+    // Â§23 dual vocabulary: LiveClass statuses map to EventStatus as
+    // SCHEDULEDâ†’PUBLISHED/REGISTRATION_OPEN, LIVEâ†’LIVE, ENDEDâ†’ENDED,
+    // CANCELLEDâ†’CANCELLED (no mapping applied unless an Event is linked to a LiveClass).
 
     private Event requireEvent(UUID eventId) {
         return eventRepository.findById(eventId)
@@ -158,11 +161,11 @@ public class EventServiceImpl implements EventService {
         changeStatus(event, EventStatus.fromString(rawStatus));
     }
 
-    // ==================== Audit / notification helpers (§18/§19/§94) ====================
+    // ==================== Audit / notification helpers (Â§18/Â§19/Â§94) ====================
 
     /**
      * Records an event operation into the existing audit_logs table via {@link AuditService}.
-     * Never throws — auditing must not break the business operation.
+     * Never throws â€” auditing must not break the business operation.
      */
     private void auditEvent(Event event, String operation, AuditLog.AuditAction action,
                             Map<String, Object> oldValues, Map<String, Object> newValues) {
@@ -210,7 +213,7 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    /** Notifies every non-cancelled registrant of the event (§18/19 lifecycle notifications). */
+    /** Notifies every non-cancelled registrant of the event (Â§18/19 lifecycle notifications). */
     private void notifyRegistrants(Event event, String title, String message, String notificationType) {
         try {
             List<EventRegistration> regs = registrationRepository.findByEventIdAndIsDeletedFalse(event.getId());
@@ -320,7 +323,7 @@ public class EventServiceImpl implements EventService {
                                          String providerId) {
         List<Event> events;
         if (providerId != null && !providerId.isBlank()) {
-            // §97: provider_id used as a real query filter
+            // Â§97: provider_id used as a real query filter
             events = eventRepository.findByInstitutionIdAndProviderIdAndIsDeletedFalse(institutionId, providerId);
             final String fStatus = blankToNull(status);
             final String fType = blankToNull(eventType);
@@ -396,7 +399,7 @@ public class EventServiceImpl implements EventService {
                         .ifPresent(reg -> response.setRegistrationStatus(reg.getStatus()));
             }
         }
-        // §59: meeting/join URL only for registered users (or organizer/provider/teacher/admin)
+        // Â§59: meeting/join URL only for registered users (or organizer/provider/teacher/admin)
         if (response.getMeetingUrl() != null && !canViewMeetingUrl(event, currentUserId, registered)) {
             response.setMeetingUrl(null);
         }
@@ -449,7 +452,7 @@ public class EventServiceImpl implements EventService {
         return events.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // ==================== Personal relevance (§53) ====================
+    // ==================== Personal relevance (Â§53) ====================
 
     @Override
     public List<EventResponse> getPersonalizedEvents(UUID institutionId, UUID userId) {
@@ -631,11 +634,11 @@ public class EventServiceImpl implements EventService {
     }
 
     /**
-     * §95 dependency handling:
+     * Â§95 dependency handling:
      * <ul>
      *   <li>Live/preparing events cannot be deleted without {@code force=true} (409).</li>
      *   <li>The event is soft-deleted; dependent replays are soft-deleted so they disappear
-     *       from institution replay listings (chain: EVENT → REPLAY).</li>
+     *       from institution replay listings (chain: EVENT â†’ REPLAY).</li>
      *   <li>Registrations and materials are intentionally retained as historical/audit
      *       records; they become unreachable through event-scoped endpoints once the event
      *       is soft-deleted.</li>
@@ -743,7 +746,7 @@ public class EventServiceImpl implements EventService {
     }
 
     /**
-     * §96: wall-clock "has started" using the event timezone when configured,
+     * Â§96: wall-clock "has started" using the event timezone when configured,
      * so stored LocalDateTime values are compared against the same zone.
      */
     private boolean hasEventStarted(Event event) {
@@ -763,7 +766,7 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    /** §69: rejects registration when at capacity; keeps currentRegistrations in sync. */
+    /** Â§69: rejects registration when at capacity; keeps currentRegistrations in sync. */
     private void assertCapacityAvailable(Event event) {
         if (event.getMaxParticipants() == null) {
             return;
@@ -775,7 +778,7 @@ public class EventServiceImpl implements EventService {
     }
 
     /**
-     * §69: flips event status to FULL once currentRegistrations reaches maxParticipants.
+     * Â§69: flips event status to FULL once currentRegistrations reaches maxParticipants.
      * The response-level {@code almostFull} hint (within 10% of max, not yet full) is
      * computed in {@link #mapToResponse} on every read, so it is correct on this path too.
      */
@@ -814,7 +817,7 @@ public class EventServiceImpl implements EventService {
 
         Event event = eventRepository.findById(eventId).orElse(null);
         if (event != null) {
-            // §69: free a seat — reopen FULL events when a registrant cancels
+            // Â§69: free a seat â€” reopen FULL events when a registrant cancels
             if (event.getMaxParticipants() != null) {
                 long count = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(eventId, "REGISTERED");
                 event.setCurrentRegistrations((int) count);
@@ -1082,7 +1085,7 @@ public class EventServiceImpl implements EventService {
                 if (user == null) continue;
 
                 String serialNumber = "CERT-EVT-" + System.currentTimeMillis() + "-" + registration.getUserId().toString().substring(0, 8);
-                String verificationCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+                String verificationCode = certificateIssuanceSupport.newVerificationCode();
 
                 Certificate certificate = Certificate.builder()
                         .templateId(template.getId())
@@ -1098,12 +1101,18 @@ public class EventServiceImpl implements EventService {
                         .issueDate(LocalDateTime.now())
                         .status(CertificateStatus.ISSUED)
                         .verificationCode(verificationCode)
+                        .verificationUrl(certificateIssuanceSupport.verificationUrl(verificationCode))
                         .instructorName(event.getPresenterName())
                         .metadata(buildCertificateMetadata(event, registration))
                         .build();
                 certificate.setInstitutionId(event.getInstitutionId());
 
                 certificateRepository.save(certificate);
+
+                // Every other certificate transition is audited; this automatic path was not.
+                certificateIssuanceSupport.recordAutomaticIssuance(certificate, event.getOrganizerId(),
+                        "event-attendance", "Event attendance: " + event.getId());
+
                 registration.setCertificateId(certificate.getId());
                 registrationRepository.save(registration);
                 issuedCount++;
@@ -1244,7 +1253,7 @@ public class EventServiceImpl implements EventService {
             availableSpots = event.getMaxParticipants() - (int) registeredCount;
         }
 
-        // §69: capacity hint — registered within 10% of max but not yet full
+        // Â§69: capacity hint â€” registered within 10% of max but not yet full
         Boolean almostFull = null;
         if (event.getMaxParticipants() != null && event.getMaxParticipants() > 0) {
             almostFull = registeredCount >= event.getMaxParticipants() * 0.9

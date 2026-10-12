@@ -11,6 +11,7 @@ import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
 import tz.elmkusoma.certificate.domain.CertificateTemplate;
 import tz.elmkusoma.certificate.domain.CertificateSignatory;
+import tz.elmkusoma.certificate.domain.CertificateSignatorySnapshot;
 import tz.elmkusoma.certificate.domain.CertificateTemplateSignatory;
 import tz.elmkusoma.certificate.domain.Transcript;
 import tz.elmkusoma.certificate.domain.TranscriptEntry;
@@ -47,6 +48,8 @@ public class CertificateService {
     private final CertificateTemplateRepository templateRepository;
     private final CertificateSignatoryRepository signatoryRepository;
     private final CertificateTemplateSignatoryRepository templateSignatoryRepository;
+    private final CertificateSignatorySnapshotRepository signatorySnapshotRepository;
+    private final CertificateApprovalService approvalService;
     private final CertificateRepository certificateRepository;
     private final TranscriptRepository transcriptRepository;
     private final TranscriptEntryRepository transcriptEntryRepository;
@@ -266,9 +269,18 @@ public class CertificateService {
             throw new ForbiddenException("certificate", "issue");
         }
 
-        if (certificate.getStatus() != CertificateStatus.DRAFT) {
-            throw new IllegalStateException("Only DRAFT certificates can be issued");
+        if (certificate.getStatus() != CertificateStatus.DRAFT
+                && certificate.getStatus() != CertificateStatus.PENDING_APPROVAL
+                && certificate.getStatus() != CertificateStatus.APPROVED) {
+            throw new IllegalStateException(
+                    "Only a certificate in review can be issued (this one is " + certificate.getStatus() + ")");
         }
+
+        // Approval gate, enforced server-side. Before V161 a certificate went straight from DRAFT
+        // to ISSUED on an admin click, so "approved" never meant anything.
+        CertificateTemplate issueTemplate = certificate.getTemplateId() == null ? null
+                : templateRepository.findByIdAndIsDeletedFalse(certificate.getTemplateId()).orElse(null);
+        approvalService.assertIssuable(certificate, issueTemplate);
 
         // Re-check every linked signatory at the moment of issuance.
         //
@@ -278,6 +290,11 @@ public class CertificateService {
         // their name and signature printed. Authorization has to hold at the point of use, not
         // only at the point of setup.
         requireAuthorizedSignatories(certificate);
+
+        // Freeze who signed it. The certificate referenced the live signatory row, so editing a
+        // signatory's name, title or signature image today would silently rewrite the appearance
+        // of documents issued years ago.
+        captureSignatorySnapshots(certificate, issueTemplate);
 
         certificate.setStatus(CertificateStatus.ISSUED);
         certificate.setIssueDate(LocalDateTime.now());
@@ -307,6 +324,45 @@ public class CertificateService {
 
         log.info("Issued certificate: {}", certificate.getSerialNumber());
         return certificateMapper.toCertificateResponse(certificate);
+    }
+
+    /**
+     * Copies the approved signatories onto the certificate at issuance.
+     *
+     * <p>Historical documents must not change because a profile was edited later. If a signatory
+     * row is deleted after issuance, the snapshot still carries the name, title and signature
+     * asset the document was actually rendered with.</p>
+     */
+    private void captureSignatorySnapshots(Certificate certificate, CertificateTemplate template) {
+        if (template == null) {
+            return;
+        }
+        List<CertificateTemplateSignatory> links =
+                templateSignatoryRepository.findByTemplateId(certificate.getTemplateId());
+        if (links == null || links.isEmpty()) {
+            return;
+        }
+        for (CertificateTemplateSignatory link : links) {
+            if (Boolean.TRUE.equals(link.getIsDeleted())) {
+                continue;
+            }
+            CertificateSignatory signatory = signatoryRepository
+                    .findByIdAndIsDeletedFalse(link.getSignatoryId()).orElse(null);
+            if (signatory == null) {
+                continue;
+            }
+            CertificateSignatorySnapshot snapshot = new CertificateSignatorySnapshot();
+            snapshot.setCertificateId(certificate.getId());
+            snapshot.setInstitutionId(certificate.getInstitutionId());
+            snapshot.setSignatoryId(signatory.getId());
+            snapshot.setDisplayOrder(link.getDisplayOrder() == null ? 0 : link.getDisplayOrder());
+            snapshot.setFullName(signatory.getFullName());
+            snapshot.setPositionTitle(signatory.getPositionTitle());
+            snapshot.setOrganization(signatory.getOrganization());
+            snapshot.setSignatureImage(signatory.getSignatureImage());
+            snapshot.setTemplateVersion(template.getVersion());
+            signatorySnapshotRepository.save(snapshot);
+        }
     }
 
     /**

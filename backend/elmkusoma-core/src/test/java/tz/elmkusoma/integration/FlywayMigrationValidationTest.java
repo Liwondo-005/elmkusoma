@@ -497,7 +497,62 @@ class FlywayMigrationValidationTest {
                         + declared.get("course_modules.module_code") + "\"");
     }
 
-    /** Column type per "table.column" for columns added via ADD COLUMN, last declaration winning. */
+    /**
+     * V161 adds the approval tables and the template-family column. The approval gate is only real
+     * if the tables exist: a missing migration would leave issuance referencing entities that do
+     * not exist on a real database while the whole Hibernate-generated test schema passed.
+     *
+     * <p>Also pins the additive lifecycle values. {@code certificates.status} is an unconstrained
+     * varchar, so nothing would stop a future edit from dropping one of them and breaking every
+     * certificate already stored in that state.</p>
+     */
+    @Test
+    void certificateApprovalAndFamilyColumns_AreDeclaredInMigrations() throws IOException {
+        // template_family is added to an existing table, so the ADD COLUMN helper can see it.
+        Map<String, String> added = declaredColumns(Set.of("certificate_templates.template_family"));
+        assertTrue("varchar(30)".equals(added.get("certificate_templates.template_family")),
+                "certificate_templates.template_family must be varchar(30) but is \""
+                        + added.get("certificate_templates.template_family") + "\"");
+
+        // The approval tables are created wholesale, so they are checked as table definitions.
+        String migration = readMigration("V161__certificate_approvals_and_template_families.sql");
+        for (String column : List.of(
+                "certificate_id", "stage", "decision_status", "actor_user_id",
+                "template_version", "decided_at")) {
+            assertTrue(migration.contains(column),
+                    "certificate_approvals." + column + " is mapped by the approval service but V161 does not declare it");
+        }
+        for (String column : List.of("certificate_id", "full_name", "signature_image")) {
+            assertTrue(migration.contains(column),
+                    "certificate_signatory_snapshots." + column
+                            + " is mapped by the approval service but V161 does not declare it");
+        }
+        assertTrue(migration.contains("template_family"),
+                "certificate_templates.template_family is mapped by the template entity but V161 does not declare it");
+    }
+
+    /**
+     * The approval workflow stores decisions durably. A migration that declared the table without
+     * a uniqueness rule would let two live decisions accumulate for one stage and make the
+     * certificate's status ambiguous.
+     */
+    @Test
+    void certificateApprovals_ConstrainOneCurrentDecisionPerStage() throws IOException {
+        String migration = readMigration("V161__certificate_approvals_and_template_families.sql");
+
+        assertTrue(migration.contains("certificate_approvals"),
+                "V161 must create the approval table");
+        // The partial unique index is what stops a second live decision appearing for a stage.
+        assertTrue(migration.contains("ux_certificate_approvals_current_stage"),
+                "V161 must enforce one current decision per (certificate, stage)");
+        assertTrue(migration.contains("FOREIGN KEY (certificate_id) REFERENCES certificates (id)"),
+                "approvals must reference the certificate they belong to");
+    }
+
+    /**
+     * Column type per "table.column" for columns added via ALTER TABLE ADD COLUMN, last
+     * declaration winning. Does not see CREATE TABLE columns.
+     */
     private Map<String, String> declaredColumns(Set<String> wanted) throws IOException {
         Map<String, String> declared = new LinkedHashMap<>();
         List<Path> ordered = migrationFiles.stream()

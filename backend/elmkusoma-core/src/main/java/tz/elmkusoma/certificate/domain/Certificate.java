@@ -121,9 +121,26 @@ public class Certificate extends BaseEntity {
         TRANSCRIPT
     }
 
+    /**
+     * The authoritative lifecycle of a certificate.
+     *
+     * <p>Extended additively by V161. There is deliberately no second state machine: DRAFT,
+     * PENDING_APPROVAL and APPROVED sit in the same column as ISSUED and REVOKED so a certificate
+     * always has exactly one lifecycle field.</p>
+     *
+     * <p>Existing rows are unaffected - the column was an unconstrained varchar, and the new
+     * values are only ever written by the approval workflow.</p>
+     */
     public enum CertificateStatus {
+        /** Prepared, not yet submitted for review. */
         DRAFT,
+        /** Submitted; at least one required approval stage is still outstanding. */
+        PENDING_APPROVAL,
+        /** Every stage the policy requires is approved. Issuable. */
+        APPROVED,
+        /** Released to the holder. */
         ISSUED,
+        /** Withdrawn after issuance. */
         REVOKED
     }
 }

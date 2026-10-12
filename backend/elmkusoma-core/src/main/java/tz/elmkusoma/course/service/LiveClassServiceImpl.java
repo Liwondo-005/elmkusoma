@@ -77,6 +77,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final CertificateRepository certificateRepository;
+    private final tz.elmkusoma.certificate.service.CertificateIssuanceSupport certificateIssuanceSupport;
     private final StudentRepository studentRepository;
     private final LiveKitService liveKitService;
     private final ReplayRepository replayRepository;
@@ -490,7 +491,10 @@ public class LiveClassServiceImpl implements LiveClassService {
                         durationMinutes, endsAt);
             } catch (Exception e) {
                 // One bad session must never stop the sweep for the others.
-                log.warn("Auto-end failed for live class {}: {}", liveClass.getId(), e.getMessage());
+                // The throwable is logged, not just its message: e.getMessage() is null for an NPE,
+                // so a null-dependency failure here logged as ": null" and gave no indication of
+                // what actually went wrong.
+                log.warn("Auto-end failed for live class {}: {}", liveClass.getId(), e.getMessage(), e);
             }
         }
         return ended;
@@ -803,6 +807,8 @@ public class LiveClassServiceImpl implements LiveClassService {
             // ever auto-completed.
             UUID issuer = markedBy != null ? markedBy : liveClass.getTeacherId();
 
+            String verificationCode = certificateIssuanceSupport.newVerificationCode();
+
             Certificate cert = Certificate.builder()
                     // template_id has an FK to certificate_templates(id) which is empty;
                     // the column is nullable, so leave it unset instead of a random UUID.
@@ -817,11 +823,22 @@ public class LiveClassServiceImpl implements LiveClassService {
                     .completionDate(LocalDate.now())
                     .issueDate(LocalDateTime.now())
                     .status(Certificate.CertificateStatus.ISSUED)
-                    .verificationCode(UUID.randomUUID().toString().substring(0, 12).toUpperCase())
+                    .verificationCode(verificationCode)
+                    // Built from the same canonical config as the manual path. This used to be
+                    // left null, so an auto-issued certificate had a code that resolved to
+                    // nothing when printed or encoded into a QR code.
+                    .verificationUrl(certificateIssuanceSupport.verificationUrl(verificationCode))
                     .instructorName(teacherName)
                     .build();
             cert.setInstitutionId(liveClass.getInstitutionId());
             certificateRepository.save(cert);
+
+            // Automatic issuance is legitimate, but "the platform decided this" is exactly the
+            // fact an auditor needs. Every other certificate transition is audited; this path
+            // was not, so certificates appeared with no record of what produced them.
+            certificateIssuanceSupport.recordAutomaticIssuance(cert, markedBy,
+                    "live-class-expiry",
+                    markedBy != null ? "Session ended by a teacher" : "Session expiry sweep");
             created++;
         }
 

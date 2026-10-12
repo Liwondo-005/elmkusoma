@@ -374,53 +374,31 @@ public class LearnerController {
                 LearnerNotification completionNotification = LearnerNotification.builder()
                         .userId(userId)
                         .title("Course Completed!")
-                        .message("Congratulations! You have completed " + (course != null ? course.getTitle() : "the course") + ". Check your certificates.")
+                        .message("Congratulations! You have completed " + (course != null ? course.getTitle() : "the course")
+                                + ". Your certificate will appear here once the issuing institution has issued it.")
                         .notificationType("COURSE_COMPLETION")
                         .targetType("course")
                         .targetId(courseId)
                         .build();
                 notificationRepository.save(completionNotification);
 
-                try {
-                    List<CertificateTemplate> templates = certificateTemplateRepository.findAllByInstitutionId(course != null ? course.getInstitutionId() : null);
-                    if (templates != null && !templates.isEmpty()) {
-                        CertificateTemplate template = templates.get(0);
-                        User user = userRepository.findById(userId).orElse(null);
-                        String studentName = user != null ? user.getFullName() : "Student";
-                        String serialNumber = "CERT-" + System.currentTimeMillis() + "-" + userId.toString().substring(0, 8);
-                        String verificationCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
-
-                        Certificate certificate = Certificate.builder()
-                                .templateId(template.getId())
-                                .studentId(userId)
-                                .issuedBy(userId)
-                                .serialNumber(serialNumber)
-                                .certificateType(CertificateType.COMPLETION)
-                                .title("Certificate of Completion - " + (course != null ? course.getTitle() : ""))
-                                .description("Awarded for successfully completing " + (course != null ? course.getTitle() : "the course"))
-                                .studentName(studentName)
-                                .courseOrProgramme(course != null ? course.getTitle() : null)
-                                .completionDate(LocalDate.now())
-                                .issueDate(LocalDateTime.now())
-                                .status(CertificateStatus.ISSUED)
-                                .verificationCode(verificationCode)
-                                .build();
-                        if (course != null) certificate.setInstitutionId(course.getInstitutionId());
-                        certificateRepository.save(certificate);
-
-                        LearnerNotification certNotification = LearnerNotification.builder()
-                                .userId(userId)
-                                .title("Certificate Issued!")
-                                .message("Your certificate for " + (course != null ? course.getTitle() : "the course") + " is ready. Verification code: " + verificationCode)
-                                .notificationType("CERTIFICATE")
-                                .targetType("certificate")
-                                .targetId(certificate.getId())
-                                .build();
-                        notificationRepository.save(certNotification);
-                    }
-                } catch (Exception ex) {
-                    log.warn("Failed to auto-issue certificate for user {} course {}: {}", userId, courseId, ex.getMessage());
-                }
+                // A COMPLETION certificate is deliberately NOT issued here.
+                //
+                // This used to happen on a learner-facing GET, and it was wrong three ways:
+                //   - certificates.issued_by was set to the learner's own user id, so the
+                //     certificate recorded the student as the person who issued it;
+                //   - certificates.student_id has a FK to students(id), not users(id), and a
+                //     user id was being written into it;
+                //   - nothing was audited, so the certificate appeared with no record at all.
+                //
+                // Issuing an academic credential is an institutional act. It belongs to the
+                // certificate service, which derives the recipient from the student record,
+                // checks the template is active and owned, records who issued it, and writes the
+                // audit entry. A learner clicking a progress page must not be able to mint one.
+                //
+                // Completion is still recorded here - that evidence is what an issuer acts on.
+                log.debug("Course completion recorded for learner {} course {}; certificate issuance "
+                        + "is left to the issuing institution", userId, courseId);
             }
             enrollmentRepository.save(e);
         });

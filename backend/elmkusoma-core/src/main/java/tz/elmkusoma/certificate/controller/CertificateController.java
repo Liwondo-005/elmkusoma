@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.certificate.dto.*;
+import tz.elmkusoma.certificate.domain.Certificate;
+import tz.elmkusoma.certificate.domain.CertificateApproval;
 import tz.elmkusoma.certificate.service.CertificateService;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.parent.repository.ParentRepository;
@@ -29,11 +31,12 @@ import java.util.UUID;
 public class CertificateController {
 
     private final CertificateService certificateService;
+    private final tz.elmkusoma.certificate.service.CertificateApprovalService certificateApprovalService;
     private final StudentRepository studentRepository;
     private final ParentRepository parentRepository;
     private final ParentStudentLinkRepository parentStudentLinkRepository;
 
-    // ── Template Endpoints ──
+    // â”€â”€ Template Endpoints â”€â”€
 
     @PostMapping("/templates")
     @Operation(summary = "Create a certificate template")
@@ -67,7 +70,7 @@ public class CertificateController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // ── Certificate Endpoints ──
+    // â”€â”€ Certificate Endpoints â”€â”€
 
     @PostMapping("/generate")
     @Operation(summary = "Generate a new certificate")
@@ -218,7 +221,92 @@ public class CertificateController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // ── Transcript Endpoints ──
+    // â”€â”€ Approval workflow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //
+    // Exposed on the existing controller rather than a new one: this is the same certificate
+    // lifecycle, not a parallel system, and a second controller is how two state machines end up
+    // contradicting each other.
+
+    @PostMapping("/{certificateId}/submit-for-approval")
+    @Operation(summary = "Submit a draft certificate for review")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<CertificateResponse>> submitForApproval(
+            @PathVariable UUID certificateId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        Certificate submitted = certificateApprovalService.submitForApproval(
+                certificateId, institutionId, userId, userEmail, userRole);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Certificate submitted for review",
+                certificateService.getCertificateById(submitted.getId(), institutionId)));
+    }
+
+    @PostMapping("/{certificateId}/approvals/{stage}")
+    @Operation(summary = "Approve or reject one stage of a certificate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<CertificateResponse>> decideApproval(
+            @PathVariable UUID certificateId,
+            @PathVariable CertificateApproval.ApprovalStage stage,
+            @Valid @RequestBody CertificateDecisionRequest request,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+
+        certificateApprovalService.decide(certificateId, stage, request.isApproved(), institutionId,
+                userId, userEmail, userRole, request.getReason());
+        return ResponseEntity.ok(ApiResponse.success(
+                request.isApproved() ? "Stage approved" : "Stage rejected",
+                certificateService.getCertificateById(certificateId, institutionId)));
+    }
+
+    @PostMapping("/{certificateId}/approvals/{stage}/withdraw")
+    @Operation(summary = "Withdraw a previously granted approval")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    public ResponseEntity<ApiResponse<CertificateResponse>> withdrawApproval(
+            @PathVariable UUID certificateId,
+            @PathVariable CertificateApproval.ApprovalStage stage,
+            @Valid @RequestBody CertificateDecisionRequest request,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+
+        certificateApprovalService.withdrawApproval(certificateId, stage, institutionId,
+                userId, userEmail, userRole, request.getReason());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Approval withdrawn",
+                certificateService.getCertificateById(certificateId, institutionId)));
+    }
+
+    @GetMapping("/{certificateId}/approvals")
+    @Operation(summary = "Approval history for a certificate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<List<CertificateApprovalResponse>>> approvalHistory(
+            @PathVariable UUID certificateId,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        // Reuse the detail endpoint so the tenant check happens before anything is disclosed.
+        certificateService.getCertificateById(certificateId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(
+                certificateApprovalService.history(certificateId).stream()
+                        .map(CertificateApprovalResponse::from)
+                        .toList()));
+    }
+
+    @GetMapping("/approval-queue")
+    @Operation(summary = "Outstanding approval work for this institution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    public ResponseEntity<ApiResponse<List<CertificateApprovalResponse>>> approvalQueue(
+            @RequestAttribute("institutionId") UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                certificateApprovalService.pendingForInstitution(institutionId).stream()
+                        .map(CertificateApprovalResponse::from)
+                        .toList()));
+    }
+
+    // â”€â”€ Transcript Endpoints â”€â”€
 
     @PostMapping("/transcripts/generate")
     @Operation(summary = "Generate a transcript")
