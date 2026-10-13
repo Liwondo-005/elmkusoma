@@ -6468,7 +6468,20 @@
       "retry": "Retry",
       "noSupportTicketsFound": "No support tickets found",
       "ticketsCreatedByParents": "Tickets created by parents and users via the support service appear here. Empty queue means no open cases.",
-      "assign": "Assign"
+      "assign": "Assign",
+      "conversation": "Conversation",
+      "hideConversation": "Hide conversation",
+      "close": "Close",
+      "noMessagesYet": "No messages yet. The first reply starts the thread.",
+      "failedToLoadThread": "Failed to load the conversation",
+      "failedToSendMessage": "Failed to send the message",
+      "replyPlaceholder": "Write a reply to the requester...",
+      "internalPlaceholder": "Write an internal note...",
+      "markInternal": "Internal note",
+      "internalNote": "Internal",
+      "internalOnly": "An internal note is visible to staff only. It is never shown to the requester and never notified to them.",
+      "send": "Send",
+      "sending": "Sending..."
     },
     "users": {
       "pageOf": "Page {p0} of {p1}",
@@ -7080,7 +7093,21 @@
         "FAILED": "Notification failed",
         "NOT_CONFIGURED": "No recipient configured - nobody was notified",
         "QUEUED": "Handed to mail service (delivery not confirmed)"
-      }
+      },
+      "conversation": "Conversation",
+      "noRepliesYet": "No replies yet. The first reply starts the thread.",
+      "replyPlaceholder": "Write a reply to the enquirer...",
+      "internalPlaceholder": "Write an internal note...",
+      "markInternal": "Internal note",
+      "internalNote": "Internal",
+      "internalOnly": "An internal note is visible to staff only. It is never shown to the enquirer and never notified to them.",
+      "sendReply": "Send reply",
+      "sending": "Sending...",
+      "delivered": "Delivered",
+      "notDelivered": "Not delivered",
+      "assignedTo": "Assigned to",
+      "assigneePlaceholder": "Admin user ID",
+      "assign": "Assign"
     },
     "news": {
       "title": "News & Announcements",

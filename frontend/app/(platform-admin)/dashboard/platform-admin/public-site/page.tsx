@@ -10,12 +10,15 @@ import {
   Globe,
   Inbox,
   Loader2,
+  Lock,
   Save,
+  Send,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   platformAdminApi,
   type ContactMessageRecord,
+  type ContactMessageReply,
   type LegalDocumentRecord,
   type LegalVersionRecord,
   type PlatformConfigItem,
@@ -526,6 +529,42 @@ function InboxTab() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // The conversation. Before this was wired, `contactMessageReplies` and
+  // `replyToContactMessage` existed in the API client with no caller anywhere, so support could
+  // change a status or re-send a notification but never actually answer the person who wrote in.
+  const [replies, setReplies] = useState<ContactMessageReply[]>([])
+  const [replyText, setReplyText] = useState("")
+  const [isInternal, setIsInternal] = useState(false)
+  const [sending, setSending] = useState(false)
+  // Held steady for an unchanged draft so a retried send reuses one key and lands exactly once.
+  const [replyKey, setReplyKey] = useState<string>(() => crypto.randomUUID())
+
+  // Ownership. The endpoint and the assigned_to column already existed with no caller in the
+  // UI, so an enquiry could be answered but never actually taken on by a named person.
+  const [assigneeId, setAssigneeId] = useState("")
+
+  const assign = async () => {
+    if (!selected || !assigneeId.trim()) return
+    await run(() => platformAdminApi.assignContactMessage(selected.id, assigneeId.trim()), selected.id)
+  }
+
+  const loadReplies = useCallback(async (id: string) => {
+    try {
+      setReplies(await platformAdminApi.contactMessageReplies(id))
+    } catch {
+      // A thread that fails to load must not block the enquiry itself; it renders as empty.
+      setReplies([])
+    }
+  }, [])
+
+  useEffect(() => {
+    if (selected) void loadReplies(selected.id)
+    else setReplies([])
+    // Seed from the stored owner so the field reflects reality rather than starting blank
+    // every time an enquiry is opened.
+    setAssigneeId(selected?.assignedTo ?? "")
+  }, [selected, loadReplies])
+
   const load = useCallback(() => {
     setLoading(true)
     platformAdminApi
@@ -557,6 +596,37 @@ function InboxTab() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const sendReply = async () => {
+    if (!selected || !replyText.trim() || sending) return
+    setSending(true)
+    setError(null)
+    try {
+      await platformAdminApi.replyToContactMessage(
+        selected.id,
+        replyText.trim(),
+        isInternal,
+        replyKey,
+      )
+      setReplyText("")
+      // That key is now spent on that content; the next message is a different request.
+      setReplyKey(crypto.randomUUID())
+      await loadReplies(selected.id)
+      await refreshSelected(selected.id)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("loadFailed"))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // A different draft is a different request, so it needs a fresh key; otherwise the backend
+  // would refuse the send as a conflicting reuse of the same key for other content.
+  const onDraftChange = (value: string) => {
+    if (value !== replyText) setReplyKey(crypto.randomUUID())
+    setReplyText(value)
   }
 
   return (
@@ -657,6 +727,88 @@ function InboxTab() {
               {selected.notificationError ? ` — ${selected.notificationError}` : ""}
             </p>
 
+            {/* The conversation itself: what has already been sent back, and the composer. */}
+            <div className="mt-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("conversation")}
+              </h3>
+              <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
+                {replies.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+                    {t("noRepliesYet")}
+                  </p>
+                ) : (
+                  replies.map((reply) => (
+                    <div
+                      key={reply.id}
+                      className={`rounded-lg border px-3 py-2 text-sm ${
+                        reply.internal
+                          ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+                          : "border-border bg-muted/40 text-foreground"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-xs opacity-70">
+                        {reply.createdAt && <span>{reply.createdAt}</span>}
+                        {reply.internal && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-200/70 px-2 py-0.5 font-semibold text-amber-900">
+                            <Lock className="size-3" aria-hidden="true" /> {t("internalNote")}
+                          </span>
+                        )}
+                        {!reply.internal && (
+                          <span className={reply.delivered ? "text-emerald-700" : "text-amber-700"}>
+                            {reply.delivered ? t("delivered") : t("notDelivered")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 whitespace-pre-wrap break-words">{reply.message}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-3 space-y-2">
+                <textarea
+                  value={replyText}
+                  onChange={(e) => onDraftChange(e.target.value)}
+                  rows={3}
+                  maxLength={5000}
+                  disabled={sending}
+                  placeholder={isInternal ? t("internalPlaceholder") : t("replyPlaceholder")}
+                  aria-label={isInternal ? t("internalPlaceholder") : t("replyPlaceholder")}
+                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={isInternal}
+                      disabled={sending}
+                      onChange={(e) => {
+                        setIsInternal(e.target.checked)
+                        setReplyKey(crypto.randomUUID())
+                      }}
+                      className="size-4 rounded border-border accent-amber-600"
+                    />
+                    <Lock className="size-3" aria-hidden="true" /> {t("markInternal")}
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={sending || !replyText.trim()}
+                    onClick={sendReply}
+                  >
+                    <Send className="size-3.5" aria-hidden="true" />
+                    {sending ? t("sending") : t("sendReply")}
+                  </Button>
+                </div>
+                {isInternal && (
+                  <p className="flex items-start gap-1.5 text-xs text-amber-700">
+                    <Lock className="mt-0.5 size-3 shrink-0" aria-hidden="true" /> {t("internalOnly")}
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="mt-4 flex flex-wrap items-end gap-2">
               <div>
                 <label htmlFor="msg-status" className="block text-xs font-medium text-foreground">
@@ -684,6 +836,31 @@ function InboxTab() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label htmlFor="msg-assignee" className="block text-xs font-medium text-foreground">
+                  {t("assignedTo")}
+                </label>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <input
+                    id="msg-assignee"
+                    type="text"
+                    value={assigneeId}
+                    disabled={busy}
+                    onChange={(e) => setAssigneeId(e.target.value)}
+                    placeholder={t("assigneePlaceholder")}
+                    className="h-9 w-56 rounded-lg border border-border bg-background px-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !assigneeId.trim() || assigneeId.trim() === (selected.assignedTo ?? "")}
+                    onClick={assign}
+                  >
+                    {t("assign")}
+                  </Button>
+                </div>
               </div>
               <Button
                 type="button"

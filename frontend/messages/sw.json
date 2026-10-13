@@ -6468,7 +6468,20 @@
       "retry": "Jaribu tena",
       "noSupportTicketsFound": "Hakuna msaada tickets kupatikana",
       "ticketsCreatedByParents": "Tickets imeundwa by wazazi and watumiaji via the msaada huduma appear here. Empty queue means hakuna wazi cases.",
-      "assign": "Assign"
+      "assign": "Assign",
+      "conversation": "Mazungumzo",
+      "hideConversation": "Ficha mazungumzo",
+      "close": "Funga",
+      "noMessagesYet": "Hakuna ujumbe bado. Jibu la kwanza linaanzisha mjadala.",
+      "failedToLoadThread": "Imeshindwa kupakia mazungumzo",
+      "failedToSendMessage": "Imeshindwa kutuma ujumbe",
+      "replyPlaceholder": "Andika jibu kwa muombaji...",
+      "internalPlaceholder": "Andika dokezo la ndani...",
+      "markInternal": "Dokezo la ndani",
+      "internalNote": "La ndani",
+      "internalOnly": "Dokezo la ndani linaonekana na wafanyakazi pekee. Halionyeshwi kwa muombaji wala kuarifiwa kwake.",
+      "send": "Tuma",
+      "sending": "Inatuma..."
     },
     "users": {
       "pageOf": "Ukurasa {p0} kati ya {p1}",
@@ -7080,7 +7093,21 @@
         "FAILED": "Imeshindwa kutumia taarifa",
         "NOT_CONFIGURED": "Hakuna mpokeaji aliyewekwa - hakuna aliyeyeambishwa",
         "QUEUED": "Imewasilishwa kwa huduma ya barua pepe (uhakikiwa wa kupeleka hakuna)"
-      }
+      },
+      "conversation": "Mazungumzo",
+      "noRepliesYet": "Hakuna majibu bado. Jibu la kwanza linaanzisha mjadala.",
+      "replyPlaceholder": "Andika jibu kwa muombaji...",
+      "internalPlaceholder": "Andika dokezo la ndani...",
+      "markInternal": "Dokezo la ndani",
+      "internalNote": "La ndani",
+      "internalOnly": "Dokezo la ndani linaonekana na wafanyakazi pekee. Halionyeshwi kwa muombaji wala kuarifiwa kwake.",
+      "sendReply": "Tuma jibu",
+      "sending": "Inatuma...",
+      "delivered": "Imefika",
+      "notDelivered": "Haijafika",
+      "assignedTo": "Amepangiwa kwa",
+      "assigneePlaceholder": "Kitambulisho cha msimamizi",
+      "assign": "Pangia"
     },
     "news": {
       "title": "Habari na Tangazo",

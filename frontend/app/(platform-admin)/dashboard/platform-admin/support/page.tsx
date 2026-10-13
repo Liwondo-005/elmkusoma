@@ -3,8 +3,8 @@
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState, useCallback } from "react"
-import { LifeBuoy, RefreshCw, AlertCircle, Clock, UserCheck, Search, ChevronRight } from "lucide-react"
-import { platformAdminApi, type PageResponse, type SupportTicket } from "@/lib/platform-admin-api"
+import { LifeBuoy, RefreshCw, AlertCircle, Clock, UserCheck, Search, ChevronRight, MessageSquare, Lock, X, Send, StickyNote } from "lucide-react"
+import { platformAdminApi, type PageResponse, type SupportTicket, type SupportTicketMessage } from "@/lib/platform-admin-api"
 
 const LIFECYCLE = ["OPEN", "ASSIGNED", "INVESTIGATING", "ACTION_REQUIRED", "RESOLVED", "CLOSED"] as const
 type TicketStatus = (typeof LIFECYCLE)[number]
@@ -43,6 +43,19 @@ export default function PlatformSupportPage() {
   const [adminId, setAdminId] = useState("")
   const [assigning, setAssigning] = useState<string | null>(null)
 
+  // Conversation thread. Opened per ticket so a case can be read and answered from the queue
+  // instead of being triaged in the abstract.
+  const [threadTicket, setThreadTicket] = useState<SupportTicket | null>(null)
+  const [messages, setMessages] = useState<SupportTicketMessage[]>([])
+  const [threadLoading, setThreadLoading] = useState(false)
+  const [threadError, setThreadError] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState("")
+  const [isInternal, setIsInternal] = useState(false)
+  const [sending, setSending] = useState(false)
+  // Stable while the draft is unchanged, so a double-tap or a timed-out retry reuses one key
+  // and lands exactly once. Changing the text means it is a different request, hence a new key.
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => crypto.randomUUID())
+
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
@@ -80,6 +93,50 @@ export default function PlatformSupportPage() {
   const rows = (page?.content ?? []).filter((t) =>
     !search || `${t.title} ${t.description ?? ""}`.toLowerCase().includes(search.toLowerCase())
   )
+
+  const openThread = async (ticket: SupportTicket) => {
+    setThreadTicket(ticket)
+    setThreadLoading(true)
+    setThreadError(null)
+    setReplyText("")
+    setIsInternal(false)
+    setIdempotencyKey(crypto.randomUUID())
+    try {
+      setMessages(await platformAdminApi.listSupportTicketMessages(ticket.id))
+    } catch (e: any) {
+      setThreadError(e.message || t("support.failedToLoadThread"))
+      setMessages([])
+    } finally { setThreadLoading(false) }
+  }
+
+  const closeThread = () => {
+    setThreadTicket(null)
+    setMessages([])
+    setThreadError(null)
+  }
+
+  const sendReply = async () => {
+    if (!threadTicket || !replyText.trim() || sending) return
+    setSending(true); setThreadError(null)
+    try {
+      await platformAdminApi.addSupportTicketMessage(
+        threadTicket.id, replyText.trim(), isInternal, idempotencyKey)
+      setMessages(await platformAdminApi.listSupportTicketMessages(threadTicket.id))
+      // The send succeeded, so this key has now been spent on that content. A fresh key is
+      // issued for whatever the admin writes next.
+      setReplyText("")
+      setIdempotencyKey(crypto.randomUUID())
+    } catch (e: any) {
+      setThreadError(e.message || t("support.failedToSendMessage"))
+    } finally { setSending(false) }
+  }
+
+  // A different draft is a different request. Reusing the old key would make the backend
+  // reject it as a conflicting reuse of the same key for other content.
+  const onDraftChange = (value: string) => {
+    if (value !== replyText) setIdempotencyKey(crypto.randomUUID())
+    setReplyText(value)
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -126,7 +183,8 @@ export default function PlatformSupportPage() {
         ) : (
           <div className="space-y-2">
             {rows.map((row) => (
-              <div key={row.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-muted/30">
+              <div key={row.id}>
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-muted/30">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2"><StatusBadge s={row.status} />{row.priority && <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{row.priority}</span>}{row.category && <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{row.category}</span>}</div>
                   <p className="mt-1 font-medium text-foreground truncate">{row.title}</p>
@@ -138,6 +196,13 @@ export default function PlatformSupportPage() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
+                  <button
+                    onClick={() => threadTicket?.id === row.id ? closeThread() : openThread(row)}
+                    aria-expanded={threadTicket?.id === row.id}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted">
+                    <MessageSquare className="size-3" />
+                    {threadTicket?.id === row.id ? t("support.hideConversation") : t("support.conversation")}
+                  </button>
                   <button disabled={assigning === row.id || !adminId.trim()} onClick={() => assign(row)}
                     className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50">
                     <UserCheck className="size-3" /> {t("support.assign")}</button>
@@ -148,6 +213,97 @@ export default function PlatformSupportPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {threadTicket?.id === row.id && (
+                <div className="mt-2 rounded-xl border border-border bg-background p-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <MessageSquare className="size-4" /> {t("support.conversation")}
+                    </h2>
+                    <button onClick={closeThread}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-semibold hover:bg-muted">
+                      <X className="size-3" /> {t("support.close")}
+                    </button>
+                  </div>
+
+                  {/* A failed read or send is reported here rather than in the page-wide banner:
+                      that banner offers "Retry", which would reload the whole queue and discard
+                      this thread. */}
+                  {threadError && (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      <AlertCircle className="size-4 shrink-0" aria-hidden="true" /> {threadError}
+                    </div>
+                  )}
+
+                  <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+                    {threadLoading ? (
+                      <div className="animate-pulse space-y-2">
+                        <div className="h-12 rounded-lg bg-muted" />
+                        <div className="h-12 rounded-lg bg-muted" />
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+                        {t("support.noMessagesYet")}
+                      </p>
+                    ) : (
+                      messages.map((m) => (
+                        <div key={m.id}
+                          className={`rounded-lg border px-3 py-2 text-sm ${
+                            m.internal
+                              ? "border-amber-300 bg-amber-50 text-amber-900"
+                              : "border-border bg-card text-foreground"
+                          }`}>
+                          <div className="flex flex-wrap items-center gap-2 text-xs opacity-70">
+                            <span className="font-semibold">{m.senderId}</span>
+                            {m.createdAt && <span>{new Date(m.createdAt).toLocaleString()}</span>}
+                            {m.internal && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-200/70 px-2 py-0.5 font-semibold text-amber-900">
+                                <Lock className="size-3" /> {t("support.internalNote")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 whitespace-pre-wrap break-words">{m.message}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => onDraftChange(e.target.value)}
+                      rows={3}
+                      maxLength={5000}
+                      placeholder={isInternal ? t("support.internalPlaceholder") : t("support.replyPlaceholder")}
+                      className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          checked={isInternal}
+                          onChange={(e) => { setIsInternal(e.target.checked); setIdempotencyKey(crypto.randomUUID()) }}
+                          className="size-4 rounded border-border accent-amber-600"
+                        />
+                        <StickyNote className="size-3" /> {t("support.markInternal")}
+                      </label>
+                      <button
+                        onClick={sendReply}
+                        disabled={sending || !replyText.trim()}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50">
+                        <Send className="size-4" />
+                        {sending ? t("support.sending") : t("support.send")}
+                      </button>
+                    </div>
+                    {isInternal && (
+                      <p className="flex items-start gap-1.5 text-xs text-amber-700">
+                        <Lock className="mt-0.5 size-3 shrink-0" /> {t("support.internalOnly")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               </div>
             ))}
           </div>

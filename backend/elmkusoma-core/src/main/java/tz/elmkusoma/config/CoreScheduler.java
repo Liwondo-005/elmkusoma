@@ -56,6 +56,7 @@ public class CoreScheduler {
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
     private final tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
+    private final tz.elmkusoma.shared.service.CommunicationIdempotencyService communicationIdempotencyService;
 
     /**
      * Authoritative live-class expiry. A started session ends when its ACTUAL start
@@ -91,6 +92,23 @@ public class CoreScheduler {
             liveClassService.reconcilePendingRecordings();
         } catch (Exception e) {
             log.warn("Recording reconciliation sweep failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Retention sweep for the communication idempotency ledger.
+     *
+     * <p>Finished keys only have to outlive a client's retry horizon, not persist forever, and
+     * a claim left behind by a request that died must not block that client's next honest
+     * attempt. Hourly is far more often than the seven-day window requires, and costs a single
+     * indexed delete when there is nothing to remove.</p>
+     */
+    @Scheduled(fixedRate = 3600000, initialDelay = 120000)
+    public void purgeExpiredIdempotencyKeys() {
+        try {
+            communicationIdempotencyService.purgeExpired();
+        } catch (Exception e) {
+            log.warn("Idempotency retention sweep failed: {}", e.getMessage());
         }
     }
 

@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface SupportTicketRepository extends JpaRepository<SupportTicket, UUID> {
+    java.util.Optional<SupportTicket> findByIdAndIsDeletedFalse(UUID id);
     List<SupportTicket> findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID userId);
     List<SupportTicket> findByUserIdAndStatusAndIsDeletedFalse(UUID userId, String status);
     long countByUserIdAndStatusAndIsDeletedFalse(UUID userId, String status);

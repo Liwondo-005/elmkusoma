@@ -701,6 +701,15 @@ export interface SupportTicket {
   assignedTo: string | null; resolvedAt: string | null; createdAt: string
 }
 
+/** One entry in a support case's conversation. Internal notes are staff-only. */
+export interface SupportTicketMessage {
+  id: string
+  senderId: string
+  message: string
+  internal: boolean
+  createdAt: string | null
+}
+
 export interface ContentReport {
   id: string; entityType: string; entityId: string; entityTitle: string | null
   reporterId: string | null; reason: string; description: string | null
@@ -1045,10 +1054,20 @@ export const platformAdminApi = {
     }),
   contactMessageReplies: (id: string) =>
     platformFetch<ContactMessageReply[]>(`/v1/platform-admin/contact-messages/${id}/replies`),
-  replyToContactMessage: (id: string, message: string, internal: boolean) =>
+  /**
+   * Replies to the enquirer, or records an internal note when `internal` is true.
+   *
+   * `idempotencyKey` makes a retried send land exactly once, so a double-tap or a timeout that
+   * the client retries cannot mail the same person twice.
+   */
+  replyToContactMessage: (id: string, message: string, internal: boolean, idempotencyKey?: string) =>
     platformFetch<{ id: string; internal: boolean; delivered: boolean }>(
       `/v1/platform-admin/contact-messages/${id}/replies`,
-      { method: "POST", body: JSON.stringify({ message, internal }) }),
+      {
+        method: "POST",
+        body: JSON.stringify({ message, internal }),
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+      }),
   /** Re-attempts notification on the same enquiry. Never creates a second ticket. */
   renotifyContactMessage: (id: string) =>
     platformFetch<ContactMessageRecord>(`/v1/platform-admin/contact-messages/${id}/notify`,
@@ -1250,6 +1269,37 @@ revertLegalDocument: (id: string, version: number) =>
   },
   updateSupportTicketStatus: (id: string, status: string) =>
     platformFetch<SupportTicket>(`/v1/platform-admin/support/tickets/${id}/status?status=${status}`, { method: "PUT" }),
+
+  /**
+   * Reads one case's conversation — internal notes included.
+   *
+   * The requester's own read path filters those out, so this is the only surface where staff
+   * notes are visible at all.
+   */
+  listSupportTicketMessages: (ticketId: string) =>
+    platformFetch<SupportTicketMessage[]>(`/v1/platform-admin/support/tickets/${ticketId}/messages`),
+
+  /**
+   * Posts a reply, or an internal note when `internal` is true.
+   *
+   * `idempotencyKey` makes a retried send land exactly once. The key is scoped to the admin and
+   * to this operation, and reusing it for different content is refused rather than silently
+   * returning an earlier, different reply.
+   */
+  addSupportTicketMessage: (
+    ticketId: string,
+    message: string,
+    internal: boolean,
+    idempotencyKey?: string,
+  ) =>
+    platformFetch<{ id: string; internal: boolean }>(
+      `/v1/platform-admin/support/tickets/${ticketId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ message, internal }),
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+      },
+    ),
 
   listContentReports: (page = 0, size = 20, status?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
