@@ -460,6 +460,46 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * V161 created certificate_signatory_snapshots with only created_at and is_deleted, but
+     * CertificateSignatorySnapshot extends BaseEntity, which also maps updated_at, created_by and
+     * updated_by. Hibernate still builds the full column set in the test profile
+     * (ddl-auto=create-drop, flyway disabled), so the entire Spring suite stayed green while every
+     * read of the snapshot failed against a real database with "column ... does not exist" - which
+     * is exactly what broke certificate PDF export, the table's only consumer.
+     *
+     * <p>V168 adds the three missing columns. This asserts all five audit columns resolve through
+     * the replay, because a column present on the entity but absent from the migrations can only
+     * surface at runtime against a real database.</p>
+     */
+    @Test
+    void certificateSignatorySnapshotAuditColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> columnNames = Set.of("created_at", "updated_at", "created_by", "updated_by", "is_deleted");
+
+        Map<String, String> types = resolvedColumnTypes(columnNames);
+
+        List<String> missing = columnNames.stream()
+                .map(name -> "certificate_signatory_snapshots." + name)
+                .filter(key -> !types.containsKey(key))
+                .sorted()
+                .toList();
+        assertTrue(missing.isEmpty(),
+                "CertificateSignatorySnapshot extends BaseEntity and maps these columns, but no "
+                        + "migration declares them, so reading a signatory snapshot fails with a bare "
+                        + "HTTP 500 (this is what broke certificate PDF export): " + missing);
+
+        // created_at backs BaseEntity's @PrePersist and is NOT NULL on every certificate table.
+        String createdAt = types.get("certificate_signatory_snapshots.created_at");
+        assertTrue(createdAt != null && createdAt.startsWith("timestamp"),
+                "certificate_signatory_snapshots.created_at must be a timestamp but was declared as \""
+                        + createdAt + "\" at " + declaredIn.get("certificate_signatory_snapshots.created_at"));
+
+        String isDeleted = types.get("certificate_signatory_snapshots.is_deleted");
+        assertTrue(isDeleted != null && isDeleted.startsWith("boolean"),
+                "is_deleted is a boolean on the entity; a migration that declared it as text would "
+                        + "still pass Hibernate's generated schema in tests");
+    }
+
+    /**
      * V157 adds the publication/access columns that make a live class publicly discoverable.
      *
      * <p>The same reasoning as the news assertion applies, and it matters more here: the test
