@@ -67,17 +67,49 @@ public class LiveClassRecordingAccessService {
         if (userId == null || callerInstitutionId == null) {
             return false;
         }
-        if (!membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, callerInstitutionId)) {
-            return false;
-        }
         if (liveClass.getClassGroupId() == null) {
             // open session: any institution member may watch the recording
-            return true;
+            return membershipRepository
+                    .existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, callerInstitutionId);
         }
         // class-scoped session: prove membership of the target class
-        // (student_class_assignments ∪ ENROLLED enrollments, strict)
+        return isLearnerInClassAudience(userId, callerInstitutionId, liveClass.getClassGroupId());
+    }
+
+    /**
+     * Audience membership for a learner, decided without ever looking at attendance.
+     *
+     * <p>This is the union that {@code LiveSessionController} already applies before letting a
+     * learner <em>join</em> a class-scoped session ({@code student_class_assignments} ∪ ENROLLED
+     * {@code enrollments} through {@link ClassAccessGuard#isLearnerInClass}), so the rule a learner
+     * had to satisfy to be in the room is exactly the rule they now satisfy to watch the recording
+     * afterwards. That is what separates the two ideas the old code conflated: a
+     * {@code LiveClassParticipant} row proves the learner <em>attended</em>, while this proves they
+     * are <em>entitled</em> to the session's audience - a learner who was absent that day, or who
+     * joined the class after it was recorded, is still entitled.</p>
+     *
+     * <p>Deliberately default-deny in both of its null cases: a {@code classGroupId} of {@code null}
+     * means the session declares no audience at all, and the Replay and Media Library rules have
+     * always held that institution membership alone is not enough, because that would expose every
+     * undeclared recording in the tenant to every learner in it. Attendance is not consulted here
+     * either - it stays a separate, sufficient condition owned by the caller, so the pre-existing
+     * "I was in the room" grant is untouched.</p>
+     *
+     * @param userId        the authenticated caller, or null when anonymous
+     * @param institutionId the institution the recording belongs to
+     * @param classGroupId  the class the recording was made for, or null when it names none
+     * @return true only when this caller is an active member of that institution and a member of
+     *         that class group
+     */
+    public boolean isLearnerInClassAudience(UUID userId, UUID institutionId, UUID classGroupId) {
+        if (userId == null || institutionId == null || classGroupId == null) {
+            return false;
+        }
+        if (!membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, institutionId)) {
+            return false;
+        }
         String email = userRepository.findById(userId).map(User::getEmail).orElse(null);
-        return classAccessGuard.isLearnerInClass(email, liveClass.getClassGroupId());
+        return classAccessGuard.isLearnerInClass(email, classGroupId);
     }
 
     /** Loads a live class for a recording check, or empty when it is missing or deleted. */

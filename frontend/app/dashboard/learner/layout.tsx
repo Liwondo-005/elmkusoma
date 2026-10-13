@@ -76,9 +76,20 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
 
   const isOtherLearner = user.role === "Other Learner"
   const level = (user.learningLevel || "").toUpperCase()
-  const isCollegeStudent = user.role === "Student" && (level === "COLLEGE" || level === "UNIVERSITY" || level === "VETA")
+  // Every learner level reaches the shared learner surfaces (/dashboard/learner/replays,
+  // /dashboard/learner/media-library, ...). This gate previously admitted only "Other Learner"
+  // and Student at COLLEGE/UNIVERSITY/VETA, so Nursery, Primary and Secondary learners - and any
+  // Student whose learning level is not recorded - were refused Recorded Classes outright even
+  // though the backend authorises each request against the recording's audience. Authorization
+  // is not weakened here: it is enforced server-side per request; this only stops a workspace
+  // rendering for a non-learner role.
+  const LEARNER_LEVELS = ["NURSERY", "PRIMARY", "SECONDARY", "COLLEGE", "VETA", "UNIVERSITY"]
+  const isStudent = user.role === "Student"
+  // An unrecorded level must not lock a student out: the sidebar already routes those learners
+  // to the secondary workspace, so they are students of a level the product recognises.
+  const isRecognisedStudentLevel = LEARNER_LEVELS.includes(level) || level === ""
 
-  if (!isOtherLearner && !isCollegeStudent) {
+  if (!isOtherLearner && !(isStudent && isRecognisedStudentLevel)) {
     return (
       <div className="flex items-center justify-center py-20" role="alert" aria-live="assertive">
         <p className="text-muted-foreground">{t("accessDenied")}</p>

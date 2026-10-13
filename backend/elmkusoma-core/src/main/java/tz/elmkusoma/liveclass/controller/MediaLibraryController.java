@@ -32,6 +32,7 @@ public class MediaLibraryController {
     private final tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository participantRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
+    private final tz.elmkusoma.liveclass.service.LiveClassRecordingAccessService liveClassRecordingAccessService;
 
     /** Server-written origin that marks an asset as a live-class recording. */
     private static final String SOURCE_LIVE_CLASS = "LIVE_CLASS";
@@ -62,10 +63,19 @@ public class MediaLibraryController {
      *
      * <p>Recording assets are learner-facing recordings of a specific class. Institution
      * membership alone is not sufficient: before this check any student in the institution
-     * could list and download every other class's recordings. The rule mirrors the one the
-     * Replay Library already enforces in {@code LearnerReplayController.hasReplayEntitlement}
-     * - participation in the recorded session - which is the repository's authoritative
-     * answer to "who may see a recording".</p>
+     * could list and download every other class's recordings.</p>
+     *
+     * <p>A learner passes on either of two server-derived conditions, both of which also gate
+     * the Replay Library, so the two libraries can never disagree about the same recording:</p>
+     * <ul>
+     *   <li><b>Attendance</b> - a {@code LiveClassParticipant} row for the recording's live
+     *       class. This was the whole of the old rule and is kept first and unchanged.</li>
+     *   <li><b>Audience membership</b> - membership of the class group the recording was made
+     *       for, resolved through the same union {@code LiveSessionController} already required
+     *       before letting the learner join that class. Attendance was being used as a proxy for
+     *       entitlement, which denied learners who were entitled to the class but absent on the
+     *       day, or who enrolled after it was recorded.</li>
+     * </ul>
      *
      * <p>Staff keep their existing access: institution admins (and platform admins) see the
      * whole institutional library, and a teacher sees recordings of their own live classes.</p>
@@ -88,15 +98,65 @@ public class MediaLibraryController {
         if (callerUserId.equals(asset.getTeacherId())) {
             return true;
         }
-        // Recordings originate from a live class; entitlement follows live class participation,
-        // exactly as for the Replay Library.
+        // A capture that never produced a playable file is not something to offer a learner.
+        // Staff still reach it above, which is how a teacher diagnoses a failed job.
+        if (!isPlayableForLearners(asset)) {
+            return false;
+        }
+        // Recordings originate from a live class; entitlement follows that class's audience.
         if ("LIVE_CLASS".equalsIgnoreCase(asset.getSourceType()) && asset.getSourceId() != null) {
-            return participantRepository
-                    .existsByLiveClassIdAndUserIdAndIsDeletedFalse(asset.getSourceId(), callerUserId);
+            // 1. The learner was in the recorded session.
+            if (participantRepository
+                    .existsByLiveClassIdAndUserIdAndIsDeletedFalse(asset.getSourceId(), callerUserId)) {
+                return true;
+            }
+            // 2. The learner belongs to the class the recording was made for.
+            return isInRecordingAudience(asset, callerUserId, institutionId);
         }
         // A recording with no live-class origin has no participation evidence: deny rather
         // than expose institution-wide, matching Replay's default-deny rule.
         return false;
+    }
+
+    /**
+     * Whether a learner may be shown this recording at all, judged apart from entitlement.
+     *
+     * <p>Entitlement answers "may you watch this class's recording"; this answers "is there a
+     * recording to watch". The publishing path writes {@code READY} on success and {@code FAILED}
+     * when the capture job could not produce a file, so a failed capture stays visible to the
+     * teacher who owns it (checked earlier, before this runs) but is never advertised to the
+     * learners it was meant for. An absent status is treated as playable because the column
+     * predates the publisher and rows written before it existed still have to play.</p>
+     */
+    private static boolean isPlayableForLearners(MediaAsset asset) {
+        String status = asset.getStatus();
+        return status == null || status.isBlank()
+                || "READY".equalsIgnoreCase(status)
+                || "AVAILABLE".equalsIgnoreCase(status);
+    }
+
+    /**
+     * Membership of the class group this recording was made for.
+     *
+     * <p>The class id is read from {@code media_assets.class_group_id}, which the recording
+     * publisher copies from the live class it published for - never from the request - and a
+     * live class is consulted only for rows written before that inheritance existed. Both
+     * answers are server-written, so a caller cannot aim the check at a class of their choosing,
+     * and a recording that names no class at all grants nothing: default-deny, exactly as
+     * before.</p>
+     */
+    private boolean isInRecordingAudience(MediaAsset asset, UUID callerUserId, UUID institutionId) {
+        if (asset.getClassGroupId() != null) {
+            return liveClassRecordingAccessService.isLearnerInClassAudience(
+                    callerUserId, institutionId, asset.getClassGroupId());
+        }
+        // Legacy row with no inherited class group: fall back to the live class it came from.
+        return liveClassRepository.findById(asset.getSourceId())
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .map(tz.elmkusoma.course.domain.LiveClass::getClassGroupId)
+                .map(classGroupId -> liveClassRecordingAccessService.isLearnerInClassAudience(
+                        callerUserId, institutionId, classGroupId))
+                .orElse(false);
     }
 
     private static boolean isInstitutionScopedAdmin(String userRole) {

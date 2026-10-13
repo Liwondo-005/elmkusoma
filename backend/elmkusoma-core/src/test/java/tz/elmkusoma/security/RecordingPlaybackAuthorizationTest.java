@@ -139,6 +139,14 @@ class RecordingPlaybackAuthorizationTest {
     private ReplayRepository replayRepository;
     @Autowired
     private LiveClassParticipantRepository participantRepository;
+    @Autowired
+    private tz.elmkusoma.shared.repository.UserRepository userRepository;
+    @Autowired
+    private tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
+    @Autowired
+    private tz.elmkusoma.student.repository.StudentRepository studentRepository;
+    @Autowired
+    private tz.elmkusoma.student.repository.StudentClassAssignmentRepository classAssignmentRepository;
 
     // â”€â”€ fixtures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -176,6 +184,87 @@ class RecordingPlaybackAuthorizationTest {
                 .joinedAt(LocalDateTime.now().minusHours(1))
                 .isDeleted(false)
                 .build());
+    }
+
+    /**
+     * Learners created for the audience tests above, removed again afterwards.
+     *
+     * <p>This suite is not transactional, so anything it writes survives into later tests; the
+     * seeded student deliberately has no student profile, which is exactly what makes the
+     * attendance tests meaningful, and none of that may be disturbed.</p>
+     */
+    private final java.util.List<tz.elmkusoma.shared.domain.User> placedLearners =
+            new java.util.ArrayList<>();
+
+    @org.junit.jupiter.api.AfterEach
+    void removePlacedLearners() {
+        for (tz.elmkusoma.shared.domain.User user : placedLearners) {
+            studentRepository.findByUserIdAndIsDeletedFalse(user.getId()).ifPresent(student -> {
+                classAssignmentRepository.findByStudentIdAndIsDeletedFalse(student.getId())
+                        .forEach(a -> {
+                            a.setIsDeleted(true);
+                            classAssignmentRepository.save(a);
+                        });
+                student.setIsDeleted(true);
+                studentRepository.save(student);
+            });
+            membershipRepository
+                    .findByUserIdAndIsActiveTrue(user.getId())
+                    .forEach(m -> {
+                        m.setIsDeleted(true);
+                        membershipRepository.save(m);
+                    });
+            user.setIsDeleted(true);
+            userRepository.save(user);
+        }
+        placedLearners.clear();
+    }
+
+    /**
+     * A learner placed in a class group by an admin, with no attendance row anywhere.
+     *
+     * <p>{@code TestDataSeeder} writes its users straight through JDBC and creates no student
+     * profile, so the profile and the placement are built here - which is exactly what a real
+     * registration followed by an admin's assign-class call produces. Membership comes from
+     * either half of the union the guard reads, so this exercises the class-assignment half.</p>
+     */
+    private tz.elmkusoma.shared.domain.User placeLearnerInClass(UUID classGroupId) {
+        String tag = UUID.randomUUID().toString().substring(0, 8);
+        tz.elmkusoma.shared.domain.User user = userRepository.save(
+                tz.elmkusoma.shared.domain.User.builder()
+                        .email("playback-audience-" + tag + "@test.com")
+                        .passwordHash("test-hash")
+                        .firstName("Playback")
+                        .lastName("Learner")
+                        .role(tz.elmkusoma.shared.domain.User.Role.STUDENT)
+                        .institutionId(TestDataSeeder.INSTITUTION_ID)
+                        .isActive(true)
+                        .isEmailVerified(true)
+                        .isDeleted(false)
+                        .build());
+        membershipRepository.save(tz.elmkusoma.shared.domain.InstitutionMembership.builder()
+                .userId(user.getId())
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .role(tz.elmkusoma.shared.domain.InstitutionMembership.Role.STUDENT)
+                .isActive(true)
+                .isDeleted(false)
+                .build());
+        tz.elmkusoma.student.domain.Student student = studentRepository.save(
+                tz.elmkusoma.student.domain.Student.builder()
+                        .userId(user.getId())
+                        .admissionNumber("PB-" + UUID.randomUUID().toString().substring(0, 12))
+                        .status(tz.elmkusoma.student.domain.StudentStatus.ACTIVE)
+                        .enrollmentDate(java.time.LocalDate.now())
+                        .build());
+        classAssignmentRepository.save(tz.elmkusoma.student.domain.StudentClassAssignment.builder()
+                .studentId(student.getId())
+                .classGroupId(classGroupId)
+                .academicYearId(UUID.randomUUID())
+                .termId(UUID.randomUUID())
+                .isActive(true)
+                .build());
+        placedLearners.add(user);
+        return user;
     }
 
     private static String run() {
@@ -236,6 +325,77 @@ class RecordingPlaybackAuthorizationTest {
         mockMvc.perform(get("/v1/replays/" + replay.getId() + "/playback")
                         .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
                         .header("Authorization", "Bearer " + TestTokens.studentToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * The audience half of the rule, on the path that serves the bytes.
+     *
+     * <p>{@link #aStudentWhoTookPartInTheSessionCanStreamTheRecording} proves attendance opens
+     * the stream; this proves class membership does too, for a learner with no
+     * {@code live_class_participants} row whatsoever. Same class, same recording, same
+     * endpoints - the only difference between the two learners is whether they were in the
+     * room that day. Entitlement and attendance are separate questions, and this is the
+     * separation the discovery endpoints now share.</p>
+     */
+    @Test
+    void aStudentWhoBelongsToTheRecordedClassButNeverAttendedCanStreamTheRecording() throws Exception {
+        UUID classGroupId = UUID.randomUUID();
+        LiveClass lc = liveClassRepository.save(LiveClass.builder()
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .teacherId(TestDataSeeder.TEACHER_ID)
+                .title("Audience class " + run())
+                .scheduledAt(LocalDateTime.now().minusHours(2))
+                .durationMinutes(60)
+                .status("COMPLETED")
+                .classGroupId(classGroupId)
+                .isDeleted(false)
+                .build());
+        Replay replay = replayFor(lc, objectKey("audience"));
+        String token = "Bearer " + tz.elmkusoma.testutil.TestTokens
+                .userToken(placeLearnerInClass(classGroupId).getEmail());
+
+        mockMvc.perform(get("/v1/replays/" + replay.getId() + "/playback")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(content().string(new String(LESSON_BYTES, StandardCharsets.UTF_8)));
+
+        // Seeking is served for them as well: every Range request re-runs the same check.
+        mockMvc.perform(get("/v1/replays/" + replay.getId() + "/playback")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", token)
+                        .header("Range", "bytes=0-4"))
+                .andExpect(status().isPartialContent())
+                .andExpect(content().string("01234"));
+    }
+
+    /**
+     * Membership of <em>some</em> class is not membership of <em>this</em> class: a learner
+     * placed in a different group is refused the bytes of a session recorded for another.
+     */
+    @Test
+    void aStudentOfADifferentClassIsDeniedTheRecordingOfThisClass() throws Exception {
+        UUID thisClass = UUID.randomUUID();
+        UUID thatClass = UUID.randomUUID();
+        LiveClass lc = liveClassRepository.save(LiveClass.builder()
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .teacherId(TestDataSeeder.TEACHER_ID)
+                .title("Cross-class playback " + run())
+                .scheduledAt(LocalDateTime.now().minusHours(2))
+                .durationMinutes(60)
+                .status("COMPLETED")
+                .classGroupId(thisClass)
+                .isDeleted(false)
+                .build());
+        Replay replay = replayFor(lc, objectKey("cross-class"));
+
+        String token = "Bearer " + tz.elmkusoma.testutil.TestTokens
+                .userToken(placeLearnerInClass(thatClass).getEmail());
+
+        mockMvc.perform(get("/v1/replays/" + replay.getId() + "/playback")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", token))
                 .andExpect(status().isForbidden());
     }
 

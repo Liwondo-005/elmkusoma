@@ -42,10 +42,10 @@ public class ReplayController {
     public ResponseEntity<ApiResponse<List<Replay>>> getAllReplays(
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userId", required = false) UUID userId,
+            @RequestAttribute(value = "userRole", required = false) String userRole,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         List<Replay> replays;
-        long total;
         // §81/§82: optional Pageable pagination
         if ((page != null || size != null) && institutionId != null) {
             org.springframework.data.domain.Page<Replay> result = replayRepository
@@ -55,14 +55,23 @@ public class ReplayController {
                                     size != null && size > 0 ? size : 20,
                                     org.springframework.data.domain.Sort.by("createdAt").descending()));
             replays = result.getContent();
-            total = result.getTotalElements();
         } else {
             replays = replayRepository.findByStatusAndIsDeletedFalse("AVAILABLE")
                     .stream()
                     .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
                     .toList();
-            total = replays.size();
         }
+        // Institution scope alone is not a learner's entitlement. Staff keep the tenant-wide view
+        // they have always had here; a learner sees only what {@code LearnerReplayController}
+        // already showed them, so this endpoint cannot be used to read another class's recording
+        // metadata by switching away from the learner route. Filtering happens before the count so
+        // the header cannot advertise rows the caller will not receive.
+        if (isLearnerRole(userRole) && userId != null) {
+            replays = replays.stream()
+                    .filter(r -> replayEntitlementService.hasEntitlement(r, userId))
+                    .toList();
+        }
+        long total = replays.size();
         Map<UUID, ReplayProgress> progressMap = loadProgress(userId, replays);
         populateRelatedLessonId(replays);
         replays.forEach(r -> enrich(r, userId, progressMap));
@@ -76,11 +85,23 @@ public class ReplayController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getReplay(
             @PathVariable UUID id,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
-            @RequestAttribute(value = "userId", required = false) UUID userId) {
+            @RequestAttribute(value = "userId", required = false) UUID userId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
         return replayRepository.findById(id)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
                 .map(r -> {
+                    // Same rule as the byte path and as /v1/learner/replays: a learner reads a
+                    // recording's detail only when they are entitled to it, so knowing an id is
+                    // not a way around the entitlement check that guards the recording itself.
+                    if (isLearnerRole(userRole)
+                            && userId != null
+                            && !replayEntitlementService.hasEntitlement(r, userId)) {
+                        return ResponseEntity
+                                .status(org.springframework.http.HttpStatus.FORBIDDEN)
+                                .body(ApiResponse.<Map<String, Object>>error(
+                                        "You are not entitled to this recorded session"));
+                    }
                     enrich(r, userId, Map.of());
                     log.info("Replay accessed: id={}, eventId={}, status={}", r.getId(), r.getEventId(), r.getStatus());
                     Map<String, Object> detail = new HashMap<>();
@@ -153,8 +174,20 @@ public class ReplayController {
     }
 
     /**
+     * Roles whose replay access is decided per recording rather than per tenant.
+     *
+     * <p>Staff are deliberately excluded: admins read their scope and teachers read the classes
+     * they own, which the playback endpoint has always expressed separately. Only a learner's
+     * view is entitlement-scoped, and only learner roles are on both sides of that rule.</p>
+     */
+    private static boolean isLearnerRole(String userRole) {
+        return "STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole);
+    }
+
+    /**
      * Admins read anything in their scope; a teacher reads their own class's recordings and
-     * the institution's event replays; everyone else must prove they were in the session.
+     * the institution's event replays; everyone else must prove they were in the session or
+     * belong to the audience it was recorded for.
      */
     private boolean isReplayPlaybackAllowed(Replay replay, UUID userId, UUID institutionId, String userRole) {
         if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole)
