@@ -54,6 +54,7 @@ public class CertificateGovernanceService {
     private final AuditLogRepository auditLogRepository;
     private final AuditService auditService;
     private final CertificateMapper certificateMapper;
+    private final CertificateTemplateContentSanitizer templateContentSanitizer;
 
     // ───────────────────────────────────────────────────────────────────────
     // Signatories
@@ -274,8 +275,8 @@ public class CertificateGovernanceService {
                 .name(req.getName().trim())
                 .description(trimToNull(req.getDescription()))
                 .templateType(type)
-                .htmlContent(req.getHtmlContent())
-                .cssContent(req.getCssContent())
+                .htmlContent(templateContentSanitizer.sanitizeHtml(req.getHtmlContent()))
+                .cssContent(templateContentSanitizer.sanitizeCss(req.getCssContent()))
                 .logoUrl(trimToNull(req.getLogoUrl()))
                 .signatureLine1(trimToNull(req.getSignatureLine1()))
                 .signatureLine2(trimToNull(req.getSignatureLine2()))
@@ -316,8 +317,14 @@ public class CertificateGovernanceService {
         if (req.getTemplateType() != null && !req.getTemplateType().isBlank()) {
             template.setTemplateType(parseTemplateType(req.getTemplateType()));
         }
-        if (req.getHtmlContent() != null) template.setHtmlContent(req.getHtmlContent());
-        if (req.getCssContent() != null) template.setCssContent(req.getCssContent());
+        // Sanitised here too, not only on create: an update can introduce markup just as easily,
+        // and a template already in the table may have been written before these rules existed.
+        if (req.getHtmlContent() != null) {
+            template.setHtmlContent(templateContentSanitizer.sanitizeHtml(req.getHtmlContent()));
+        }
+        if (req.getCssContent() != null) {
+            template.setCssContent(templateContentSanitizer.sanitizeCss(req.getCssContent()));
+        }
         if (req.getLogoUrl() != null) template.setLogoUrl(trimToNull(req.getLogoUrl()));
         if (req.getSignatureLine1() != null) template.setSignatureLine1(trimToNull(req.getSignatureLine1()));
         if (req.getSignatureLine2() != null) template.setSignatureLine2(trimToNull(req.getSignatureLine2()));

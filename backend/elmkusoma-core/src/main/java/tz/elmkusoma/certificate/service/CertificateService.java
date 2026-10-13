@@ -60,6 +60,7 @@ public class CertificateService {
     private final tz.elmkusoma.shared.repository.UserRepository userRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
     private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
+    private final CertificateTemplateContentSanitizer templateContentSanitizer;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
@@ -128,6 +129,11 @@ public class CertificateService {
         }
 
         CertificateTemplate template = certificateMapper.toTemplateEntity(request, institutionId);
+        // Sanitised on the way in, at the moment it is accepted rather than at the moment it is
+        // rendered - so markup that predates a renderer, or is read straight from the row, is
+        // already constrained. See CertificateTemplateContentSanitizer for the rules.
+        template.setHtmlContent(templateContentSanitizer.sanitizeHtml(template.getHtmlContent()));
+        template.setCssContent(templateContentSanitizer.sanitizeCss(template.getCssContent()));
         templateRepository.save(template);
 
         auditService.recordAuditLog(institutionId, null, userEmail, userRole,

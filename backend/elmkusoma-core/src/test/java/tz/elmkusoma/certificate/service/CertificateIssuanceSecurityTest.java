@@ -1,6 +1,7 @@
 package tz.elmkusoma.certificate.service;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.CertificateSignatory;
 import tz.elmkusoma.certificate.domain.CertificateTemplate;
 import tz.elmkusoma.certificate.domain.CertificateTemplateSignatory;
+import tz.elmkusoma.certificate.dto.CreateTemplateRequest;
 import tz.elmkusoma.certificate.dto.GenerateCertificateRequest;
 import tz.elmkusoma.certificate.dto.RevokeCertificateRequest;
 import tz.elmkusoma.certificate.mapper.CertificateMapper;
@@ -81,6 +83,11 @@ class CertificateIssuanceSecurityTest {
     @Mock private UserRepository userRepository;
     @Mock private LearnerNotificationRepository learnerNotificationRepository;
     @Mock private InstitutionRepository institutionRepository;
+    // The real sanitiser, not a mock: the point of this test is that what reaches the repository
+    // is safe, and a stubbed sanitiser would prove only that the service called something.
+    @org.mockito.Spy
+    private CertificateTemplateContentSanitizer templateContentSanitizer =
+            new CertificateTemplateContentSanitizer();
 
     @InjectMocks private CertificateService certificateService;
 
@@ -688,6 +695,57 @@ class CertificateIssuanceSecurityTest {
         assertFalse(response.isValid());
         assertEquals("CERT-CMP-2026-000002", response.getSupersededBySerialNumber());
         assertNotNull(response.getSupersededAt());
+    }
+
+    /**
+     * Template markup has been accepted, stored and handed back to the client unvalidated since
+     * the columns were added. Nothing rendered it, so nothing was exploited - but the moment
+     * something does, every template already written becomes stored markup in an authenticated
+     * application. The rule has to be in force before the first render, not after.</p>
+     */
+    @Test
+    @DisplayName("a template's markup and stylesheet are sanitised before they are stored")
+    void createTemplate_sanitisesContentBeforeItIsStored() {
+        when(templateRepository.existsByNameAndInstitutionIdAndIsDeletedFalse(any(), any()))
+                .thenReturn(false);
+        // The mapper is a raw copy of the request (CertificateMapper.toTemplateEntity). Stubbing
+        // it that way keeps this test about the service: whatever arrives must already be safe by
+        // the time save() sees it.
+        when(certificateMapper.toTemplateEntity(any(), any())).thenAnswer(inv -> {
+            CreateTemplateRequest req = inv.getArgument(0);
+            CertificateTemplate stored = CertificateTemplate.builder()
+                    .name(req.getName())
+                    .templateType(req.getTemplateType())
+                    .htmlContent(req.getHtmlContent())
+                    .cssContent(req.getCssContent())
+                    .build();
+            stored.setId(UUID.randomUUID());
+            stored.setInstitutionId(institutionId);
+            return stored;
+        });
+        when(templateRepository.save(any(CertificateTemplate.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        CreateTemplateRequest request = new CreateTemplateRequest();
+        request.setName("Standard completion");
+        request.setTemplateType(CertificateTemplate.TemplateType.COMPLETION);
+        request.setHtmlContent("<div class=\"award\"><h2>Title</h2><script>steal()</script></div>");
+        request.setCssContent("@import url(\"https://evil.example/x.css\"); h1 { color: blue }");
+
+        certificateService.createTemplate(request, institutionId, "admin@x.tz", "ADMIN");
+
+        var saved = org.mockito.ArgumentCaptor.forClass(CertificateTemplate.class);
+        verify(templateRepository).save(saved.capture());
+
+        String html = saved.getValue().getHtmlContent();
+        assertFalse(html.contains("script"), "scripts must not be stored: " + html);
+        assertFalse(html.contains("steal"), html);
+        assertTrue(html.contains("<h2>Title</h2>"), "the design the operator wanted must survive");
+        assertTrue(html.contains("class=\"award\""), html);
+
+        String css = saved.getValue().getCssContent();
+        assertFalse(css.toLowerCase().contains("@import"), css);
+        assertTrue(css.contains("color: blue"), css);
     }
 
     private void assertDoesNotThrowVerify(String clientKey) {
