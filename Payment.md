@@ -1025,3 +1025,288 @@ Do not silently cross developer ownership boundaries. Do not skip tests. Do not 
 Deliver the strongest practical, secure, integrated, maintainable implementation that the existing repository and available environment support.
 
 The final deliverable must be working code with verification evidence, plus a clear consolidated report—not merely a prompt, mockup, or recommendation list.
+
+
+
+# ADDENDUM: ELMKUSOMA AFFORDABLE PRICING POLICY & STRICT DEVELOPER OWNERSHIP
+
+## 1. PURPOSE AND PRECEDENCE
+
+This addendum extends the original ELMKUSOMA PAYMENT SYSTEM — MASTER AUDIT, IMPLEMENTATION, SECURITY, AND DELIVERY PROMPT.
+
+The original master prompt remains authoritative. Preserve its architecture, audit-first process, security rules, testing requirements, and no-live-payment/no-payout restrictions.
+
+Implement the user-selected affordable TZS pricing catalogue below as configurable policy data. Do not duplicate existing payment modules or rebuild existing functionality.
+
+## 2. STRICT DEVELOPER RESPONSIBILITY BOUNDARIES
+
+### DEVELOPER 01 — BACKEND, DATABASE, PRICING ENGINE & FINANCIAL SECURITY
+
+Developer 01 owns all backend and database implementation responsibilities, including:
+
+- Existing payment-domain audit and backend gap analysis.
+- Pricing and price-policy configuration.
+- Education-level pricing limits and validation.
+- Subscription plans, durations, entitlements, and access enforcement.
+- Bundles, individual purchases, and group-booking business rules.
+- Backend discount approval and validation.
+- Configurable commission policies and financial calculation rules.
+- Gateway-fee policy and authoritative checkout totals.
+- Order and transaction snapshots, idempotency, audit logs, and financial integrity.
+- Existing database migration strategy and backend API contracts.
+- Backend authorization, provider ownership, institution jurisdiction, and IDOR prevention.
+- Backend unit, integration, security, migration, and regression tests.
+- Documentation of API request/response contracts for Developer 02.
+
+Developer 01 MUST NOT independently redesign frontend pages, modify frontend components, or implement Developer 02's UI responsibilities.
+
+Developer 01 must first inspect the existing repository and reuse existing backend components where appropriate. Do not create duplicate pricing, receipt, payment, or entitlement systems.
+
+### DEVELOPER 02 — FRONTEND, PRICING EXPERIENCE & DASHBOARDS
+
+Developer 02 owns all frontend implementation responsibilities, including:
+
+- Existing payment and pricing UI audit.
+- Pricing catalogue and service-price presentation.
+- Display of Primary, Secondary, and Higher Education pricing where applicable.
+- Basic, Plus, and Premium subscription comparisons.
+- Daily, weekly, and monthly access-pass presentation.
+- Bundle, course, module, live-class, replay, event, and eligible certificate-service purchase interfaces.
+- Checkout price breakdown, approved discounts, disclosed applicable fees, and final payable amount.
+- Subscription status, entitlement information, and expiry-date presentation.
+- Provider pricing forms and clear validation errors returned by the backend.
+- Platform Admin pricing-policy and approval interfaces, using the existing authorization and dashboard architecture.
+- Existing user, provider, and Platform Admin payment-related dashboard integration.
+- Frontend API integration using Developer 01's documented contracts.
+- Frontend type checking, build verification, accessibility, responsive layout, and regression tests.
+
+Developer 02 MUST NOT independently implement or modify backend financial calculations, database migrations, commission logic, authoritative pricing rules, payment verification, or server-side authorization.
+
+Developer 02 must not calculate the authoritative final payment amount in the frontend. The backend remains the source of truth.
+
+## 3. SHARED WORK AND NON-INTERFERENCE RULES
+
+1. Each developer must audit the current working tree and existing changes before editing.
+2. Neither developer may discard, reset, overwrite, or reformat unrelated work belonging to the other developer.
+3. Do not edit files owned by the other developer unless an explicit, documented coordination decision authorizes a specific change.
+4. Do not independently change shared API contracts, database schemas, generated types, or common configuration without coordination.
+5. Developer 01 owns backend API implementation and its contract. Developer 02 consumes that contract.
+6. Developer 02 must report missing API capabilities instead of implementing a frontend-only substitute.
+7. Developer 01 must communicate API changes and required data fields before Developer 02 integrates them.
+8. If a shared file or responsibility cannot be cleanly separated, stop and document the dependency before editing it.
+9. Use the repository's existing branches and integration process. Do not create conflicting parallel implementations of the same feature.
+10. Before merging or integrating work, inspect the combined diff and run relevant regression tests.
+11. Neither developer may claim completion based only on code being written. Verification evidence is mandatory.
+12. The original project architecture, role hierarchy, provider boundaries, receipt module, and all existing functionality must be preserved.
+
+## 4. PRICING POLICY — USER-SELECTED TZS VALUES
+
+### Access passes
+
+- Daily Access: TZS 500 per rolling 24 hours.
+- Weekly Access: TZS 1,000 per rolling 7 days.
+- Monthly Access: TZS 5,000 per rolling 30 days.
+
+### Subscription tiers
+
+- Free: TZS 0.
+- Basic Access: TZS 3,000 per 30 days.
+- Plus Access: TZS 5,000 per 30 days.
+- Premium Access: TZS 7,000 per 30 days.
+
+Each paid tier must have explicitly configured benefits and eligible catalogue items. Do not assume every course, provider, live class, replay, event, or certificate service is included.
+
+### Individual service prices
+
+- Learning resources, notes, and revision materials: TZS 500.
+- Standard online course: TZS 2,000.
+- Academic or vocational module: TZS 1,000.
+- Live online class/session: TZS 500.
+- Recorded lesson/replay: TZS 1,000.
+- Eligible certificate reprint/duplicate: TZS 5,000.
+- Seminar, workshop, or conference ticket: TZS 2,000.
+- Paid community, NGO, CBO, religious, or corporate event: TZS 200 per participant ticket, subject to the applicable event configuration.
+
+Free services must remain free where explicitly designated.
+
+Payment must never grant academic eligibility, assessment results, or an unearned certificate.
+
+### Education-level price bands
+
+- Primary: TZS 500–3,000.
+- Secondary: TZS 1,000–5,000.
+- Higher education, colleges, universities, and vocational training: TZS 1,000–15,000.
+
+Apply these bands to eligible education products and services, not indiscriminately to administrative certificate services or event categories governed by separate pricing policies.
+
+Certificate reprints/duplicates must use their separate administrative pricing policy.
+
+Validate catalogue prices against the applicable approved policy. Do not silently clamp or rewrite a price when limits conflict.
+
+### Proposed bundles
+
+- 5 eligible learning resources: TZS 5,000.
+- 10 eligible learning resources: TZS 8,000.
+- 4 eligible live classes: TZS 10,000.
+- 3 eligible courses: TZS 35,000.
+- Group booking of 5 seats: TZS 45,000.
+- Group booking of 10 seats: TZS 85,000.
+
+These bundle amounts remain proposed values until formally approved.
+
+## 5. PRICING APPROVAL STATUS
+
+The values above represent user-selected pricing proposals for configuration and testing. They must not be falsely reported as formally approved production prices.
+
+Platform Admin is responsible for authorized approval and activation of platform-wide pricing, education-level limits, provider pricing limits, discount policies, exceptions, and commission policies.
+
+Store prices and policy versions as configurable data rather than scattering hardcoded amounts throughout the codebase.
+
+Preserve historical prices and policy snapshots for completed orders, receipts, and transactions.
+
+## 6. COMMISSION, GATEWAY FEES & DISCOUNTS
+
+- Commission must be configurable under an authorized policy.
+- Do not invent a universal commission percentage.
+- Gateway fees must be disclosed before checkout confirmation.
+- Do not invent gateway fees, tax rates, provider shares, or settlement rules.
+- Discounts require Platform Admin approval or explicitly authorized rules.
+- The backend must calculate and validate authoritative prices, discounts, fees, and final totals.
+- The frontend must display backend-calculated amounts and validation results.
+- Historical transactions must retain their applicable financial-policy snapshots.
+- Do not claim actual refunds or settlements without verified evidence.
+
+## 7. PAYMENT AND PAYOUT RESTRICTIONS
+
+This addendum does not authorize live payment collection, production gateway credentials, actual provider payouts, or live gateway activation.
+
+Implement pricing, payment-domain behavior, and acceptance tests in the existing safe/non-production mode.
+
+Gateway sandbox integration, credential configuration, reconciliation, and production enablement remain separate phases requiring explicit authorization.
+
+## 8. ACCEPTANCE AND INTEGRATION GATES
+
+### Developer 01 completion gate
+
+Developer 01 must provide:
+
+- Audit findings and baseline.
+- Backend implementation and migration evidence.
+- Documented API contracts for Developer 02.
+- Pricing validation, authorization, idempotency, and financial-integrity test results.
+- Confirmation that live payments and actual payouts remain disabled.
+
+### Developer 02 completion gate
+
+Developer 02 must provide:
+
+- Frontend audit findings.
+- Pricing UI and dashboard integration evidence.
+- Confirmation that frontend values come from backend APIs where applicable.
+- Frontend type-check, build, accessibility, and regression test results.
+- Confirmation that no frontend-only payment-success or entitlement mechanism was introduced.
+
+### Final integration gate
+
+Before declaring completion:
+
+1. Review both developers' diffs and ensure responsibility boundaries were respected.
+2. Verify that API contracts and frontend integrations agree.
+3. Run database migration validation and relevant backend and frontend test suites.
+4. Verify education-level price limits, subscription durations, discount approval, provider isolation, and checkout disclosures.
+5. Confirm no existing receipt, payment, catalogue, or entitlement feature was duplicated or broken.
+6. Report DONE, PARTIAL, MISSING, BROKEN, and NEEDS VERIFICATION using actual evidence.
+7. Explicitly confirm that live payment collection and actual provider payouts remain disabled.
+
+No developer may claim full completion without evidence from the actual repository and test results.
+
+
+
+# FINAL PRECEDENCE OVERRIDES — AUTHORITATIVE INSTRUCTIONS
+
+These rules resolve any conflict between the original master prompt and its pricing/developer-ownership addendum.
+
+## 1. AUTHORITATIVE DEVELOPER OWNERSHIP
+
+The original Section 4 and the addendum's strict ownership rules must be read together.
+
+- **[Developer 01]** exclusively owns backend source, backend tests, database entities, repositories, migrations, backend security, financial business logic, pricing validation, and backend API contracts.
+- **[Developer 02]** exclusively owns frontend source, frontend tests, layouts, routes, UI components, styles, dashboard screens, and frontend API integration.
+- Neither developer may modify files assigned to the other without explicit, documented coordination.
+- Shared contracts must be coordinated before integration. If independent agents or worktrees are unavailable, execute the workstreams sequentially.
+- Every task, file-change report, test result, blocker, and completion claim must identify its assigned developer.
+- The integration lead must inspect the combined diff and verify compatibility without taking unauthorized ownership of either workstream.
+
+## 2. FINAL USER-SELECTED PRICING CONFIGURATION
+
+Use the latest user-selected prices in the pricing addendum instead of any conflicting older proposed amounts:
+
+- Daily Access: TZS 500 per rolling 24 hours.
+- Weekly Access: TZS 1,000 per rolling 7 days.
+- Monthly Access: TZS 5,000 per rolling 30 days.
+- Basic Access: TZS 3,000 per 30 days.
+- Plus Access: TZS 5,000 per 30 days.
+- Premium Access: TZS 7,000 per 30 days.
+- Learning resources, notes, and revision materials: TZS 500.
+- Standard online course: TZS 2,000.
+- Academic or vocational module: TZS 1,000.
+- Live online class/session: TZS 500.
+- Recorded lesson/replay: TZS 1,000.
+- Eligible certificate reprint/duplicate: TZS 5,000.
+- Seminar, workshop, or conference ticket: TZS 2,000.
+- Paid community, NGO, CBO, religious, or corporate event: TZS 200 per participant ticket.
+
+Education-level pricing bands:
+
+- Primary: TZS 500–3,000.
+- Secondary: TZS 1,000–5,000.
+- Higher education, colleges, universities, and vocational training: TZS 1,000–15,000.
+
+Proposed bundles:
+
+- 5 eligible resources: TZS 5,000.
+- 10 eligible resources: TZS 8,000.
+- 4 eligible live classes: TZS 10,000.
+- 3 eligible courses: TZS 35,000.
+- 5-seat group booking: TZS 45,000.
+- 10-seat group booking: TZS 85,000.
+
+These values supersede conflicting older proposed prices. Do not create duplicate pricing entries when equivalent catalogue records already exist.
+
+## 3. PRICING APPROVAL STATUS
+
+The prices above are the user's selected proposed pricing configuration. They are not automatically formally approved or active production prices.
+
+Implement them as configurable, versioned draft policy data where the existing architecture supports it. Activation requires the appropriate authorized approval.
+
+Do not invent an approval record, approver, or production status.
+
+## 4. EDUCATION-LEVEL PRICE VALIDATION
+
+Apply education-level bands only to applicable education products and services. Use separate policy rules for certificate administration and other service categories where appropriate.
+
+If a proposed service price conflicts with its applicable education-level limit, report the conflict and require an authorized policy decision. Do not silently change the user's price or bypass an approved limit.
+
+## 5. DAILY ACCESS DECISION RESOLVED
+
+The daily access model has been decided: it uses a rolling 24-hour duration from verified entitlement activation.
+
+Do not ask the user to choose between rolling 24 hours and a calendar day again.
+
+Weekly access uses a rolling 7-day duration. Monthly access and the Basic, Plus, and Premium subscriptions use exactly 30 days from verified activation.
+
+## 6. NON-NEGOTIABLE RELEASE BOUNDARY
+
+All original security, audit, testing, migration, and delivery requirements remain in force.
+
+Pricing implementation does not authorize live payment collection, production gateway credentials, actual money transfers, or provider payouts.
+
+Do not activate live payments or payouts during this task. Keep unresolved commission rates, gateway fee allocation, refund rules, taxes, subscription benefits, and other unapproved business decisions configurable or explicitly blocked until authorized.
+
+## 7. FINAL EXECUTION RULE
+
+Audit the actual repository first, preserve existing changes, assign every task to Developer 01 or Developer 02, implement verified gaps within ownership boundaries, and test the integrated result.
+
+Do not replace the original master prompt with this override. Apply this section only to resolve conflicts and clarify the latest user decisions.
+
+The final report must distinguish verified implementation from proposals, incomplete work, blockers, and untested behavior.
