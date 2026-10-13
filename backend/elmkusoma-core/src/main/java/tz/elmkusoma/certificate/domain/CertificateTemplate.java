@@ -68,6 +68,7 @@ public class CertificateTemplate extends BaseEntity {
      * attracts. Both families share one entity, one lifecycle and one verification path.</p>
      */
     @Column(name = "template_family", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private TemplateFamily templateFamily = TemplateFamily.FAMILY_TRAINING;
 

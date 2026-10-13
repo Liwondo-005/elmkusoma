@@ -235,6 +235,121 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * JPA maps an enum field to an int (ORDINAL) unless @Enumerated(EnumType.STRING) says
+     * otherwise, but the migrations store enums as varchar. The unit tests run with
+     * ddl-auto=create-drop, so Hibernate derives the schema FROM the entity and the two sides
+     * can silently disagree while every test still passes.
+     *
+     * <p>That is exactly what broke the platform certificate screens: template_family had no
+     * @Enumerated, so Hibernate wrote ('0'::int2) into a varchar(30) CHECK column and read the
+     * column back as an ordinal. POST /v1/platform-admin/certificate-templates failed on the
+     * check constraint and GET failed with "Bad value for type byte : FAMILY_TRAINING"; both
+     * surfaced to the UI as HTTP 409 "Data conflict ... a constraint violation".</p>
+     */
+    @Test
+    void enumColumns_MigrationTypesAgreeWithTheEntityStrategies() throws IOException {
+        Path sourceRoot = Path.of("src/main/java");
+        assertTrue(Files.isDirectory(sourceRoot), "entity sources must be reachable: " + sourceRoot);
+
+        Pattern enumField = Pattern.compile("^\\s*private\\s+(\\w+)\\s+(\\w+)\\s*(=|;)");
+        Pattern columnName = Pattern.compile("@Column\\s*\\(\\s*name\\s*=\\s*\"([^\"]+)\"");
+        Pattern tableName = Pattern.compile("@Table\\s*\\(\\s*name\\s*=\\s*\"([^\"]+)\"");
+        Pattern enumDecl = Pattern.compile("\\benum\\s+(\\w+)");
+
+        Map<String, String> strategyByColumn = new LinkedHashMap<>();
+        try (Stream<Path> sources = Files.walk(sourceRoot)) {
+            for (Path file : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String text = Files.readString(file, StandardCharsets.UTF_8);
+                if (!text.contains("@Entity")) {
+                    continue;
+                }
+                Matcher tm = tableName.matcher(text);
+                String table = tm.find()
+                        ? tm.group(1)
+                        : file.getFileName().toString().replace(".java", "")
+                                .replaceAll("([a-z0-9])([A-Z])", "$1_$2").toLowerCase();
+                Set<String> enums = new HashSet<>();
+                Matcher em = enumDecl.matcher(text);
+                while (em.find()) {
+                    enums.add(em.group(1));
+                }
+                if (enums.isEmpty()) {
+                    continue;
+                }
+
+                String[] lines = text.split("\n", -1);
+                for (int i = 0; i < lines.length; i++) {
+                    Matcher fm = enumField.matcher(lines[i]);
+                    if (!fm.find() || !enums.contains(fm.group(1))) {
+                        continue;
+                    }
+                    String col = null;
+                    Boolean asString = null;
+                    for (int j = i - 1; j >= 0 && j >= i - 8; j--) {
+                        if (lines[j].contains("private ") || lines[j].contains("public ")
+                                || lines[j].contains(" class ") || lines[j].contains(" enum ")) {
+                            break;
+                        }
+                        Matcher cm = columnName.matcher(lines[j]);
+                        if (cm.find() && col == null) {
+                            col = cm.group(1);
+                        }
+                        if (asString == null && lines[j].contains("@Enumerated")) {
+                            asString = lines[j].contains("EnumType.STRING");
+                        }
+                    }
+                    if (col == null) {
+                        continue;
+                    }
+                    strategyByColumn.putIfAbsent(table.toLowerCase() + "." + col.toLowerCase(),
+                            Boolean.TRUE.equals(asString) ? "STRING" : "ORDINAL");
+                }
+            }
+        }
+        assertTrue(!strategyByColumn.isEmpty(), "expected enum columns in the entity sources");
+
+        Set<String> bare = new HashSet<>();
+        for (String key : strategyByColumn.keySet()) {
+            bare.add(key.substring(key.indexOf('.') + 1));
+        }
+        Map<String, String> declared = resolvedColumnTypes(bare);
+
+        Map<String, Set<String>> typesByColumn = new LinkedHashMap<>();
+        for (Map.Entry<String, String> e : declared.entrySet()) {
+            typesByColumn.computeIfAbsent(e.getKey().substring(e.getKey().indexOf('.') + 1),
+                    k -> new HashSet<>()).add(e.getValue());
+        }
+
+        List<String> offenders = new ArrayList<>();
+        List<String> unchecked = new ArrayList<>();
+        for (Map.Entry<String, String> e : strategyByColumn.entrySet()) {
+            String key = e.getKey();
+            String type = declared.get(key);
+            if (type == null) {
+                Set<String> candidates = typesByColumn.get(key.substring(key.indexOf('.') + 1));
+                if (candidates == null || candidates.size() != 1) {
+                    unchecked.add(key);
+                    continue;
+                }
+                type = candidates.iterator().next();
+            }
+            boolean character = type.startsWith("character") || type.startsWith("varchar")
+                    || type.startsWith("text") || type.startsWith("citext");
+            boolean integral = type.matches("(?s)int.*|smallint|bigint|serial.*|numeric.*|decimal.*");
+            boolean ok = "STRING".equals(e.getValue()) ? character : integral;
+            if (!ok) {
+                offenders.add(key + " = " + type + " but the entity declares @Enumerated("
+                        + e.getValue() + ") (last declared at " + declaredIn.get(key) + ")");
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "an enum column whose migration type disagrees with the entity's @Enumerated strategy "
+                        + "breaks every read AND write against a real database, while every "
+                        + "ddl-auto=create-drop test keeps passing because Hibernate builds the schema "
+                        + "from the entity. Offenders: " + offenders + " (unchecked: " + unchecked + ")");
+    }
+
+    /**
      * live_classes.started_at is the authoritative expiry baseline (V135). The unit tests run
      * with spring.flyway.enabled=false and ddl-auto=create-drop, so Hibernate builds the schema
      * from the entity and the migration can silently go missing while every test still passes -
@@ -715,6 +830,118 @@ class FlywayMigrationValidationTest {
     }
 
     /** Effective (post-all-migrations) type per "table.column", last declaration winning. */
+    /**
+     * Effective type per "table.column", last declaration winning, replaying every form the
+     * migrations actually use: columns inside CREATE TABLE, a bare {@code ALTER TABLE t} followed
+     * by an indented {@code ADD COLUMN}, {@code ALTER TABLE t ADD COLUMN ...} on one line, and
+     * {@code ALTER ... COLUMN ... TYPE}. {@link #effectiveColumnTypes} handles only the first and
+     * last, so a column introduced by ADD COLUMN - such as V161's certificate_templates
+     * template_family - resolves to "unknown" there and any entity/migration mismatch on it goes
+     * unchecked. Stores file:line in {@link #declaredIn} for offender messages.
+     */
+    private Map<String, String> resolvedColumnTypes(Set<String> watchedColumns) throws IOException {
+        if (watchedColumns.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        Set<String> watched = new HashSet<>();
+        for (String column : watchedColumns) {
+            watched.add(column.toLowerCase());
+        }
+        String alt = String.join("|", watchedColumns.stream().sorted().toList());
+
+        Pattern createTable = Pattern.compile(
+                "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_\\\".]+)\\s*\\(",
+                Pattern.CASE_INSENSITIVE);
+        Pattern columnLine = Pattern.compile("^(" + alt + ")\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern bareAlter = Pattern.compile("^ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s*;?\\s*$",
+                Pattern.CASE_INSENSITIVE);
+        Pattern sameLineAdd = Pattern.compile(
+                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ADD\\s+COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?\"?([A-Za-z0-9_]+)\"?\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern splitAdd = Pattern.compile(
+                "^ADD\\s+COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?\"?([A-Za-z0-9_]+)\"?\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern sameLineType = Pattern.compile(
+                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ALTER\\s+COLUMN\\s+(" + alt + ")\\s+TYPE\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern splitType = Pattern.compile(
+                "^ALTER\\s+COLUMN\\s+(" + alt + ")\\s+TYPE\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+
+        Map<String, String> effectiveType = new LinkedHashMap<>();
+        declaredIn = new LinkedHashMap<>();
+
+        List<Path> ordered = migrationFiles.stream()
+                .sorted(Comparator.comparingInt(FlywayMigrationValidationTest::versionOf))
+                .toList();
+
+        for (Path file : ordered) {
+            String currentTable = null;
+            String pendingTable = null;
+            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i).trim();
+                if (line.isEmpty() || line.startsWith("--")) {
+                    continue;
+                }
+                Matcher created = createTable.matcher(line);
+                if (created.find()) {
+                    currentTable = unquote(created.group(1));
+                    pendingTable = null;
+                    continue;
+                }
+                if (currentTable != null && line.startsWith(")")) {
+                    currentTable = null;
+                    continue;
+                }
+                Matcher bare = bareAlter.matcher(line);
+                if (bare.find()) {
+                    pendingTable = unquote(bare.group(1));
+                    currentTable = null;
+                    continue;
+                }
+                Matcher inlineAdd = sameLineAdd.matcher(line);
+                if (inlineAdd.find()) {
+                    recordType(effectiveType, file, i, unquote(inlineAdd.group(1)),
+                            inlineAdd.group(2), inlineAdd.group(3));
+                    continue;
+                }
+                Matcher split = splitAdd.matcher(line);
+                if (pendingTable != null && split.find() && watched.contains(split.group(1).toLowerCase())) {
+                    recordType(effectiveType, file, i, pendingTable, split.group(1), split.group(2));
+                    continue;
+                }
+                Matcher inlineType = sameLineType.matcher(line);
+                if (inlineType.find()) {
+                    recordType(effectiveType, file, i, unquote(inlineType.group(1)),
+                            inlineType.group(2), inlineType.group(3));
+                    continue;
+                }
+                Matcher splitTypeM = splitType.matcher(line);
+                if (pendingTable != null && splitTypeM.find()) {
+                    recordType(effectiveType, file, i, pendingTable, splitTypeM.group(1), splitTypeM.group(2));
+                    continue;
+                }
+                String upper = line.toUpperCase();
+                if (currentTable != null && !upper.contains("FOREIGN KEY") && !upper.contains("REFERENCES")) {
+                    Matcher column = columnLine.matcher(line);
+                    if (column.find()) {
+                        recordType(effectiveType, file, i, currentTable, column.group(1), column.group(2));
+                    }
+                }
+            }
+        }
+        return effectiveType;
+    }
+
+    private void recordType(Map<String, String> effectiveType, Path file, int lineIndex,
+                            String table, String column, String rawType) {
+        String key = table.toLowerCase() + "." + column.toLowerCase();
+        effectiveType.put(key, normalizeDeclaredType(rawType));
+        declaredIn.put(key, file.getFileName() + ":" + (lineIndex + 1));
+    }
+
     private Map<String, String> effectiveColumnTypes(Set<String> watchedColumns) throws IOException {
         Pattern createTable = Pattern.compile(
                 "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_\\\".]+)\\s*\\(",
