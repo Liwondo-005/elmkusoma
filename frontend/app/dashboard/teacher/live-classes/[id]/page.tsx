@@ -274,7 +274,7 @@ export default function LiveClassDetailPage() {
               <span className="text-muted-foreground">{t("liveClassDetail.minutesCount", { count: liveClass.durationMinutes })}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Timezone: Africa/Dar_es_Salaam (UTC+03:00)</span>
+              <span>{t("liveClassDetail.timezoneLine", { timezone: "Africa/Dar_es_Salaam (UTC+03:00)" })}</span>
             </div>
           </div>
         </div>

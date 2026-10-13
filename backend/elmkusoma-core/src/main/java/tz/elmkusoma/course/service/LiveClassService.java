@@ -36,6 +36,17 @@ public interface LiveClassService {
      */
     int endExpiredSessions();
 
+    /**
+     * Retries finalization for recordings whose storage location was still unresolved when the
+     * class ended. The upload to object storage routinely outlasts the in-request polling window,
+     * and the LiveKit {@code egress_ended} webhook is only delivered when a webhook URL is
+     * configured on the LiveKit side, so without this pass a recording that was written
+     * successfully stays invisible. Idempotent.
+     *
+     * @return how many pending recordings were re-examined
+     */
+    int reconcilePendingRecordings();
+
     LiveClassResponse getLiveClassById(UUID liveClassId);
 
     /**

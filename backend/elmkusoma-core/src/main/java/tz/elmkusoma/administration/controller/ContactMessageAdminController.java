@@ -16,6 +16,7 @@ import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.shared.domain.ContactMessage;
 import tz.elmkusoma.shared.domain.ContactMessageReply;
+import tz.elmkusoma.shared.service.CommunicationIdempotencyService;
 import tz.elmkusoma.shared.service.ContactMessageService;
 
 import java.util.List;
@@ -104,11 +105,15 @@ public class ContactMessageAdminController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> reply(
             @PathVariable UUID id,
             @Valid @RequestBody ContactMessageReplyRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest httpRequest) {
         UUID authorId = actorId(httpRequest);
+        // A retried reply must reach the enquirer once. Absent a key the original behaviour
+        // stands; a malformed one is refused before it reaches a column.
+        String key = CommunicationIdempotencyService.normaliseKey(idempotencyKey).orElse(null);
         ContactMessageReply saved = contactMessageService.reply(
                 id, authorId, request.getMessage(),
-                Boolean.TRUE.equals(request.getInternal()));
+                Boolean.TRUE.equals(request.getInternal()), key);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "id", saved.getId(),
                 "internal", Boolean.TRUE.equals(saved.getIsInternal()),

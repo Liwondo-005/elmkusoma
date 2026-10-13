@@ -10,9 +10,28 @@ import { FolderKanban, CheckCircle2, Clock, Calendar, AlertCircle, Plus } from "
 
 const SUBMISSION_TYPES: SubmissionType[] = ["DOCUMENT", "IMAGE", "VIDEO", "CODE", "PRESENTATION", "OTHER"]
 
+const SUBMISSION_TYPE_LABEL_KEYS: Record<string, string> = {
+  DOCUMENT: "submissionType.document",
+  IMAGE: "submissionType.image",
+  VIDEO: "submissionType.video",
+  CODE: "submissionType.code",
+  PRESENTATION: "submissionType.presentation",
+  OTHER: "submissionType.other",
+}
+
+const PROJECT_STATUS_LABEL_KEYS: Record<string, string> = {
+  IDEATION: "projectStatus.ideation",
+  PLANNING: "projectStatus.planning",
+  IN_PROGRESS: "projectStatus.inProgress",
+  REVIEW: "projectStatus.review",
+  COMPLETED: "projectStatus.completed",
+  ARCHIVED: "projectStatus.archived",
+}
+
 const emptySubmission = { title: "", description: "", fileUrl: "", submissionType: "DOCUMENT" as SubmissionType }
 
 function ProjectStatusBadge({ status }: { status: string }) {
+  const tu = useTranslations("learnerUi")
   const colors: Record<string, string> = {
     IDEATION: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     PLANNING: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -21,9 +40,12 @@ function ProjectStatusBadge({ status }: { status: string }) {
     COMPLETED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
     ARCHIVED: "bg-muted text-muted-foreground",
   }
+  const label = PROJECT_STATUS_LABEL_KEYS[status]
+    ? tu(PROJECT_STATUS_LABEL_KEYS[status])
+    : status.replace(/_/g, " ")
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[status] || "bg-muted"}`}>
-      {status.replace(/_/g, " ")}
+      {label}
     </span>
   )
 }
@@ -31,6 +53,7 @@ function ProjectStatusBadge({ status }: { status: string }) {
 export default function ProjectsPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
+  const tu = useTranslations("learnerUi")
   const { user, loading: authLoading } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,7 +108,7 @@ export default function ProjectsPage() {
   if (error && projects.length === 0) {
     return (
       <div role="main" className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("subtitle.projects")} />
+        <LearnerHeader firstName={user?.firstName || tu("fallbackName")} subtitle={t("subtitle.projects")} />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
@@ -95,7 +118,7 @@ export default function ProjectsPage() {
     )
   }
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || tu("fallbackName")
   const inProgress = projects.filter(p => p.status === "IN_PROGRESS" || p.status === "PLANNING").length
   const completed = projects.filter(p => p.status === "COMPLETED").length
 
@@ -211,7 +234,7 @@ export default function ProjectsPage() {
                         className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                       >
                         {SUBMISSION_TYPES.map((st) => (
-                          <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
+                          <option key={st} value={st}>{SUBMISSION_TYPE_LABEL_KEYS[st] ? tu(SUBMISSION_TYPE_LABEL_KEYS[st]) : st}</option>
                         ))}
                       </select>
                     </div>

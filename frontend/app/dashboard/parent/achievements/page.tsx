@@ -5,10 +5,13 @@ import { useTranslations } from "next-intl"
 import { Trophy, Loader2, Star } from "lucide-react"
 import { parentApi, type AchievementItem } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentAchievementsPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
+  const locale = useLocale()
   const [achievements, setAchievements] = useState<AchievementItem[]>([])
   const [total, setTotal] = useState(0)
   const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
@@ -59,7 +62,7 @@ export default function ParentAchievementsPage() {
                   <p className="text-sm font-semibold text-foreground">{ach.title}</p>
                   {ach.description && <p className="mt-1 text-xs text-muted-foreground">{ach.description}</p>}
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {new Date(ach.achievedAt).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" })}
+                    {formatDate(ach.achievedAt, locale, { month: "short", day: "numeric", year: "numeric" })}
                   </p>
                 </div>
               </div>

@@ -23,6 +23,8 @@ import {
   Monitor,
   Award,
 } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate, formatTime } from "@/lib/format-date"
 
 type LiveClassItem = {
   id: string
@@ -111,7 +113,7 @@ function isFuture(dateStr: string): boolean {
   return new Date(dateStr) > new Date()
 }
 
-function getDayLabel(dateStr: string): string {
+function getDayLabel(dateStr: string, locale: string): string {
   const d = new Date(dateStr)
   const now = new Date()
   const tomorrow = new Date(now)
@@ -125,7 +127,7 @@ function getDayLabel(dateStr: string): string {
     return "Tomorrow"
   }
 
-  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+  return formatDate(d, locale, { weekday: "long", month: "short", day: "numeric" })
 }
 
 function getTimeUntil(dateStr: string): string {
@@ -153,10 +155,10 @@ function getElapsedMinutes(dateStr: string): number {
   return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60000))
 }
 
-function groupByDay(sessions: LiveClassItem[]): Record<string, LiveClassItem[]> {
+function groupByDay(sessions: LiveClassItem[], locale: string): Record<string, LiveClassItem[]> {
   const grouped: Record<string, LiveClassItem[]> = {}
   for (const s of sessions) {
-    const key = getDayLabel(s.scheduledAt)
+    const key = getDayLabel(s.scheduledAt, locale)
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(s)
   }
@@ -168,6 +170,7 @@ export default function LiveCampusPage() {
   const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const locale = useLocale()
   const [sessions, setSessions] = useState<LiveClassItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -411,7 +414,7 @@ export default function LiveCampusPage() {
                       <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="size-3" />
-                          {new Date(s.scheduledAt).toLocaleTimeString("en-US", {
+                          {formatTime(s.scheduledAt, locale, {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -465,7 +468,7 @@ export default function LiveCampusPage() {
                   {scheduledThisWeek.length}
                 </span>
               </div>
-              {Object.entries(groupByDay(scheduledThisWeek)).map(([day, daySessions]) => (
+              {Object.entries(groupByDay(scheduledThisWeek, locale)).map(([day, daySessions]) => (
                 <div key={day} className="mb-4">
                   <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{day}</h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -487,7 +490,7 @@ export default function LiveCampusPage() {
                           <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="size-3" />
-                              {new Date(s.scheduledAt).toLocaleTimeString("en-US", {
+                              {formatTime(s.scheduledAt, locale, {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -547,7 +550,7 @@ export default function LiveCampusPage() {
                     <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="size-3" />
-                        {new Date(s.scheduledAt).toLocaleDateString()}
+                        {formatDate(s.scheduledAt, locale)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="size-3" />
@@ -682,13 +685,13 @@ export default function LiveCampusPage() {
                       <div className="mt-3 space-y-1.5">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Calendar className="size-3 shrink-0" />
-                          {new Date(s.scheduledAt).toLocaleDateString("en-US", {
+                          {formatDate(s.scheduledAt, locale, {
                             weekday: "short",
                             month: "short",
                             day: "numeric",
                           })}
                           {" at "}
-                          {new Date(s.scheduledAt).toLocaleTimeString("en-US", {
+                          {formatTime(s.scheduledAt, locale, {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}

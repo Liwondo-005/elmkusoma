@@ -278,8 +278,8 @@ export default function OversightOverviewPage() {
           <>
             <div className="mb-4 flex flex-wrap gap-2">
               <Chip label={t("overview.total")} value={attention.summary.total} tone="bg-muted text-foreground" />
-              <Chip label="HIGH" value={attention.summary.high} tone="bg-red-100 text-red-700" />
-              <Chip label="MEDIUM" value={attention.summary.medium} tone="bg-orange-100 text-orange-700" />
+              <Chip label={t("overview.severityHigh")} value={attention.summary.high} tone="bg-red-100 text-red-700" />
+              <Chip label={t("overview.severityMedium")} value={attention.summary.medium} tone="bg-orange-100 text-orange-700" />
               <Chip label={t("overview.verifications")} value={attention.summary.verification} tone="bg-blue-100 text-blue-700" />
               <Chip label={t("overview.dataQuality")} value={attention.summary.dataQuality} tone="bg-purple-100 text-purple-700" />
             </div>

@@ -5,10 +5,13 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react"
 import { Bell, Send, Loader2, Inbox, RefreshCw, AlertCircle } from "lucide-react"
 import { platformAdminApi, type NotificationSummary, type PageResponse, type CommunicationDelivery } from "@/lib/platform-admin-api"
+import { formatDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 export default function CommunicationsPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
+  const locale = useLocale()
   const [data, setData] = useState<PageResponse<NotificationSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSend, setShowSend] = useState(false)
@@ -135,7 +138,7 @@ export default function CommunicationsPage() {
                   <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                     <span>{t("communications.toAudience", { audience: n.targetAudience || t("communications.allAudiences") })}</span>
                     <span>{t("communications.sentByUser", { user: n.sentBy || t("communications.systemUser") })}</span>
-                    <span>{new Date(n.sentAt).toLocaleString("en-GB")}</span>
+                    <span>{formatDateTime(n.sentAt, locale)}</span>
                   </div>
                 </div>
               </div>

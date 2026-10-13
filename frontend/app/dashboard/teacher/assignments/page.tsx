@@ -483,7 +483,7 @@ export default function TeacherAssignmentsPage() {
                   type="text"
                   value={form.attachments}
                   onChange={(e) => setForm({ ...form, attachments: e.target.value })}
-                  placeholder="e.g. assignment-file.pdf"
+                  placeholder={t("assignments.attachmentPlaceholder")}
                   className="h-10 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                 />
                 <FileUpload

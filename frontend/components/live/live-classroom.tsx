@@ -42,6 +42,8 @@ import { useAuth } from "@/lib/auth"
 import { Room, RoomEvent, Track, ConnectionQuality, Participant as LKParticipant, TrackPublication } from "livekit-client"
 import { LiveVideoPlayer, type LivePlayerState } from "@/components/live/live-video-player"
 import { useMediaDevices } from "@/hooks/use-media-devices"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDateTime as fmtDateTime, formatTime as fmtTime } from "@/lib/format-date"
 
 interface Participant {
   userId: string
@@ -67,6 +69,13 @@ interface ChatMessage {
 /** Reactions the room offers. Every one is broadcast by the server as a REACTION event. */
 const REACTION_EMOJI = ["👍", "❤️"] as const
 
+/**
+ * Upper bound on a recording control request. Without one, a server that never answers leaves
+ * the Stop/Start button spinning forever with no error to show; the server-side reconciliation
+ * sweep is what actually recovers a recording whose response was lost.
+ */
+const RECORDING_REQUEST_TIMEOUT_MS = 30_000
+
 /** Host-continuity snapshot returned by GET /v1/live-session/classes/{id}/host-state. */
 interface HostState {
   classId: string
@@ -80,6 +89,10 @@ interface HostState {
   recordingEgressId: string | null
   recordingAvailable: boolean
   recordingUrl: string | null
+  /** RECORDING | FINALIZING | PUBLISHING | AVAILABLE | FAILED | NONE */
+  recordingState?: string
+  /** True while a stop was accepted but the file is still being finalised. */
+  recordingStopRequested?: boolean
   liveKitAvailable: boolean
   liveKitUrl: string | null
   roomName: string
@@ -144,6 +157,7 @@ interface BreakoutRoomView {
 }
 
 export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
+  const locale = useLocale()
   const t = useTranslations("live")
   const tc = useTranslations("common")
   const ts = useTranslations("status")
@@ -1123,7 +1137,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     wsRef.current.send(JSON.stringify({
       type: "SOURCE_UPDATE",
       source: broadcastSource,
-      label: label ? `${kind === "camera" ? "Camera" : "Microphone"}: ${label}` : kind,
+      label: label ? `${kind === "camera" ? t("cameraSourceWord") : t("microphoneSourceWord")}: ${label}` : kind,
     }))
   }
 
@@ -1170,7 +1184,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         try {
           await room.localParticipant.publishTrack(newTrack, { name: "camera" })
         } catch {
-          setSourceError("Camera switched locally, but re-publishing to the live room failed — viewers may still see the previous camera.")
+          setSourceError(t("errCameraRepublish"))
         }
       }
       announceSource("camera", deviceId)
@@ -1178,12 +1192,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const name = (err as { name?: string })?.name || ""
       setSourceError(
         name === "NotAllowedError"
-          ? "Permission to use this camera was denied."
+          ? t("errCameraDenied")
           : name === "NotReadableError"
-            ? "This camera is already in use by another application."
+            ? t("errCameraInUse")
             : name === "OverconstrainedError" || name === "NotFoundError"
-              ? "This camera is no longer available — it may have been unplugged."
-              : "Could not switch camera."
+              ? t("errCameraUnavailable")
+              : t("errCameraSwitch")
       )
     } finally {
       setSourceBusy(false)
@@ -1231,7 +1245,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         try {
           await room.localParticipant.publishTrack(newTrack, { name: "microphone" })
         } catch {
-          setSourceError("Microphone switched locally, but re-publishing to the live room failed — viewers may still hear the previous microphone.")
+          setSourceError(t("errMicRepublish"))
         }
       }
       announceSource("microphone", deviceId)
@@ -1239,12 +1253,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const name = (err as { name?: string })?.name || ""
       setSourceError(
         name === "NotAllowedError"
-          ? "Permission to use this microphone was denied."
+          ? t("errMicDenied")
           : name === "NotReadableError"
-            ? "This microphone is already in use by another application."
+            ? t("errMicInUse")
             : name === "OverconstrainedError" || name === "NotFoundError"
-              ? "This microphone is no longer available — it may have been unplugged."
-              : "Could not switch microphone."
+              ? t("errMicUnavailable")
+              : t("errMicSwitch")
       )
     } finally {
       setSourceBusy(false)
@@ -1356,23 +1370,54 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
 
       if (isRecording) {
+        // The server acknowledges the stop as soon as LiveKit accepts it and then finishes the
+        // upload and the Media Library entry in the background, so this returns promptly. The
+        // timeout is what stops a hung request from leaving the button spinning forever.
         const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/stop`, {
           method: "POST",
           headers,
+          signal: AbortSignal.timeout(RECORDING_REQUEST_TIMEOUT_MS),
         })
         if (!res.ok) {
           setActionError(await describeRecordingError(res))
           return
         }
+        const stopped = await res.json().catch(() => null)
+        const state: string | undefined = stopped?.data?.state
         setIsRecording(false)
         setRecordingEgressId(null)
-        setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingStoppedMsg"), timestamp: new Date().toISOString(), system: true }])
+        // Keep the host-continuity snapshot truthful after a stop: the REC banner and the
+        // "finalising" banner are both driven by host-state, which is otherwise only read on
+        // mount, so without this a stop left the red REC indicator on until a reload.
+        setHostState((prev) =>
+          prev
+            ? {
+                ...prev,
+                recordingActive: false,
+                recordingStopRequested: state === "FINALIZING",
+                recordingState: state ?? prev.recordingState,
+              }
+            : prev,
+        )
+        // "Stop accepted" is not "recording saved": only report a library entry that the
+        // server has actually confirmed, and surface a terminal failure instead of silently
+        // implying success.
+        if (state === "FAILED") {
+          setActionError(t("recordingFailedMsg"))
+          return
+        }
+        const message =
+          state === "FINALIZING" || state === "PUBLISHING"
+            ? t("recordingFinalizingMsg")
+            : t("recordingStoppedMsg")
+        setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message, timestamp: new Date().toISOString(), system: true }])
         return
       }
 
       const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/start`, {
         method: "POST",
         headers,
+        signal: AbortSignal.timeout(RECORDING_REQUEST_TIMEOUT_MS),
       })
       if (!res.ok) {
         // Never flip to "recording" on a failed or refused request. The server answers 503 when
@@ -1391,6 +1436,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       }
       setIsRecording(true)
       setRecordingEgressId(egressId)
+      setHostState((prev) =>
+        prev ? { ...prev, recordingActive: true, recordingStopRequested: false, recordingState: "RECORDING" } : prev,
+      )
       setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: data?.data?.alreadyRecording ? t("recordingAlreadyActiveMsg") : t("recordingStartedMsg"), timestamp: new Date().toISOString(), system: true }])
     } catch {
       setActionError(t("recordingToggleFailed"))
@@ -1406,6 +1454,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     if (res.status === 503) return detail || t("recordingUnavailable")
     if (res.status === 403) return detail || t("recordingNotAllowed")
     if (res.status === 404) return detail || t("recordingSessionNotFound")
+    // 409 = a stop was already accepted and the previous file is still uploading; a new
+    // capture cannot start until it resolves. Use the localised copy rather than the raw
+    // server sentence.
+    if (res.status === 409) return t("recordingFinalizingMsg")
     return detail || `${t("recordingToggleFailed")} (${res.status})`
   }
 
@@ -2042,7 +2094,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   }
 
   const formatTime = (d: string) => {
-    return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+    return fmtTime(d, locale, { hour: "2-digit", minute: "2-digit" })
   }
 
   const playerState: LivePlayerState = sessionEnded
@@ -2200,6 +2252,15 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         </div>
       )}
 
+      {/* A stop that was accepted but whose file is still uploading: the capture is over, so
+          the red REC indicator is wrong here, but the recording is not yet in the library. */}
+      {isTeacherClient && isInProgress && !hostState?.recordingActive && hostState?.recordingStopRequested && (
+        <div role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700 flex items-center gap-2">
+          <Circle className="size-2.5 shrink-0 fill-amber-500 text-amber-500" aria-hidden />
+          <span>{t("recordingFinalizingMsg")}</span>
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-4 order-2 lg:order-1">
           <LiveVideoPlayer
@@ -2321,7 +2382,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <h2 className="text-xs font-semibold text-foreground mb-2">{t("classDetailsTitle")}</h2>
             <div className="space-y-1 text-xs text-muted-foreground">
               <p>{t("sourceLine", { source: broadcastSource.replace(/_/g, " ") })}</p>
-              {liveClass.scheduledAt && <p>{t("scheduledLine", { datetime: new Date(liveClass.scheduledAt).toLocaleString() })}</p>}
+              {liveClass.scheduledAt && <p>{t("scheduledLine", { datetime: fmtDateTime(liveClass.scheduledAt, locale) })}</p>}
               {liveClass.durationMinutes && <p>{t("durationLine", { count: liveClass.durationMinutes })}</p>}
               {liveClass.maxParticipants && <p>{t("maxParticipantsLine", { count: liveClass.maxParticipants })}</p>}
               {liveClass.description && <p className="whitespace-pre-line line-clamp-3">{liveClass.description}</p>}
@@ -2346,7 +2407,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           {(isTeacherClient || user?.role === "Admin") && isInProgress && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-xs font-semibold text-foreground">Broadcast Source</h2>
+                <h2 className="text-xs font-semibold text-foreground">{t("broadcastSourceTitle")}</h2>
                 <span className="max-w-[140px] truncate rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                   {broadcastSource.replace(/_/g, " ")}
                 </span>
@@ -2358,7 +2419,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   onClick={requestPermission}
                   className="mt-2 w-full rounded-lg border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:bg-accent"
                 >
-                  Allow device access to list cameras & microphones
+                  {t("allowDeviceAccess")}
                 </button>
               )}
 
@@ -2367,10 +2428,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   value={selectedCameraId}
                   onChange={(e) => switchCameraDevice(e.target.value)}
                   disabled={sourceBusy || cameras.length === 0}
-                  aria-label="Camera source"
+                  aria-label={t("cameraSourceAria")}
                   className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground disabled:opacity-60"
                 >
-                  <option value="">{cameras.length > 0 ? "Default camera" : "No cameras found"}</option>
+                  <option value="">{cameras.length > 0 ? t("defaultCamera") : t("noCamerasFound")}</option>
                   {cameras.map((c) => (
                     <option key={c.deviceId} value={c.deviceId}>{c.label}</option>
                   ))}
@@ -2379,17 +2440,17 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   value={selectedMicId}
                   onChange={(e) => switchMicDevice(e.target.value)}
                   disabled={sourceBusy || microphones.length === 0}
-                  aria-label="Microphone source"
+                  aria-label={t("microphoneSourceAria")}
                   className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground disabled:opacity-60"
                 >
-                  <option value="">{microphones.length > 0 ? "Default microphone" : "No microphones found"}</option>
+                  <option value="">{microphones.length > 0 ? t("defaultMicrophone") : t("noMicrophonesFound")}</option>
                   {microphones.map((m) => (
                     <option key={m.deviceId} value={m.deviceId}>{m.label}</option>
                   ))}
                 </select>
               </div>
 
-              {sourceBusy && <p className="mt-1.5 text-[10px] text-muted-foreground">Switching source...</p>}
+              {sourceBusy && <p className="mt-1.5 text-[10px] text-muted-foreground">{t("switchingSource")}</p>}
               {sourceError && <p className="mt-1.5 text-[10px] text-red-500">{sourceError}</p>}
             </div>
           )}
@@ -2472,7 +2533,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     <span className="text-amber-900 font-medium">{entry.userName}</span>
                     {entry.raisedAt && (
                       <span className="text-amber-600 text-[9px] ml-auto">
-                        {new Date(entry.raisedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {fmtTime(entry.raisedAt, locale, { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                   </div>
@@ -3034,7 +3095,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                             <span className="text-[11px] font-semibold text-foreground">{c.userName}</span>
                             <span className="text-[9px] text-muted-foreground">{formatTime(c.timestamp)}</span>
                             {sideTab === "qa" && c.answeredAt && (
-                              <span className="rounded bg-accent/15 px-1 text-[9px] font-medium text-accent">Answered</span>
+                              <span className="rounded bg-accent/15 px-1 text-[9px] font-medium text-accent">{t("answeredBadge")}</span>
                             )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">{c.message}</p>
@@ -3077,7 +3138,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                             {sideTab === "qa" && (user?.role === "Teacher" || user?.role === "Admin") && c.id && (
                               <button
                                 type="button"
-                                aria-label={c.answeredAt ? "Reopen question" : "Mark question answered"}
+                                aria-label={c.answeredAt ? t("reopenQuestionAria") : t("markAnsweredAria")}
                                 onClick={() => {
                                   const nextAnswered = c.answeredAt ? null : new Date().toISOString()
                                   setChat((prev) => prev.map((m) => (m === c ? { ...m, answeredAt: nextAnswered } : m)))
@@ -3087,7 +3148,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                                 }}
                                 className={cn("rounded px-1 text-[10px] hover:bg-primary/10", c.answeredAt ? "text-accent" : "text-primary")}
                               >
-                                {c.answeredAt ? "Reopen" : "Mark answered"}
+                                {c.answeredAt ? t("reopenLabel") : t("markAnsweredLabel")}
                               </button>
                             )}
                           </div>

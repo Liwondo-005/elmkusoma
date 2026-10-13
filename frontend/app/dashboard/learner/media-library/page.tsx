@@ -8,6 +8,8 @@ import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
 
 import { Video, Search, Film, FileText, Music, Image, Loader2, AlertCircle, Play, Clock, HardDrive, Eye, Tag, Calendar, RefreshCw } from "lucide-react"
 import { mediaApi } from "@/lib/api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate } from "@/lib/format-date"
 
 interface MediaAsset {
   id: string
@@ -15,6 +17,8 @@ interface MediaAsset {
   description: string | null
   mediaType: string
   fileUrl: string | null
+  /** Authorised application playback route; set for live class recordings, null otherwise. */
+  playbackUrl: string | null
   thumbnailUrl: string | null
   durationSeconds: number | null
   fileSizeBytes: number | null
@@ -30,6 +34,18 @@ interface MediaAsset {
   subjectId: string | null
   tags: string | null
   createdAt: string
+}
+
+/**
+ * What "View" navigates to.
+ *
+ * A live class recording lives in a private bucket, so its stored object URL is not a playback
+ * URL - opening one returns Backblaze's UnauthorizedAccess XML. For those the backend only ever
+ * exposes `playbackUrl`, the application's own authorised route that re-checks entitlement on
+ * every request. Every other asset keeps its existing `fileUrl` behaviour untouched.
+ */
+function openableUrl(item: MediaAsset): string | null {
+  return item.playbackUrl ?? item.fileUrl
 }
 
 const mediaTypeConfig: Record<string, { icon: typeof Video; label: string; color: string }> = {
@@ -57,8 +73,8 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
+function formatDate(dateStr: string, locale: string): string {
+  return fmtDate(dateStr, locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -70,6 +86,7 @@ export default function LearnerMediaLibraryPage() {
   const tc = useTranslations("common")
   const { user } = useAuth()
   const { lazyLoadImages } = useLowBandwidth()
+  const locale = useLocale()
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -217,7 +234,7 @@ export default function LearnerMediaLibraryPage() {
                   )}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {formatDate(item.createdAt)}
+                    {formatDate(item.createdAt, locale)}
                   </span>
                 </div>
 
@@ -237,12 +254,12 @@ export default function LearnerMediaLibraryPage() {
                   </div>
                 )}
 
-                {item.fileUrl && (
+                {openableUrl(item) && (
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full mt-3"
-                    onClick={() => window.open(item.fileUrl!, "_blank")}
+                    onClick={() => window.open(openableUrl(item)!, "_blank")}
                     aria-label={`${tc("view")} ${item.title}`}
                   >
                     <Play className="h-4 w-4 mr-1" />

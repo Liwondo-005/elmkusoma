@@ -6,9 +6,12 @@ import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, Award } from "lucide-react"
 import { parentApi, type ResultData } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentResultsPage() {
   const t = useTranslations("parent")
+  const locale = useLocale()
   const [results, setResults] = useState<ResultData | null>(null)
   const [loading, setLoading] = useState(false)
   const { children, selectedChildId, setSelectedChildId, loading: childrenLoading } = useSelectedChild()
@@ -89,7 +92,7 @@ export default function ParentResultsPage() {
                 {rc.publishedAt && (
                   <div className="rounded-lg bg-muted/50 p-3 text-center">
                     <p className="text-sm font-bold text-foreground">
-                      {new Date(rc.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {formatDate(rc.publishedAt, locale, { month: "short", day: "numeric" })}
                     </p>
                     <p className="text-[10px] text-muted-foreground">{t("results.publishedLabel")}</p>
                   </div>

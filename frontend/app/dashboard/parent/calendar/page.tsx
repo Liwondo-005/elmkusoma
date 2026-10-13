@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Clock, Loader2, Video, FileText, AlertTriang
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ParentCalendar } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
 
 const typeColor: Record<string, string> = {
   LIVE_CLASS: "bg-blue-100 text-blue-700",
@@ -36,6 +38,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 export default function ParentCalendarPage() {
   const { user } = useAuth()
   const t = useTranslations("parent")
+  const locale = useLocale()
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
@@ -60,7 +63,7 @@ export default function ParentCalendarPage() {
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth)
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
-  const monthName = new Date(currentYear, currentMonth).toLocaleString("en-US", { month: "long", year: "numeric" })
+  const monthName = formatDateTime(new Date(currentYear, currentMonth), locale, { month: "long", year: "numeric" })
 
   function prevMonth() {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear((y) => y - 1) } else { setCurrentMonth((m) => m - 1) }
@@ -128,7 +131,7 @@ export default function ParentCalendarPage() {
 
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <h2 className="text-base font-semibold text-foreground">
-            {selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : t("calendar.upcomingEvents")}
+            {selectedDate ? formatDate(selectedDate + "T00:00:00", locale, { weekday: "long", month: "long", day: "numeric" }) : t("calendar.upcomingEvents")}
           </h2>
           <div className="mt-4 space-y-3">
             {(selectedDate ? selectedEvents : events.slice(0, 6)).length === 0 ? (
@@ -151,8 +154,8 @@ export default function ParentCalendarPage() {
                       {event.start && (
                         <div className="flex items-center gap-1.5">
                           <Clock className="size-3" />
-                          {new Date(event.start).toLocaleString("en-GB", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                          {event.end && ` – ${new Date(event.end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`}
+                          {formatDateTime(event.start, locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {event.end && ` – ${formatTime(event.end, locale, { hour: "2-digit", minute: "2-digit" })}`}
                         </div>
                       )}
                       {event.status && (

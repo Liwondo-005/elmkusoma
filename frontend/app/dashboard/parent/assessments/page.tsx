@@ -6,6 +6,8 @@ import { PenTool, Loader2, CheckCircle, AlertTriangle, Clock, TrendingUp, Trendi
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ParentAssessments, type AssessmentItem } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentAssessmentsPage() {
   const { user } = useAuth()
@@ -80,6 +82,7 @@ export default function ParentAssessmentsPage() {
 
 function AssessmentCard({ item, showScore }: { item: AssessmentItem; showScore: boolean }) {
   const t = useTranslations("parent")
+  const locale = useLocale()
   const scoreColor = item.isPassed === true ? "text-green-600" : item.isPassed === false ? "text-red-500" : "text-muted-foreground"
 
   return (
@@ -133,7 +136,7 @@ function AssessmentCard({ item, showScore }: { item: AssessmentItem; showScore: 
 
       {item.createdAt && (
         <p className="mt-2 text-[10px] text-muted-foreground">
-          {new Date(item.createdAt).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" })}
+          {formatDate(item.createdAt, locale, { month: "short", day: "numeric", year: "numeric" })}
         </p>
       )}
     </div>

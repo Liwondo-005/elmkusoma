@@ -23,6 +23,7 @@ export default function LearnerHistoryPage() {
   const { user, loading: authLoading } = useAuth()
   const t = useTranslations("learner")
   const tc = useTranslations("common")
+  const tu = useTranslations("learnerUi")
   const [items, setItems] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +59,7 @@ export default function LearnerHistoryPage() {
         id: b.id,
         type: "bookmark" as const,
         title: b.targetTitle || t("history.savedFallback"),
-        subtitle: b.targetType || "Item",
+        subtitle: b.targetType || tu("history.itemFallback"),
         date: b.createdAt,
         link: b.targetType?.toLowerCase() === "course"
           ? `/dashboard/learner/courses/${b.targetId}`

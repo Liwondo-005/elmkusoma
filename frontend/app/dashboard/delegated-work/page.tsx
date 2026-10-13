@@ -4,10 +4,13 @@ import { useEffect, useState, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, AlertCircle, CheckCircle2, XCircle, MessageSquareWarning, ShieldCheck, KeyRound } from "lucide-react"
 import { platformAdminApi, type DelegatedTask } from "@/lib/platform-admin-api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDateTime } from "@/lib/format-date"
 
 export default function DelegatedWorkPage() {
   const t = useTranslations("platformAdmin")
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [tasks, setTasks] = useState<DelegatedTask[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,7 +79,7 @@ export default function DelegatedWorkPage() {
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{task.scope}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {task.entityType} · {t("delegatedWork.submittedLabel")} {task.submittedAt ? new Date(task.submittedAt).toLocaleString("en-GB") : "—"}
+                    {task.entityType} · {t("delegatedWork.submittedLabel")} {task.submittedAt ? formatDateTime(task.submittedAt, locale) : "—"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

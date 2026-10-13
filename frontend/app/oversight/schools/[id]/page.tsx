@@ -100,17 +100,17 @@ export default function OversightSchoolDetailPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={<Users className="size-5" />} label="Teachers" value={school.teacherCount} color="bg-green-500/10 text-green-600" />
-        <StatCard icon={<GraduationCap className="size-5" />} label="Students" value={school.studentCount} color="bg-purple-500/10 text-purple-600" />
-        <StatCard icon={<Users className="size-5" />} label="Classes" value={school.classCount} color="bg-blue-500/10 text-blue-600" />
-        <StatCard icon={<BookOpen className="size-5" />} label="Lessons" value={school.lessonCount} color="bg-orange-500/10 text-orange-600" />
+        <StatCard icon={<Users className="size-5" />} label={t("schools.teachers")} value={school.teacherCount} color="bg-green-500/10 text-green-600" />
+        <StatCard icon={<GraduationCap className="size-5" />} label={t("schools.students")} value={school.studentCount} color="bg-purple-500/10 text-purple-600" />
+        <StatCard icon={<Users className="size-5" />} label={t("schools.classes")} value={school.classCount} color="bg-blue-500/10 text-blue-600" />
+        <StatCard icon={<BookOpen className="size-5" />} label={t("schoolDetail.lessons")} value={school.lessonCount} color="bg-orange-500/10 text-orange-600" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={<Video className="size-5" />} label="Live Classes" value={school.activeLiveClasses} color="bg-red-500/10 text-red-600" />
-        <StatCard icon={<Target className="size-5" />} label="Attendance Rate" value={`${school.attendanceRate}%`} color="bg-teal-500/10 text-teal-600" />
-        <StatCard icon={<TrendingUp className="size-5" />} label="Avg Performance" value={`${school.averagePerformance}%`} color="bg-indigo-500/10 text-indigo-600" />
-        <StatCard icon={<BookOpen className="size-5" />} label="Curriculum Progress" value={`${school.curriculumProgress}%`} color="bg-pink-500/10 text-pink-600" />
+        <StatCard icon={<Video className="size-5" />} label={t("overview.liveClasses")} value={school.activeLiveClasses} color="bg-red-500/10 text-red-600" />
+        <StatCard icon={<Target className="size-5" />} label={t("schoolDetail.attendanceRate")} value={`${school.attendanceRate}%`} color="bg-teal-500/10 text-teal-600" />
+        <StatCard icon={<TrendingUp className="size-5" />} label={t("schoolDetail.avgPerformance")} value={`${school.averagePerformance}%`} color="bg-indigo-500/10 text-indigo-600" />
+        <StatCard icon={<BookOpen className="size-5" />} label={t("schoolDetail.curriculumProgress")} value={`${school.curriculumProgress}%`} color="bg-pink-500/10 text-pink-600" />
       </div>
 
       <div className="grid gap-6">
@@ -119,36 +119,36 @@ export default function OversightSchoolDetailPage() {
             <MapPin className="size-5 text-muted-foreground" />
             {t("schoolDetail.locationDetails")}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <DetailRow label="Address" value={school.address || t("schoolDetail.notProvided")} />
-            <DetailRow label="City" value={school.city || t("schoolDetail.notProvided2")} />
-            <DetailRow label="District" value={school.districtName || t("schoolDetail.notProvided3")} />
-            <DetailRow label="Region" value={school.regionName || t("schoolDetail.notProvided4")} />
+            <DetailRow label={t("schoolDetail.address")} value={school.address || t("schoolDetail.notProvided")} />
+            <DetailRow label={t("schoolDetail.city")} value={school.city || t("schoolDetail.notProvided2")} />
+            <DetailRow label={t("overview.district")} value={school.districtName || t("schoolDetail.notProvided3")} />
+            <DetailRow label={t("overview.region")} value={school.regionName || t("schoolDetail.notProvided4")} />
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <QuickActionCard
             icon={<TrendingUp className="size-5" />}
-            title="Performance"
-            description="View academic performance details"
+            title={t("schools.performance")}
+            description={t("schoolDetail.performanceDesc")}
             href={`/oversight/performance?school=${school.id}`}
           />
           <QuickActionCard
             icon={<ClipboardList className="size-5" />}
-            title="Attendance"
-            description="View attendance analytics"
+            title={t("schools.attendance")}
+            description={t("schoolDetail.attendanceDesc")}
             href={`/oversight/attendance?school=${school.id}`}
           />
           <QuickActionCard
             icon={<BookOpen className="size-5" />}
-            title="Curriculum"
-            description="View curriculum progress"
+            title={t("schools.curriculum")}
+            description={t("schoolDetail.curriculumDesc")}
             href={`/oversight/curriculum?school=${school.id}`}
           />
           <QuickActionCard
             icon={<Video className="size-5" />}
-            title="Live Classes"
-            description="View active live classes"
+            title={t("overview.liveClasses")}
+            description={t("schoolDetail.liveClassesDesc")}
             href={`/oversight/live-classes?school=${school.id}`}
           />
         </div>

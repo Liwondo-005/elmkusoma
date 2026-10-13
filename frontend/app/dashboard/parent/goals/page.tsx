@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl"
 import { Target, Loader2 } from "lucide-react"
 import { parentApi, type GoalItem } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentGoalsPage() {
   const t = useTranslations("parent")
@@ -83,6 +85,7 @@ export default function ParentGoalsPage() {
 
 function GoalCard({ goal }: { goal: GoalItem }) {
   const t = useTranslations("parent")
+  const locale = useLocale()
   const progress = goal.progressPercentage || 0
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -98,7 +101,7 @@ function GoalCard({ goal }: { goal: GoalItem }) {
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
             <span>{t("goals.progressComplete", { progress: Math.round(progress) })}</span>
-            {goal.targetDate && <span>{t("goals.targetLabel", { date: new Date(goal.targetDate).toLocaleDateString("en-GB", { month: "short", day: "numeric" }) })}</span>}
+            {goal.targetDate && <span>{t("goals.targetLabel", { date: formatDate(goal.targetDate, locale, { month: "short", day: "numeric" }) })}</span>}
           </div>
         </div>
       </div>

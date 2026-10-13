@@ -67,6 +67,7 @@ public class ContactMessageService {
     private final PublicSiteSettingsService siteSettings;
     private final EventPublisherService eventPublisherService;
     private final UserRepository userRepository;
+    private final CommunicationIdempotencyService idempotency;
 
     /**
      * Stores an enquiry, then notifies.
@@ -245,20 +246,47 @@ public class ContactMessageService {
     }
 
     @Transactional
-    public ContactMessageReply reply(UUID messageId, UUID authorId, String body, boolean internal) {
+    public ContactMessageReply reply(UUID messageId, UUID authorId, String body, boolean internal,
+                                     String idempotencyKey) {
         ContactMessage message = get(messageId);
         if (body == null || body.isBlank() || body.length() > 5000) {
             throw new IllegalArgumentException("A reply must be between 1 and 5000 characters");
         }
-        ContactMessageReply saved = replyRepository.save(ContactMessageReply.builder()
+        String trimmed = body.trim();
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return persistReply(message, authorId, trimmed, internal);
+        }
+        // A retried reply must not reach the enquirer twice. Internal notes are hashed
+        // distinctly so a key cannot be replayed from a visible reply into a private note.
+        return idempotency.execute(
+                CommunicationIdempotencyService.actor(authorId),
+                CommunicationIdempotencyService.OP_ENQUIRY_REPLY,
+                idempotencyKey,
+                CommunicationIdempotencyService.hashOf(messageId.toString(), trimmed, String.valueOf(internal)),
+                prior -> replyRepository.findById(prior.resourceId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Idempotency key matched a reply that no longer exists")),
+                () -> persistReply(message, authorId, trimmed, internal),
+                ContactMessageReply::getId
+        ).result();
+    }
+
+    /** Records a reply with no idempotency key. */
+    @Transactional
+    public ContactMessageReply reply(UUID messageId, UUID authorId, String body, boolean internal) {
+        return reply(messageId, authorId, body, internal, null);
+    }
+
+    private ContactMessageReply persistReply(ContactMessage message, UUID authorId,
+                                             String trimmed, boolean internal) {
+        return replyRepository.save(ContactMessageReply.builder()
                 .contactMessageId(message.getId())
                 .authorId(authorId)
                 .isInternal(internal)
-                .message(body.trim())
+                .message(trimmed)
                 // Only staff-to-requester replies claim delivery; internal notes go nowhere.
-                .delivered(!internal && publishReply(message, body.trim()))
+                .delivered(!internal && publishReply(message, trimmed))
                 .build());
-        return saved;
     }
 
     /**

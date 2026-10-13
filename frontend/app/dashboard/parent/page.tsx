@@ -7,6 +7,8 @@ import { Users, AlertTriangle, CheckCircle, Clock, FileText, BarChart3, ChevronR
 import { useAuth } from "@/lib/auth"
 import { parentApi, type FamilyOverview, type ParentIntelligence, type AttentionItem, type PositiveSignal, type UpcomingItem } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 const PRIORITY_COLORS: Record<string, string> = {
   CRITICAL: "bg-red-500",
@@ -387,6 +389,7 @@ function PositiveCard({ item }: { item: PositiveSignal }) {
 }
 
 function UpcomingCard({ item }: { item: UpcomingItem }) {
+  const locale = useLocale()
   const typeColors: Record<string, string> = {
     LIVE_CLASS: "bg-blue-100 text-blue-700",
     ASSIGNMENT: "bg-orange-100 text-orange-700",
@@ -401,7 +404,7 @@ function UpcomingCard({ item }: { item: UpcomingItem }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{item.title}</p>
         <p className="text-xs text-muted-foreground">
-          {item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" }) : ""}
+          {item.timestamp ? formatDate(item.timestamp, locale, { weekday: "short", month: "short", day: "numeric" }) : ""}
         </p>
       </div>
     </div>

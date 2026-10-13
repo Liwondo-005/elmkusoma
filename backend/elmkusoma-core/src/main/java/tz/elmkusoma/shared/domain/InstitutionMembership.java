@@ -54,6 +54,22 @@ public class InstitutionMembership {
     @Column(name = "provider_id")
     private UUID providerId;
 
+    /**
+     * The responsibility this person carries inside their provider (authority level D), such as
+     * {@code TRAINING_COORDINATOR} or {@code RECORDS}.
+     *
+     * <p>Descriptive only. It narrows nothing on its own: authority still comes from the role
+     * plus the provider scope above plus resource ownership plus lifecycle. That is deliberate -
+     * a responsibility label that silently granted or withheld access would be a second,
+     * unauditable authorization model, and one nobody could reason about from the row.</p>
+     *
+     * <p>Free-form text rather than an enum so the list of responsibilities can change with what
+     * providers enable without a migration, and so existing memberships stay valid. NULL means
+     * nobody has assigned one yet.</p>
+     */
+    @Column(name = "responsibility")
+    private String responsibility;
+
     public UUID getProviderId() {
         return providerId;
     }

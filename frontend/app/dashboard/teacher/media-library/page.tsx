@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 
 import { Video, Search, Film, FileText, Music, Image, Loader2, AlertCircle, Play, Trash2, Clock, HardDrive, Eye, EyeOff, Tag, Calendar } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate } from "@/lib/format-date"
 
 interface MediaAsset {
   id: string
@@ -14,6 +16,8 @@ interface MediaAsset {
   description: string | null
   mediaType: string
   fileUrl: string | null
+  /** Authorised application playback route; set for live class recordings, null otherwise. */
+  playbackUrl: string | null
   thumbnailUrl: string | null
   durationSeconds: number | null
   fileSizeBytes: number | null
@@ -31,6 +35,18 @@ interface MediaAsset {
   createdAt: string
 }
 
+/**
+ * What "Open" navigates to.
+ *
+ * A live class recording lives in a private bucket, so its stored object URL is not a playback
+ * URL - opening one returns Backblaze's UnauthorizedAccess XML. For those the backend only ever
+ * exposes `playbackUrl`, the application's own authorised route that re-checks entitlement on
+ * every request. Every other asset keeps its existing `fileUrl` behaviour untouched.
+ */
+function openableUrl(item: MediaAsset): string | null {
+  return item.playbackUrl ?? item.fileUrl
+}
+
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "--:--"
   const h = Math.floor(seconds / 3600)
@@ -40,18 +56,11 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${String(s).padStart(2, "0")}`
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })
-}
-
 export default function TeacherMediaLibraryPage() {
   const { user } = useAuth()
   const t = useTranslations("teacher")
   const tn = useTranslations("nav")
+  const locale = useLocale()
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -263,7 +272,11 @@ export default function TeacherMediaLibraryPage() {
                   )}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {formatDate(item.createdAt)}
+                    {fmtDate(item.createdAt, locale, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </span>
                 </div>
 
@@ -274,12 +287,12 @@ export default function TeacherMediaLibraryPage() {
                   </div>
                 )}
 
-                {item.fileUrl && (
+                {openableUrl(item) && (
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full mt-3"
-                    onClick={() => window.open(item.fileUrl!, "_blank")}
+                    onClick={() => window.open(openableUrl(item)!, "_blank")}
                   >
                     <Play className="h-4 w-4 mr-1" />
                     {t("mediaLibrary.open")}

@@ -5,9 +5,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react"
 import { CheckCircle, XCircle, Loader2, ShieldCheck, Plus, MessageSquareWarning } from "lucide-react"
 import { platformAdminApi, type VerificationSummary } from "@/lib/platform-admin-api"
+import { formatDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 export default function VerificationsPage() {
   const t = useTranslations("platformAdmin");
+  const locale = useLocale()
   const [items, setItems] = useState<VerificationSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -126,7 +129,7 @@ export default function VerificationsPage() {
                     <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[10px] font-semibold text-yellow-700">{v.status}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {t("verifications.entity")}{v.entityId?.slice(0, 8)}{t("verifications.submitted")}{new Date(v.submittedAt).toLocaleString("en-GB")}
+                    {t("verifications.entity")}{v.entityId?.slice(0, 8)}{t("verifications.submitted")}{formatDateTime(v.submittedAt, locale)}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

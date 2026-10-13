@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
 import {
   adminApi,
   auditApi,
@@ -30,15 +32,15 @@ import {
   XCircle,
 } from "lucide-react"
 
-function timeAgo(timestamp: string): string {
+function timeAgo(timestamp: string, tl: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(timestamp).getTime()
   const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s ago`
+  if (seconds < 60) return tl("timeAgoSeconds", { count: seconds })
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 60) return tl("timeAgoMinutes", { count: minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
+  if (hours < 24) return tl("timeAgoHours", { count: hours })
+  return tl("timeAgoDays", { count: Math.floor(hours / 24) })
 }
 
 function severityClassName(severity: string): string {
@@ -54,6 +56,7 @@ export default function AdminLiveOperationsPage() {
   const router = useRouter()
   const tc = useTranslations("common")
   const tl = useTranslations("liveOps")
+  const locale = useLocale()
 
   const [sessions, setSessions] = useState<ActiveLiveSession[]>([])
   const [teacherNames, setTeacherNames] = useState<Record<string, string>>({})
@@ -84,7 +87,7 @@ export default function AdminLiveOperationsPage() {
   const fetchData = useCallback(async () => {
     const institutionId = getInstitutionId()
     if (!institutionId) {
-      setLoadError("No institution context found. Please log in again.")
+      setLoadError(tl("noInstitution"))
       setLoading(false)
       return
     }
@@ -105,7 +108,7 @@ export default function AdminLiveOperationsPage() {
       setSessions(activeRes.value)
       setLoadError(null)
     } else {
-      setLoadError("Could not load live sessions. Retrying may help — check your connection.")
+      setLoadError(tl("loadSessionsError"))
     }
 
     if (statsRes.status === "fulfilled") setStats(statsRes.value)
@@ -118,7 +121,7 @@ export default function AdminLiveOperationsPage() {
       // Backend resolves institution from active memberships; accounts without
       // one get rejected. Report honestly instead of showing fabricated events.
       setActivity([])
-      setActivityError("Activity feed is unavailable for this account (no institution membership).")
+      setActivityError(tl("activityUnavailable"))
     }
 
     if (peopleRes.status === "fulfilled") {
@@ -139,7 +142,7 @@ export default function AdminLiveOperationsPage() {
 
     setLastRefresh(new Date().toISOString())
     setLoading(false)
-  }, [])
+  }, [tl])
 
   useEffect(() => {
     fetchData()
@@ -170,7 +173,7 @@ export default function AdminLiveOperationsPage() {
       const list = await adminApi.getSessionParticipants(session.id)
       setParticipants(list)
     } catch {
-      setParticipantsError("Could not load participants for this session.")
+      setParticipantsError(tl("participantsError"))
     } finally {
       setParticipantsLoading(false)
     }
@@ -216,7 +219,7 @@ export default function AdminLiveOperationsPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-7xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Admin"} subtitle="Live session monitoring and management" />
+        <LearnerHeader firstName={user?.firstName || "Admin"} subtitle={tl("subtitle")} />
         <LoadingState />
       </div>
     )
@@ -225,7 +228,7 @@ export default function AdminLiveOperationsPage() {
   if (loadError) {
     return (
       <div className="mx-auto max-w-7xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Admin"} subtitle="Live session monitoring and management" />
+        <LearnerHeader firstName={user?.firstName || "Admin"} subtitle={tl("subtitle")} />
         <section className="rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
           <AlertTriangle className="mx-auto size-8 text-destructive" />
           <p className="mt-3 text-sm font-medium text-destructive">{loadError}</p>
@@ -236,7 +239,7 @@ export default function AdminLiveOperationsPage() {
             }}
             className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border px-4 text-sm text-foreground hover:bg-muted"
           >
-            <RefreshCw className="size-4" /> Retry
+            <RefreshCw className="size-4" /> {tc("retry")}
           </button>
         </section>
       </div>
@@ -245,17 +248,17 @@ export default function AdminLiveOperationsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <LearnerHeader firstName={user?.firstName || "Admin"} subtitle="Live session monitoring and management" />
+      <LearnerHeader firstName={user?.firstName || "Admin"} subtitle={tl("subtitle")} />
 
       {/* System Health — real values from /v1/live-session/health */}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="size-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Live Service Health</h2>
+            <h2 className="text-sm font-semibold text-foreground">{tl("serviceHealth")}</h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground">Last refresh: {timeAgo(lastRefresh)}</span>
+            <span className="text-[10px] text-muted-foreground">{tl("lastRefresh", { time: timeAgo(lastRefresh, tl) })}</span>
             <button
               onClick={() => fetchData()}
               className="flex size-7 items-center justify-center rounded-lg border border-border hover:bg-muted"
@@ -278,7 +281,7 @@ export default function AdminLiveOperationsPage() {
               />
               <p className="text-sm font-bold text-foreground">{health?.status ?? "—"}</p>
             </div>
-            <p className="text-[10px] text-muted-foreground">{health?.service ?? "Live service"}</p>
+            <p className="text-[10px] text-muted-foreground">{health?.service ?? tl("liveService")}</p>
           </div>
 
           {/* Mode */}
@@ -288,7 +291,7 @@ export default function AdminLiveOperationsPage() {
             </div>
             <p className="mt-2 text-sm font-bold text-foreground capitalize">{health?.mode ?? "—"}</p>
             <p className="text-[10px] text-muted-foreground">
-              Mode{health ? (health.liveKitConfigured ? " (LiveKit configured)" : " (video not configured)") : ""}
+              {tl("modeLabel")}{health ? (health.liveKitConfigured ? tl("liveKitConfigured") : tl("videoNotConfigured")) : ""}
             </p>
           </div>
 
@@ -298,7 +301,7 @@ export default function AdminLiveOperationsPage() {
               <Radio className="size-4 text-red-500" />
             </div>
             <p className="mt-2 text-2xl font-bold text-foreground">{stats?.inProgress ?? sessions.length}</p>
-            <p className="text-[10px] text-muted-foreground">Sessions In Progress</p>
+            <p className="text-[10px] text-muted-foreground">{tl("sessionsInProgress")}</p>
           </div>
 
           {/* Participants currently connected */}
@@ -307,7 +310,7 @@ export default function AdminLiveOperationsPage() {
               <Users className="size-4 text-violet-500" />
             </div>
             <p className="mt-2 text-2xl font-bold text-foreground">{participantsOnline}</p>
-            <p className="text-[10px] text-muted-foreground">Participants Connected</p>
+            <p className="text-[10px] text-muted-foreground">{tl("participantsConnected")}</p>
           </div>
 
           {/* Service message */}
@@ -315,8 +318,8 @@ export default function AdminLiveOperationsPage() {
             <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10">
               <AlertTriangle className="size-4 text-amber-500" />
             </div>
-            <p className="mt-2 text-xs font-medium text-foreground">{health?.message ?? "Health check unavailable"}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">Latest status message</p>
+            <p className="mt-2 text-xs font-medium text-foreground">{health?.message ?? tl("healthUnavailable")}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{tl("latestStatusMessage")}</p>
           </div>
         </div>
       </section>
@@ -326,7 +329,7 @@ export default function AdminLiveOperationsPage() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Radio className="size-4 text-red-500" />
-            <h2 className="text-sm font-semibold text-foreground">Live Sessions Monitor</h2>
+            <h2 className="text-sm font-semibold text-foreground">{tl("sessionsMonitor")}</h2>
             <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-500">
               {sessions.length} LIVE
             </span>
@@ -336,7 +339,7 @@ export default function AdminLiveOperationsPage() {
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                placeholder={`${tc("search")} sessions...`}
+                placeholder={tl("searchSessions")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 w-48 rounded-lg border border-border bg-background pl-8 pr-3 text-xs outline-none focus:border-ring"
@@ -349,7 +352,7 @@ export default function AdminLiveOperationsPage() {
                 onChange={(e) => setAutoRefresh(e.target.checked)}
                 className="size-3 rounded"
               />
-              Auto-refresh
+              {tl("autoRefresh")}
             </label>
           </div>
         </div>
@@ -357,21 +360,21 @@ export default function AdminLiveOperationsPage() {
         {filteredSessions.length === 0 ? (
           <EmptyState
             icon={<Radio className="size-10 text-muted-foreground/50" />}
-            title="No active sessions"
-            description="There are currently no live sessions in progress for this institution."
+            title={tl("noActiveSessions")}
+            description={tl("noActiveSessionsDesc")}
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <th className="pb-2 pr-4 font-medium">Session</th>
-                  <th className="pb-2 pr-4 font-medium">Lecturer</th>
-                  <th className="pb-2 pr-4 font-medium">Status</th>
-                  <th className="pb-2 pr-4 font-medium">Participants</th>
-                  <th className="pb-2 pr-4 font-medium">Scheduled</th>
-                  <th className="pb-2 pr-4 font-medium">Duration</th>
-                  <th className="pb-2 font-medium">Actions</th>
+                  <th className="pb-2 pr-4 font-medium">{tl("colSession")}</th>
+                  <th className="pb-2 pr-4 font-medium">{tl("colLecturer")}</th>
+                  <th className="pb-2 pr-4 font-medium">{tl("colStatus")}</th>
+                  <th className="pb-2 pr-4 font-medium">{tl("colParticipants")}</th>
+                  <th className="pb-2 pr-4 font-medium">{tl("colScheduled")}</th>
+                  <th className="pb-2 pr-4 font-medium">{tl("colDuration")}</th>
+                  <th className="pb-2 font-medium">{tl("colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -413,7 +416,7 @@ export default function AdminLiveOperationsPage() {
                     </td>
                     <td className="py-3 pr-4 text-muted-foreground">
                       {session.scheduledAt
-                        ? new Date(session.scheduledAt).toLocaleString("en-GB", {
+                        ? formatDateTime(session.scheduledAt, locale, {
                             day: "2-digit",
                             month: "short",
                             hour: "2-digit",
@@ -422,14 +425,14 @@ export default function AdminLiveOperationsPage() {
                         : "—"}
                     </td>
                     <td className="py-3 pr-4 text-muted-foreground">
-                      {session.durationMinutes ? `${session.durationMinutes} min` : "—"}
+                       {session.durationMinutes ? tc("durationShort", { count: session.durationMinutes }) : "—"}
                     </td>
                     <td className="py-3">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => openParticipants(session)}
                           className="flex size-6 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted"
-                          title="View participants"
+                           title={tl("viewParticipants")}
                         >
                           <Users className="size-3" />
                         </button>
@@ -502,7 +505,7 @@ export default function AdminLiveOperationsPage() {
                     {issue.status}
                   </span>
                   <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
-                    {issue.createdAt ? timeAgo(issue.createdAt) : "—"}
+                    {issue.createdAt ? timeAgo(issue.createdAt, tl) : "—"}
                   </span>
                 </div>
                 {issue.description && (
@@ -522,41 +525,41 @@ export default function AdminLiveOperationsPage() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="mb-4 flex items-center gap-2">
             <BarChart3 className="size-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Session Statistics</h2>
+            <h2 className="text-sm font-semibold text-foreground">{tl("sessionStats")}</h2>
           </div>
           {stats ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-[10px] text-muted-foreground">Total Sessions</p>
+                <p className="text-[10px] text-muted-foreground">{tl("totalSessions")}</p>
                 <p className="mt-1 text-xl font-bold text-foreground">{stats.totalSessions}</p>
               </div>
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-[10px] text-muted-foreground">Scheduled</p>
+                <p className="text-[10px] text-muted-foreground">{tl("scheduled")}</p>
                 <p className="mt-1 text-xl font-bold text-foreground">{stats.scheduled}</p>
               </div>
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-[10px] text-muted-foreground">In Progress</p>
+                <p className="text-[10px] text-muted-foreground">{tc("inProgress")}</p>
                 <p className="mt-1 text-xl font-bold text-foreground">{stats.inProgress}</p>
               </div>
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-[10px] text-muted-foreground">Completed</p>
+                <p className="text-[10px] text-muted-foreground">{tc("completed")}</p>
                 <p className="mt-1 text-xl font-bold text-foreground">{stats.completed}</p>
               </div>
               <div className="col-span-2 rounded-xl border border-border bg-background p-3">
-                <p className="text-[10px] text-muted-foreground">Completion Rate</p>
+                <p className="text-[10px] text-muted-foreground">{tl("completionRate")}</p>
                 <p className="mt-1 text-xl font-bold text-foreground">
                   {completionRate != null ? `${completionRate}%` : "—"}
                 </p>
                 <p className="mt-1 text-[9px] text-muted-foreground">
                   {stats.totalSessions > 0
-                    ? `${stats.completed} of ${stats.totalSessions} sessions completed`
-                    : "No sessions recorded yet"}
+                    ? tl("completedOfTotal", { completed: stats.completed, total: stats.totalSessions })
+                    : tl("noSessionsRecorded")}
                 </p>
               </div>
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-              Statistics unavailable.
+              {tl("statsUnavailable")}
             </p>
           )}
         </section>
@@ -565,7 +568,7 @@ export default function AdminLiveOperationsPage() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="mb-4 flex items-center gap-2">
             <Clock className="size-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+            <h2 className="text-sm font-semibold text-foreground">{tl("recentActivity")}</h2>
           </div>
           {activityError ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
@@ -573,7 +576,7 @@ export default function AdminLiveOperationsPage() {
             </p>
           ) : activity.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-              No activity recorded yet.
+              {tl("noActivityYet")}
             </p>
           ) : (
             <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
@@ -583,12 +586,12 @@ export default function AdminLiveOperationsPage() {
                     {event.action.split("_")[0]}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-foreground">{event.actorName || "System"}</p>
+                    <p className="text-xs font-medium text-foreground">{event.actorName || tl("system")}</p>
                     <p className="truncate text-[10px] text-muted-foreground">
                       {event.description || event.entityName || event.entityType}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(event.createdAt)}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(event.createdAt, tl)}</span>
                 </div>
               ))}
             </div>
@@ -603,13 +606,13 @@ export default function AdminLiveOperationsPage() {
             <div className="flex items-center gap-2">
               <Users className="size-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold text-foreground">
-                Participants — {participantsFor.title}
+                {tl("participantsHeading", { title: participantsFor.title })}
               </h2>
             </div>
             <button
               onClick={() => setParticipantsFor(null)}
               className="flex size-7 items-center justify-center rounded-lg border border-border hover:bg-muted"
-              title="Close"
+              title={tc("close")}
             >
               <XCircle className="size-3.5 text-muted-foreground" />
             </button>
@@ -622,18 +625,18 @@ export default function AdminLiveOperationsPage() {
             </p>
           ) : !participants || participants.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-              No participants have joined this session yet.
+              {tl("noParticipantsJoined")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-2 pr-4 font-medium">Name</th>
-                    <th className="pb-2 pr-4 font-medium">Role</th>
-                    <th className="pb-2 pr-4 font-medium">Status</th>
-                    <th className="pb-2 pr-4 font-medium">Joined</th>
-                    <th className="pb-2 font-medium">Duration</th>
+                    <th className="pb-2 pr-4 font-medium">{tl("colName")}</th>
+                    <th className="pb-2 pr-4 font-medium">{tl("colRole")}</th>
+                    <th className="pb-2 pr-4 font-medium">{tl("colStatus")}</th>
+                    <th className="pb-2 pr-4 font-medium">{tl("colJoined")}</th>
+                    <th className="pb-2 font-medium">{tl("colDuration")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -647,14 +650,14 @@ export default function AdminLiveOperationsPage() {
                             p.online ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"
                           }`}
                         >
-                          {p.online ? "Online" : "Left"}
+                          {p.online ? tl("online") : tl("left")}
                         </span>
                       </td>
                       <td className="py-2.5 pr-4 text-muted-foreground">
-                        {p.joinedAt ? new Date(p.joinedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                        {p.joinedAt ? formatTime(p.joinedAt, locale, { hour: "2-digit", minute: "2-digit" }) : "—"}
                       </td>
                       <td className="py-2.5 text-muted-foreground">
-                        {p.durationSeconds != null ? `${Math.floor(p.durationSeconds / 60)}m` : "—"}
+                        {p.durationSeconds != null ? tc("durationShort", { count: Math.floor(p.durationSeconds / 60) }) : "—"}
                       </td>
                     </tr>
                   ))}
@@ -698,11 +701,11 @@ export default function AdminLiveOperationsPage() {
         <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <Calendar className="size-3" />
-            {new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            {formatDate(new Date(), locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </span>
           <span className="flex items-center gap-1">
             <Clock className="size-3" />
-            {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+            {formatTime(new Date(), locale, { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -711,7 +714,7 @@ export default function AdminLiveOperationsPage() {
               health?.status === "OPERATIONAL" ? "bg-emerald-500" : "bg-amber-500"
             }`}
           />
-          {health ? `Live service: ${health.status}` : "Live service status unknown"}
+          {health ? tl("serviceStatus", { status: health.status }) : tl("serviceStatusUnknown")}
         </div>
       </div>
     </div>

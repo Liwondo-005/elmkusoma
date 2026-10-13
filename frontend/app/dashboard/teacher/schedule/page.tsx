@@ -30,10 +30,6 @@ function getWeekDates(offset: number): Date[] {
   })
 }
 
-function formatDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-}
-
 function isToday(d: Date): boolean {
   const now = new Date()
   return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()

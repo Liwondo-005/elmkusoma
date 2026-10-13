@@ -7,12 +7,15 @@ import { BookOpen, Loader2, ChevronRight, Video, Clock } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ParentIntelligence, type LiveClassData } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDateTime } from "@/lib/format-date"
 
 export default function ParentLearningPage() {
   const { user } = useAuth()
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [intelligence, setIntelligence] = useState<ParentIntelligence | null>(null)
   const [liveClasses, setLiveClasses] = useState<Array<{ id: string; title: string; status: string; scheduledAt: string }>>([])
   const [library, setLibrary] = useState<{ categories: Array<{ name: string; description: string; items: Array<{ id: string; title: string; description: string; resourceType: string; fileUrl: string }> }> } | null>(null)
@@ -92,7 +95,7 @@ export default function ParentLearningPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground">{lc.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {lc.scheduledAt ? new Date(lc.scheduledAt).toLocaleString("en-GB", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                    {lc.scheduledAt ? formatDateTime(lc.scheduledAt, locale, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
                   </p>
                 </div>
                 <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${lc.status === "IN_PROGRESS" || lc.status === "LIVE" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>

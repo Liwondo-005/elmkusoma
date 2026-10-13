@@ -15,6 +15,8 @@ import { CertificateDetailDrawer } from "@/components/platform-admin/certificate
 import { CertificateOverviewSection } from "@/components/platform-admin/certificate-overview-section"
 import { CertificateTemplatesSection } from "@/components/platform-admin/certificate-templates-section"
 import { CertificateSignatoriesSection } from "@/components/platform-admin/certificate-signatories-section"
+import { formatDate as fmtDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 const PAGE_SIZE = 20
 
@@ -48,6 +50,7 @@ const CERT_TYPES = ["COMPLETION", "ACHIEVEMENT", "PARTICIPATION", "TRANSCRIPT"]
 export default function CertificatesPage() {
   const t = useTranslations("platformAdmin")
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [tab, setTab] = useState<TabKey>("certificates")
   const [data, setData] = useState<PageResponse<CertificateSummary> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -129,7 +132,7 @@ export default function CertificatesPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  const formatDate = (d: string) => fmtDate(d, locale, { day: "2-digit", month: "short", year: "numeric" })
 
   const tabs: { key: TabKey; label: string; icon: typeof Award }[] = [
     { key: "overview", label: t("certificates.tabOverview"), icon: BarChart3 },

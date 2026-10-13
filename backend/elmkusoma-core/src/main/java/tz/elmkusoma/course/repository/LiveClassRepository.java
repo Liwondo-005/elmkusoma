@@ -63,6 +63,25 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
     @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false AND lc.status IN ('SCHEDULED', 'IN_PROGRESS') ORDER BY lc.scheduledAt DESC")
     List<LiveClass> findAllActiveAndIsDeletedFalse();
 
+    /**
+     * Ended classes still holding the transient {@code egress:<id>} marker, i.e. recordings whose
+     * final storage location was not resolved when the class finished. These are retried by the
+     * reconciliation sweep, because with object storage the upload routinely outlives the
+     * in-request polling window and LiveKit Cloud sends no egress_ended webhook.
+     *
+     * <p>The "ended" predicate is a filter, not just documentation: {@code finalizeRecordingAndCreateReplay}
+     * issues {@code StopEgress} for any marker it finds, so including a class that is still
+     * LIVE would have let a background sweep silently cut short a recording nobody asked to
+     * stop. {@code endedAt} is set by the shared terminal path for both a teacher-initiated end
+     * and the expiry sweep; the status clause covers sessions ended before {@code ended_at}
+     * existed.</p>
+     */
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false "
+            + "AND lc.recordingUrl LIKE 'egress:%' "
+            + "AND (lc.endedAt IS NOT NULL OR lc.status IN ('COMPLETED', 'ENDED')) "
+            + "ORDER BY lc.endedAt DESC")
+    List<LiveClass> findWithUnresolvedRecordingMarker(Pageable pageable);
+
     @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false AND LOWER(lc.title) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY lc.scheduledAt DESC")
     List<LiveClass> searchByTitleAndIsDeletedFalse(@Param("query") String query);
 

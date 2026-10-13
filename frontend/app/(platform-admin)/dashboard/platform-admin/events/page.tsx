@@ -92,27 +92,27 @@ export default function PlatformEventsPage() {
       } else if (newStatus === "CANCELLED") {
         await platformAdminApi.cancelEvent(ev.id)
       } else {
-        throw new Error("Unsupported status")
+        throw new Error(t("shared.events.unsupportedStatus"))
       }
-      flash(`Event ${newStatus.toLowerCase()}`)
+      flash(t("shared.events.statusUpdated", { p0: newStatus.toLowerCase() }))
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${newStatus.toLowerCase()} event`)
+      setError(err instanceof Error ? err.message : t("shared.events.failedToActionEvent", { p0: newStatus.toLowerCase() }))
     } finally {
       setActing(null)
     }
   }
 
   const handleDelete = async (ev: PlatformEvent) => {
-    if (!window.confirm(`Delete "${ev.title}"? This cannot be undone.`)) return
+    if (!window.confirm(t("shared.events.confirmDeleteEvent", { title: ev.title }))) return
     setActing(ev.id)
     setError(null)
     try {
       await platformAdminApi.deleteEvent(ev.id)
-      flash(`Event "${ev.title}" deleted`)
+      flash(t("shared.events.eventDeleted", { title: ev.title }))
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete event")
+      setError(err instanceof Error ? err.message : t("shared.events.failedToDeleteEvent"))
     } finally {
       setActing(null)
     }
@@ -209,26 +209,26 @@ export default function PlatformEventsPage() {
                     onChange={(e) => { if (e.target.value) handleToggleStatus(ev, e.target.value) }}
                     className="rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                   >
-                    <option value="">Actions…</option>
-                    {(statusOptions[ev.status ?? "DRAFT"] ?? []).map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => { setEditing(ev); setModalOpen(true) }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-0.5 text-[11px] font-semibold hover:bg-muted"
-                    title="Edit event"
-                  >
-                    <Pencil className="size-3" /> Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(ev)}
-                    disabled={acting === ev.id}
-                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
-                    title="Delete event"
-                  >
-                    {acting === ev.id ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />} Delete
-                  </button>
+<option value="">{t("shared.events.actions")}</option>
+                     {(statusOptions[ev.status ?? "DRAFT"] ?? []).map((s) => (
+                       <option key={s} value={s}>{s}</option>
+                     ))}
+                   </select>
+                   <button
+                     onClick={() => { setEditing(ev); setModalOpen(true) }}
+                     className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-0.5 text-[11px] font-semibold hover:bg-muted"
+                     title={t("eventForm.titleEdit")}
+                   >
+                     <Pencil className="size-3" /> {tc("edit")}
+                   </button>
+                   <button
+                     onClick={() => handleDelete(ev)}
+                     disabled={acting === ev.id}
+                     className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+                     title={t("shared.events.deleteEvent")}
+                   >
+                     {acting === ev.id ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />} {tc("delete")}
+                   </button>
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">

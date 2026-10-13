@@ -41,6 +41,7 @@ import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
 import tz.elmkusoma.parent.repository.SupportTicketRepository;
 import tz.elmkusoma.parent.service.*;
+import tz.elmkusoma.shared.service.CommunicationIdempotencyService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.student.domain.Student;
@@ -418,19 +419,25 @@ public class ParentSelfController {
     }
 
     @PostMapping("/support/tickets")
-    @Operation(summary = "Create a support ticket")
+    @Operation(summary = "Create a support ticket (optionally idempotent via Idempotency-Key)")
     public ResponseEntity<ApiResponse<ParentSupportResponse.SupportTicketItem>> createTicket(
             @RequestBody Map<String, String> body,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
         UUID institutionId = getCurrentInstitutionId(request);
+
+        // A retried submission must file one case, not two. The key is validated before it can
+        // reach a column or a log line; an absent header keeps the original behaviour.
+        String key = CommunicationIdempotencyService.normaliseKey(idempotencyKey).orElse(null);
 
         ParentSupportResponse.SupportTicketItem ticket = supportService.createTicket(
                 userId, institutionId,
                 body.get("subject"),
                 body.get("description"),
                 body.get("category"),
-                body.get("priority"));
+                body.get("priority"),
+                key);
 
         return ResponseEntity.ok(ApiResponse.success(ticket));
     }
@@ -447,14 +454,16 @@ public class ParentSelfController {
     }
 
     @PostMapping("/support/tickets/{ticketId}/messages")
-    @Operation(summary = "Add a message to a support ticket")
+    @Operation(summary = "Add a message to a support ticket (optionally idempotent via Idempotency-Key)")
     public ResponseEntity<ApiResponse<SupportTicketMessage>> addTicketMessage(
             @PathVariable UUID ticketId,
             @RequestBody Map<String, String> body,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
         requireTicketAccess(userId, ticketId);
-        SupportTicketMessage message = supportService.addMessage(ticketId, userId, body.get("message"));
+        String key = CommunicationIdempotencyService.normaliseKey(idempotencyKey).orElse(null);
+        SupportTicketMessage message = supportService.addMessage(ticketId, userId, body.get("message"), key);
         return ResponseEntity.ok(ApiResponse.success(message));
     }
 

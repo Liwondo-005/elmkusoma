@@ -231,7 +231,11 @@ public class LiveKitService {
             // Egress needs the room to exist; CreateRoom is idempotent (roomCreate grant).
             ensureRoom(classId);
             String roomName = generateRoomName(classId);
-            String outputPath = config.getEgress().getOutputPath() + classId + "/%c";
+            // LiveKit's filename templating placeholders are {room_name} and {time}.
+            // The previous "%c" was not a LiveKit placeholder at all and was written out
+            // literally, producing ".../%c.mp4" - so every recording of a given class
+            // overwrote the previous one. {time} yields a unique timestamped object.
+            String outputPath = config.getEgress().getOutputPath() + classId + "/{time}";
 
             Map<String, Object> s3 = new HashMap<>();
             s3.put("accessKey", config.getEgress().getAccessKey());
@@ -622,10 +626,26 @@ public class LiveKitService {
      * status must be read from ListEgress filtered by egress_id (snake_case response).
      */
     public String resolveRecordingUrl(String egressId) {
-        if (!config.isEgressEnabled() || egressId == null || egressId.isBlank()) {
+        return resolveRecordingUrl(egressId, 15, 1500L);
+    }
+
+    /**
+     * Bounded variant of {@link #resolveRecordingUrl(String)}.
+     *
+     * <p>The default 15 x 1.5s window (22.5s) is right for the background reconciliation sweep,
+     * which has nothing better to do. On an HTTP thread it is not: "Stop recording" spent half a
+     * minute blocked while a large upload finished, even though the stop request itself had
+     * already succeeded. Request paths use a short window here and hand the remainder to the
+     * webhook and the sweep, which converge on the same row idempotently.</p>
+     *
+     * @param maxAttempts how many ListEgress reads to make; {@code <= 0} gives up immediately
+     * @param sleepMs     pause between attempts
+     */
+    public String resolveRecordingUrl(String egressId, int maxAttempts, long sleepMs) {
+        if (!config.isEgressEnabled() || egressId == null || egressId.isBlank() || maxAttempts <= 0) {
             return null;
         }
-        for (int attempt = 0; attempt < 15; attempt++) {
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
             try {
                 Map<String, Object> request = new HashMap<>();
                 request.put("egress_id", egressId);
@@ -646,19 +666,26 @@ public class LiveKitService {
                         }
                     }
                     if (info != null) {
-                        JsonNode files = info.path("file_results");
-                        if (!files.isArray() || files.size() == 0) {
-                            files = info.path("fileResults");
-                        }
-                        if (files.isArray()) {
-                            for (JsonNode f : files) {
-                                String url = f.path("location").asText(null);
-                                if (url == null) url = f.path("url").asText(null);
-                                String playable = toPlayableRecordingUrl(url);
-                                if (playable != null) {
-                                    log.info("Resolved recording URL for egress {} (attempt {})", egressId, attempt);
-                                    return playable;
-                                }
+                        // LiveKit reports finished outputs in the PLURAL "file_results" array.
+                        // A composite egress started with StartRoomCompositeEgress records a
+                        // single file, and LiveKit then returns it under the SINGULAR "file"
+                        // object with file_results empty - verified against a real
+                        // EGRESS_COMPLETE response, where reading only the plural forms made a
+                        // finished, successfully uploaded recording look like it had produced
+                        // no file at all and get marked FAILED.
+                        List<JsonNode> outputs = new ArrayList<>();
+                        collectFileNodes(outputs, info.path("file_results"));
+                        if (outputs.isEmpty()) collectFileNodes(outputs, info.path("fileResults"));
+                        if (outputs.isEmpty()) collectFileNodes(outputs, info.path("file"));
+                        if (outputs.isEmpty()) collectFileNodes(outputs, info.path("fileResult"));
+
+                        for (JsonNode f : outputs) {
+                            String url = f.path("location").asText(null);
+                            if (url == null) url = f.path("url").asText(null);
+                            String playable = toPlayableRecordingUrl(url);
+                            if (playable != null) {
+                                log.info("Resolved recording URL for egress {} (attempt {})", egressId, attempt);
+                                return playable;
                             }
                         }
                         String status = info.path("status").asText("");
@@ -674,22 +701,107 @@ public class LiveKitService {
                         }
                     }
                 }
-                Thread.sleep(1500);
+                // No point sleeping after the final attempt: it is pure added latency on a
+                // request thread once the window is exhausted.
+                if (attempt < maxAttempts - 1) {
+                    Thread.sleep(sleepMs);
+                }
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 return null;
             } catch (Exception e) {
                 log.warn("ListEgress attempt {} for {} failed: {}", attempt, egressId, e.getMessage());
-                try {
-                    Thread.sleep(1500);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return null;
+                if (attempt < maxAttempts - 1) {
+                    try {
+                        Thread.sleep(sleepMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return null;
+                    }
                 }
             }
         }
         log.warn("Recording URL not available for egress {} within timeout", egressId);
         return null;
+    }
+
+    /**
+     * Appends the file descriptors found under a LiveKit egress field to {@code sink}.
+     *
+     * <p>Handles both shapes LiveKit uses: a plural array ({@code file_results}) of one entry per
+     * output, and a singular object ({@code file}) carrying a single output. A field that is
+     * absent, null, or an empty array contributes nothing.</p>
+     */
+    private static void collectFileNodes(List<JsonNode> sink, JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return;
+        }
+        if (node.isArray()) {
+            for (JsonNode child : node) {
+                if (child != null && child.isObject()) {
+                    sink.add(child);
+                }
+            }
+        } else if (node.isObject()) {
+            sink.add(node);
+        }
+    }
+
+    /**
+     * Current status of one egress job, or {@code null} when it cannot be read.
+     *
+     * <p>Needed because {@code StopEgress} on a job LiveKit has already finished answers with an
+     * error rather than success. Treating that as a hard failure made the stop-recording endpoint
+     * return "Failed to stop recording" for a recording that had in fact been finalised
+     * normally.</p>
+     */
+    public String egressStatus(String egressId) {
+        if (!config.isEgressEnabled() || egressId == null || egressId.isBlank()) {
+            return null;
+        }
+        try {
+            Map<String, Object> request = new HashMap<>();
+            request.put("egress_id", egressId);
+            String result = callTwirp("livekit.Egress", "ListEgress",
+                    objectMapper.writeValueAsString(request));
+            if (result == null) return null;
+            JsonNode json = objectMapper.readTree(result);
+            JsonNode items = json.path("items");
+            if (!items.isArray()) return null;
+            for (JsonNode it : items) {
+                if (egressId.equals(it.path("egress_id").asText(it.path("egressId").asText(null)))) {
+                    return it.path("status").asText(null);
+                }
+            }
+            return items.size() == 1 ? items.get(0).path("status").asText(null) : null;
+        } catch (Exception e) {
+            log.warn("Could not read egress status for {}: {}", egressId, e.getMessage());
+            return null;
+        }
+    }
+
+    /** True when LiveKit has already finished this egress, so there is nothing left to stop. */
+    public boolean isEgressFinished(String egressId) {
+        return isEgressFinished(egressId, egressStatus(egressId));
+    }
+
+    /**
+     * Status-already-read variant of {@link #isEgressFinished(String)}.
+     *
+     * <p>{@link #egressStatus} is a blocking ListEgress round trip, so a caller that has just
+     * read the status must not have to pay for it twice - the stop endpoint otherwise issued
+     * two back-to-back calls on the request thread for one answer.</p>
+     *
+     * @param status the value already returned by {@link #egressStatus}; may be {@code null},
+     *               which is treated exactly as an unreadable status (not finished)
+     */
+    public boolean isEgressFinished(String egressId, String status) {
+        if (status == null) return false;
+        return "EGRESS_COMPLETE".equalsIgnoreCase(status)
+                || "EGRESS_ABORTED".equalsIgnoreCase(status)
+                || "EGRESS_FAILED".equalsIgnoreCase(status)
+                || "COMPLETE".equalsIgnoreCase(status)
+                || "FAILED".equalsIgnoreCase(status);
     }
 
     private String callTwirp(String method, String jsonBody) {

@@ -25,8 +25,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
     private static final int FILTER_ORDER = Ordered.HIGHEST_PRECEDENCE + 1;
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
+    /**
+     * Paths whose request body is a protected recording. Browsers attach no Authorization
+     * header to {@code <video src>}, so these alone may fall back to the application's own
+     * access-token cookie. See {@link RequestTokens} for why this is not a global change.
+     */
+    private static final String[] COOKIE_FALLBACK_PATHS = {
+            "/v1/replays/", "/v1/live-session/classes/"};
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
@@ -141,10 +146,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
     }
 
     private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
-            return bearerToken.substring(BEARER_PREFIX.length());
-        }
-        return null;
+        return RequestTokens.extractToken(request, COOKIE_FALLBACK_PATHS);
     }
 }

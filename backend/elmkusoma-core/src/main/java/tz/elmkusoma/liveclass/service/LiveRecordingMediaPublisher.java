@@ -37,6 +37,9 @@ public class LiveRecordingMediaPublisher {
     public static final String STATUS_READY = "READY";
     public static final String STATUS_FAILED = "FAILED";
 
+    /** Prefix of the description this class writes when it records a failure. */
+    private static final String FAILURE_DESCRIPTION_PREFIX = "Recording failed for the live class ";
+
     private final MediaAssetRepository mediaAssetRepository;
     private final TeacherRepository teacherRepository;
 
@@ -98,7 +101,12 @@ public class LiveRecordingMediaPublisher {
         if (asset.getTitle() == null || asset.getTitle().isBlank()) {
             asset.setTitle(liveClass.getTitle());
         }
-        if (asset.getDescription() == null || asset.getDescription().isBlank()) {
+        if (asset.getDescription() == null || asset.getDescription().isBlank()
+                || isGeneratedFailureDescription(asset.getDescription())) {
+            // A description this pipeline generated for an earlier FAILED attempt must be
+            // replaced when the recording later succeeds - otherwise the asset reads READY
+            // while still telling the teacher "Recording failed ...". A description a person
+            // wrote is left alone.
             asset.setDescription("Recording of the live class \"" + liveClass.getTitle() + "\"");
         }
         asset.setSubjectId(liveClass.getSubjectId());
@@ -108,6 +116,14 @@ public class LiveRecordingMediaPublisher {
         log.info("Live class recording published to media library: classId={}, assetId={}",
                 liveClass.getId(), saved.getId());
         return Optional.of(saved);
+    }
+
+    /**
+     * True when the description is one this class generated when a recording failed, rather than
+     * text a person entered.
+     */
+    private static boolean isGeneratedFailureDescription(String description) {
+        return description != null && description.startsWith(FAILURE_DESCRIPTION_PREFIX);
     }
 
     /**
@@ -130,7 +146,7 @@ public class LiveRecordingMediaPublisher {
         if (asset.getTitle() == null || asset.getTitle().isBlank()) {
             asset.setTitle(liveClass.getTitle());
         }
-        asset.setDescription("Recording failed for the live class \"" + liveClass.getTitle() + "\""
+        asset.setDescription(FAILURE_DESCRIPTION_PREFIX + "\"" + liveClass.getTitle() + "\""
                 + (reason == null || reason.isBlank() ? "" : " (" + reason + ")"));
         asset.setSubjectId(liveClass.getSubjectId());
         asset.setClassGroupId(liveClass.getClassGroupId());

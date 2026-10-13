@@ -33,6 +33,10 @@ public class ReplayController {
     private final tz.elmkusoma.event.repository.EventMaterialRepository materialRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.learning.repository.LessonRepository lessonRepository;
+    private final tz.elmkusoma.event.service.ReplayEntitlementService replayEntitlementService;
+    private final tz.elmkusoma.liveclass.service.LiveClassRecordingAccessService liveClassRecordingAccessService;
+    private final tz.elmkusoma.liveclass.service.RecordingPlaybackService recordingPlaybackService;
+    private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Replay>>> getAllReplays(
@@ -99,6 +103,95 @@ public class ReplayController {
                     return ResponseEntity.ok(ApiResponse.success("Replay found", detail));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Streams a replay's recording to an authorised caller.
+     *
+     * <p>Every other replay endpoint returns metadata; this one is the recording
+     * <em>access</em> path, so it re-checks the same role, institution and per-replay
+     * entitlement rules on every request - including every {@code Range} request a player
+     * makes while seeking. A URL that is copied, shared or replayed therefore grants nothing
+     * on its own: it is only a pointer at this endpoint, and the caller still has to
+     * satisfy the entitlement check with a live session.</p>
+     *
+     * <p>The stored object location, object key and any signed query are never returned,
+     * logged, or used as an input the caller can influence.</p>
+     */
+    @GetMapping("/{id}/playback")
+    public ResponseEntity<org.springframework.core.io.Resource> playReplay(
+            @PathVariable UUID id,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
+            @RequestAttribute(value = "userId", required = false) UUID userId,
+            @RequestAttribute(value = "userRole", required = false) String userRole,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId,
+            @RequestHeader(value = "Range", required = false) String range) {
+
+        // Same fallback the recording endpoints already use: the resolved institution wins,
+        // and the caller's own header is only a fallback. Without it a caller whose
+        // membership lookup came back empty would skip the scope filter entirely.
+        UUID callerInstitutionId = institutionId != null ? institutionId : headerInstitutionId;
+
+        Replay replay = replayRepository.findById(id)
+                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                .filter(r -> callerInstitutionId == null
+                        || callerInstitutionId.equals(r.getInstitutionId()))
+                .orElse(null);
+        if (replay == null) {
+            // Unknown id and foreign-institution id answer identically, so a probe cannot
+            // distinguish "does not exist" from "exists somewhere else".
+            return ResponseEntity.notFound().build();
+        }
+        if (userId == null) {
+            return ResponseEntity.status(401).build();
+        }
+        if (!isReplayPlaybackAllowed(replay, userId, callerInstitutionId, userRole)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return streamReplayRecording(replay, range);
+    }
+
+    /**
+     * Admins read anything in their scope; a teacher reads their own class's recordings and
+     * the institution's event replays; everyone else must prove they were in the session.
+     */
+    private boolean isReplayPlaybackAllowed(Replay replay, UUID userId, UUID institutionId, String userRole) {
+        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole)
+                || "NATIONAL_ADMIN".equals(userRole)) {
+            return true;
+        }
+        if ("TEACHER".equals(userRole)) {
+            if (replay.getLiveSessionId() == null) {
+                // Event replays: the class-level role gate plus institution scope is the
+                // rule this endpoint has always applied to teaching staff.
+                return true;
+            }
+            // Live-class replays: reuse the class ownership rule verbatim rather than
+            // restating it, so a teacher can never watch another teacher's recording.
+            return liveClassRecordingAccessService.isAllowed(
+                    liveClassRecordingAccessService.findClass(replay.getLiveSessionId()),
+                    userId, institutionId, userRole);
+        }
+        return replayEntitlementService.hasEntitlement(replay, userId);
+    }
+
+    private ResponseEntity<org.springframework.core.io.Resource> streamReplayRecording(Replay replay, String range) {
+        String stored = replay.getRecordingUrl();
+        // The publisher writes the live class row first, so a replay can legitimately not
+        // carry its own location yet. Both are persisted application state, never a client
+        // input, and both are re-validated before a single byte is fetched.
+        if ((stored == null || stored.isBlank()) && replay.getLiveSessionId() != null) {
+            stored = liveClassRepository.findById(replay.getLiveSessionId())
+                    .map(tz.elmkusoma.course.domain.LiveClass::getRecordingUrl)
+                    .orElse(null);
+        }
+        java.util.Optional<String> fetchUrl = recordingPlaybackService.resolveFetchUrl(stored);
+        if (fetchUrl.isEmpty()) {
+            return ResponseEntity.status(stored == null || stored.isBlank() ? 404 : 503).build();
+        }
+        return recordingPlaybackService.stream(fetchUrl.get(), range)
+                .orElseGet(() -> ResponseEntity.status(502).build());
     }
 
     @GetMapping("/event/{eventId}")
@@ -268,7 +361,11 @@ public class ReplayController {
             r.setPositionSeconds(0);
             r.setCompleted(false);
         }
-        r.setVideoUrl(r.getRecordingUrl());
+        // Playback URL, not the storage location. The player points <video src> here, so the
+        // browser fetches through the entitlement-checked playback endpoint instead of
+        // straight at a private bucket that would otherwise 403 - or, if LiveKit ever returns
+        // a signed location, hand out a bearer capability to anyone who saw the JSON.
+        r.setVideoUrl(recordingPlaybackUrls.forReplay(r.getId()));
         // No caption track is ever generated by the recording pipeline, so captionUrl stays
         // null instead of being faked with a sample file the learner would see as real captions.
         r.setRecordedAt(r.getCreatedAt());

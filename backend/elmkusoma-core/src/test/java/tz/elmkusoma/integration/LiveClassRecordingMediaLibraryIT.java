@@ -71,7 +71,9 @@ class LiveClassRecordingMediaLibraryIT {
     @Test
     void egressEndedWithFile_PublishesReadyAssetLinkedToTheLiveClass() throws Exception {
         deleteAsset();
-        setRecordingUrl(null);
+        // The publication guard files nothing for a class that never recorded anything, so a
+        // genuine completion webhook always arrives while the transient egress marker is present.
+        setRecordingUrl("egress:egress-it-ready");
 
         String body = """
                 {"event":"egress_ended","egress":{"id":"egress-it-ready","roomName":"liveclass-%s",
@@ -101,7 +103,7 @@ class LiveClassRecordingMediaLibraryIT {
     @Test
     void repeatedCompletionWebhook_RefreshesTheSameAssetInsteadOfDuplicating() throws Exception {
         deleteAsset();
-        setRecordingUrl(null);
+        setRecordingUrl("egress:egress-it-1");
 
         for (int i = 1; i <= 2; i++) {
             String body = """
@@ -158,6 +160,43 @@ class LiveClassRecordingMediaLibraryIT {
         var assets = mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", CLASS_ID);
         assertTrue(assets.isEmpty() || "FAILED".equals(assets.get(0).getStatus()),
                 "a terminal egress failure must never leave a READY asset behind");
+    }
+
+    /**
+     * The webhook and the polling path must agree on what a finished egress looks like.
+     *
+     * <p>A single-output egress is reported as a singular {@code file} object rather than a
+     * one-element {@code file_results} array. The webhook read only the plural form, so a real
+     * {@code EGRESS_COMPLETE} produced a null location and was routed to the failure handler:
+     * a recording that had uploaded successfully was recorded as FAILED, never published, and
+     * showed as a broken entry in the Media Library. {@code LiveKitService.resolveRecordingUrl}
+     * already understood both shapes, which is why the same recording looked fine to the poller
+     * and failed to the webhook.</p>
+     */
+    @Test
+    void egressEndedWithSingularFileResult_PublishesInsteadOfMarkingItFailed() throws Exception {
+        deleteAsset();
+        // The publication guard (LiveRecordingPublisher) refuses to file a Replay/Media Asset for
+        // a class that never recorded anything, so a real completion webhook arrives while the
+        // transient egress marker is still on the row.
+        setRecordingUrl("egress:egress-it-singular");
+
+        String body = """
+                {"event":"egress_ended","egress":{"id":"egress-it-singular","roomName":"liveclass-%s",
+                 "status":"EGRESS_COMPLETE",
+                 "file":{"location":"https://storage.example/rec-singular-%s.mp4","duration":90}}}
+                """.formatted(CLASS_ID, CLASS_ID);
+
+        postSignedWebhook(body)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ok"));
+
+        var assets = mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", CLASS_ID);
+        assertEquals(1, assets.size(), "a singular file result is still a successful recording");
+        assertEquals("READY", assets.get(0).getStatus(),
+                "a completed egress that produced a file must never be recorded as FAILED");
+        assertEquals("https://storage.example/rec-singular-%s.mp4".formatted(CLASS_ID),
+                assets.get(0).getFileUrl());
     }
 
     /**
@@ -224,7 +263,7 @@ class LiveClassRecordingMediaLibraryIT {
     @Test
     void publishedAsset_IsVisibleThroughTheMediaLibraryForItsTenant() throws Exception {
         deleteAsset();
-        setRecordingUrl(null);
+        setRecordingUrl("egress:egress-it-lib");
 
         String body = """
                 {"event":"egress_ended","egress":{"id":"egress-it-lib","roomName":"liveclass-%s",

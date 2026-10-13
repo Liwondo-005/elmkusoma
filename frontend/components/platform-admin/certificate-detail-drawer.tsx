@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import {
   X, Loader2, AlertCircle, Printer, ExternalLink, ScrollText,
   BadgeCheck, ShieldAlert, User,
@@ -11,6 +12,8 @@ import {
   type AuditLogEntry,
 } from "@/lib/platform-admin-api"
 import { CertificateDocument } from "@/components/certificates/certificate-document"
+import { formatDate, formatDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 interface CertificateDetailDrawerProps {
   certificateId: string | null
@@ -27,6 +30,9 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 }
 
 export function CertificateDetailDrawer({ certificateId, onClose }: CertificateDetailDrawerProps) {
+  const t = useTranslations("platformAdmin.certificateDetail")
+  const tc = useTranslations("common")
+  const locale = useLocale()
   const [detail, setDetail] = useState<CertificateDetail | null>(null)
   const [audit, setAudit] = useState<AuditLogEntry[] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -49,11 +55,11 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
         setAudit(null) // honest "Data unavailable" state below
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load certificate detail")
+      setError(err instanceof Error ? err.message : t("failedToLoad"))
     } finally {
       setLoading(false)
     }
-  }, [certificateId])
+  }, [certificateId, t])
 
   useEffect(() => {
     load()
@@ -84,14 +90,14 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
           <div className="flex items-center gap-2">
             <ScrollText className="size-5 text-primary" />
             <div>
-              <h2 className="text-base font-semibold text-foreground">Certificate detail</h2>
+              <h2 className="text-base font-semibold text-foreground">{t("title")}</h2>
               <p className="text-xs text-muted-foreground">{certificateId}</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted"
-            aria-label="Close detail"
+            aria-label={t("closeAria")}
           >
             <X className="size-4" />
           </button>
@@ -129,7 +135,7 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
                   </span>
                 ) : (
                   <span className="inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                    No template
+                    {t("noTemplate")}
                   </span>
                 )}
               </div>
@@ -142,38 +148,38 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
               {revoked && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   <p className="flex items-center gap-2 font-semibold">
-                    <ShieldAlert className="size-4" /> Revoked{cert.revokedAt ? ` — ${new Date(cert.revokedAt).toLocaleDateString("en-GB")}` : ""}
+                    <ShieldAlert className="size-4" /> {t("revoked")}{cert.revokedAt ? ` — ${formatDate(cert.revokedAt, locale)}` : ""}
                   </p>
-                  <p className="mt-1">{cert.revokedReason || "No reason recorded."}</p>
+                  <p className="mt-1">{cert.revokedReason || t("noReasonRecorded")}</p>
                 </div>
               )}
 
               <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recipient</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tc("verifyFieldRecipient")}</h4>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  <Field label="Full name" value={cert.studentName} />
-                  <Field label="Student ID" value={cert.studentIdNumber} />
-                  <Field label="Course / programme" value={cert.courseOrProgramme || cert.courseTitle} />
-                  <Field label="Instructor" value={cert.instructorName} />
-                  <Field label="Grade" value={cert.grade} />
-                  <Field label="Skills" value={cert.skills?.length ? cert.skills.join(", ") : null} />
+                  <Field label={t("fieldFullName")} value={cert.studentName} />
+                  <Field label={t("fieldStudentId")} value={cert.studentIdNumber} />
+                  <Field label={t("fieldCourseProgramme")} value={cert.courseOrProgramme || cert.courseTitle} />
+                  <Field label={tc("verifyFieldInstructor")} value={cert.instructorName} />
+                  <Field label={tc("verifyFieldGrade")} value={cert.grade} />
+                  <Field label={tc("verifyFieldSkills")} value={cert.skills?.length ? cert.skills.join(", ") : null} />
                 </dl>
               </div>
 
               <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Certificate</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("certificateHeading")}</h4>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  <Field label="Serial number" value={cert.serialNumber} />
-                  <Field label="Verification code" value={cert.verificationCode} />
-                  <Field label="Issue date" value={cert.issueDate ? new Date(cert.issueDate).toLocaleDateString("en-GB") : null} />
-                  <Field label="Completion date" value={cert.completionDate ? new Date(cert.completionDate).toLocaleDateString("en-GB") : null} />
-                  <Field label="Expiry date" value={cert.expiryDate ? new Date(cert.expiryDate).toLocaleDateString("en-GB") : null} />
-                  <Field label="Issued by" value={detail?.institutionName} />
+                  <Field label={t("fieldSerialNumber")} value={cert.serialNumber} />
+                  <Field label={t("fieldVerificationCode")} value={cert.verificationCode} />
+                  <Field label={tc("verifyFieldIssueDate")} value={cert.issueDate ? formatDate(cert.issueDate, locale) : null} />
+                  <Field label={tc("verifyFieldCompletionDate")} value={cert.completionDate ? formatDate(cert.completionDate, locale) : null} />
+                  <Field label={t("fieldExpiryDate")} value={cert.expiryDate ? formatDate(cert.expiryDate, locale) : null} />
+                  <Field label={t("fieldIssuedBy")} value={detail?.institutionName} />
                 </dl>
               </div>
 
               <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Authorised signatories</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("authorisedSignatories")}</h4>
                 {detail && detail.signatories.length > 0 ? (
                   <ul className="space-y-2">
                     {detail.signatories.map((s) => (
@@ -200,34 +206,34 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
                   </ul>
                 ) : (
                   <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-                    No signatories linked{detail?.templateName ? " to this template" : " (certificate has no template)"}.
+                    {detail?.templateName ? t("noSignatoriesTemplate") : t("noSignatoriesNoTemplate")}
                   </p>
                 )}
               </div>
 
               <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verification</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("verificationHeading")}</h4>
                 <a
                   href={`/certificates/verify/${cert.verificationCode}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-xl border border-teal/30 bg-teal/5 px-4 py-2 text-sm font-medium text-teal hover:bg-teal/10"
                 >
-                  <ExternalLink className="size-4" /> Open public verification page
+                  <ExternalLink className="size-4" /> {t("openVerificationPage")}
                 </a>
               </div>
 
               <div>
                 <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Audit trail (this certificate)
+                  {t("auditTrailHeading")}
                 </h4>
                 {audit === null ? (
                   <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-                    Data unavailable
+                    {t("dataUnavailable")}
                   </p>
                 ) : audit.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-                    No audit entries recorded yet.
+                    {t("noAuditEntries")}
                   </p>
                 ) : (
                   <ul className="space-y-1.5">
@@ -235,10 +241,10 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
                       <li key={entry.id} className="flex items-center justify-between gap-3 text-xs">
                         <span className="flex items-center gap-2">
                           <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-muted-foreground">{entry.action}</span>
-                          <span className="truncate text-foreground">{entry.performedBy || "system"}</span>
+                          <span className="truncate text-foreground">{entry.performedBy || t("systemFallback")}</span>
                         </span>
                         <span className="shrink-0 text-muted-foreground">
-                          {new Date(entry.createdAt).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}
+                          {formatDateTime(entry.createdAt, locale, { dateStyle: "short", timeStyle: "short" })}
                         </span>
                       </li>
                     ))}
@@ -255,13 +261,13 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
             disabled={!cert}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
-            <BadgeCheck className="size-4" /> Preview certificate
+            <BadgeCheck className="size-4" /> {t("previewCertificate")}
           </button>
           <button
             onClick={onClose}
             className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
           >
-            Close
+            {tc("close")}
           </button>
         </footer>
       </aside>
@@ -271,19 +277,19 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/70 p-4 sm:p-8 print:static print:bg-transparent print:p-0">
           <div className="mx-auto w-full max-w-5xl">
             <div className="mb-4 flex items-center justify-between print:hidden">
-              <p className="text-sm font-medium text-white">Certificate preview — print or save as PDF</p>
+              <p className="text-sm font-medium text-white">{t("previewPrintHint")}</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => window.print()}
                   className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100"
                 >
-                  <Printer className="size-4" /> Print / Save as PDF
+                  <Printer className="size-4" /> {t("printSavePdf")}
                 </button>
                 <button
                   onClick={() => setPreviewOpen(false)}
                   className="rounded-xl border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10"
                 >
-                  Close
+                  {tc("close")}
                 </button>
               </div>
             </div>

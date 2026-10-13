@@ -7,6 +7,8 @@ import { collegeApi } from "@/lib/college-api"
 import type { StudyTask } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import { ClipboardList, CheckCircle2, Clock, Calendar, BookOpen, Pencil, Beaker, GraduationCap, Layers, Repeat, AlertCircle } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 function PriorityBadge({ priority }: { priority: string }) {
   const colors: Record<string, string> = {
@@ -41,6 +43,7 @@ export default function StudyPlannerPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
+  const locale = useLocale()
   const [todayTasks, setTodayTasks] = useState<StudyTask[]>([])
   const [weekTasks, setWeekTasks] = useState<StudyTask[]>([])
   const [allTasks, setAllTasks] = useState<StudyTask[]>([])
@@ -152,7 +155,7 @@ export default function StudyPlannerPage() {
                 <div className="flex items-center gap-2">
                   <Calendar className="size-4 text-muted-foreground" />
                   <h3 className="text-sm font-semibold text-foreground">
-                    {new Date(date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                    {formatDate(date, locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                   </h3>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                     {tasks.length}

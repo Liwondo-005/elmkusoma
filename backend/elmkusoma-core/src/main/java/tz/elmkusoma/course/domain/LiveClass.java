@@ -1,5 +1,6 @@
 package tz.elmkusoma.course.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -113,12 +114,35 @@ public class LiveClass extends BaseEntity {
     @Column(name = "class_group_id")
     private UUID classGroupId;
 
+    /**
+     * Private object-storage location (or an {@code egress:<id>} marker). Write-only on
+     * purpose: it is server-side state that the playback proxy re-validates and fetches,
+     * never something a client needs. Client-facing responses carry the entitlement-checked
+     * application playback URL instead - see {@code LiveClassResponse} and
+     * {@link tz.elmkusoma.liveclass.service.RecordingPlaybackUrls}.
+     */
     @Column(name = "recording_url", length = 500)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String recordingUrl;
 
     @Column(name = "recording_enabled")
     @Builder.Default
     private Boolean recordingEnabled = false;
+
+    /**
+     * True once a stop request for the current capture has been ACCEPTED by LiveKit.
+     *
+     * <p>{@link #recordingUrl} alone cannot answer "is a capture still running?": the
+     * {@code egress:<id>} marker stays in place both while the job runs and while the accepted
+     * stop is still uploading its file. Without this flag host-state had to infer the difference
+     * from the class status, so a teacher who stopped mid-class and reloaded saw
+     * {@code recordingActive: true} for a job that had already been stopped. Read only while the
+     * marker is present, and reset whenever a new marker is written (see V162).</p>
+     */
+    @Column(name = "recording_stop_requested", nullable = false,
+            columnDefinition = "boolean not null default false")
+    @Builder.Default
+    private Boolean recordingStopRequested = false;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "session_type", length = 30)

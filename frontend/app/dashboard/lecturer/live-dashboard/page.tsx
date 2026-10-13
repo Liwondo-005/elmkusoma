@@ -113,7 +113,7 @@ async function fetchTeacherLiveClasses(): Promise<LiveClassItem[]> {
   return res.json()
 }
 
-async function createLiveClass(data: ScheduleForm): Promise<LiveClassItem> {
+async function createLiveClass(data: ScheduleForm, errorMessage: string): Promise<LiveClassItem> {
   const token = getToken()
   const payload: Record<string, unknown> = {
     title: data.title.trim(),
@@ -135,35 +135,35 @@ async function createLiveClass(data: ScheduleForm): Promise<LiveClassItem> {
     },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error("Failed to create live class")
+  if (!res.ok) throw new Error(errorMessage)
   return res.json()
 }
 
-async function deleteLiveClass(id: string): Promise<void> {
+async function deleteLiveClass(id: string, errorMessage: string): Promise<void> {
   const token = getToken()
   const res = await fetch(`${API_BASE}/api/v1/teachers/me/live-classes/${id}`, {
     method: "DELETE",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) throw new Error("Failed to delete live class")
+  if (!res.ok) throw new Error(errorMessage)
 }
 
-async function startLiveClass(id: string): Promise<void> {
+async function startLiveClass(id: string, errorMessage: string): Promise<void> {
   const token = getToken()
   const res = await fetch(`${API_BASE}/api/v1/teachers/me/live-classes/${id}/start`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) throw new Error("Failed to start live class")
+  if (!res.ok) throw new Error(errorMessage)
 }
 
-async function endLiveClass(id: string): Promise<void> {
+async function endLiveClass(id: string, errorMessage: string): Promise<void> {
   const token = getToken()
   const res = await fetch(`${API_BASE}/api/v1/teachers/me/live-classes/${id}/end`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) throw new Error("Failed to end live class")
+  if (!res.ok) throw new Error(errorMessage)
 }
 
 function formatDateTime(iso: string): string {
@@ -782,7 +782,7 @@ export default function LecturerLiveDashboardPage() {
     try {
       setSubmitting(true)
       setError(null)
-      await createLiveClass(form)
+      await createLiveClass(form, t("lecturerLive.scheduleFailed"))
       setSuccess(t("lecturerLive.scheduledSuccess"))
       setForm(initialForm)
       setShowForm(false)
@@ -798,7 +798,7 @@ export default function LecturerLiveDashboardPage() {
   const handleStartSession = async (id: string) => {
     try {
       setError(null)
-      await startLiveClass(id)
+      await startLiveClass(id, t("lecturerLive.startFailed"))
       setSuccess(t("lecturerLive.startedSuccess"))
       loadSessions()
       setTimeout(() => setSuccess(null), 3000)
@@ -811,7 +811,7 @@ export default function LecturerLiveDashboardPage() {
     if (!confirm(t("lecturerLive.confirmEnd"))) return
     try {
       setError(null)
-      await endLiveClass(id)
+      await endLiveClass(id, t("lecturerLive.endFailed"))
       setSuccess(t("lecturerLive.endedSuccess"))
       loadSessions()
       setTimeout(() => setSuccess(null), 3000)
@@ -824,7 +824,7 @@ export default function LecturerLiveDashboardPage() {
     if (!confirm(t("lecturerLive.confirmDelete"))) return
     try {
       setError(null)
-      await deleteLiveClass(id)
+      await deleteLiveClass(id, t("lecturerLive.deleteFailed"))
       setSuccess(t("lecturerLive.deletedSuccess"))
       loadSessions()
       setTimeout(() => setSuccess(null), 3000)

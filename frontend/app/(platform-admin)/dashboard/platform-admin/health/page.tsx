@@ -19,6 +19,7 @@ function statusFromString(s: string | null | undefined): HealthStatus {
 }
 
 function StatusBadge({ status }: { status: HealthStatus }) {
+  const t = useTranslations("platformAdmin")
   const map: Record<HealthStatus, string> = {
     Operational: "bg-emerald-500/10 text-emerald-700 border-emerald-200",
     Degraded: "bg-amber-500/10 text-amber-700 border-amber-200",
@@ -26,8 +27,15 @@ function StatusBadge({ status }: { status: HealthStatus }) {
     Failing: "bg-red-500/10 text-red-700 border-red-200",
     Unknown: "bg-slate-500/10 text-slate-600 border-slate-200",
   }
+  const label: Record<HealthStatus, string> = {
+    Operational: t("shared.health.operational"),
+    Degraded: t("shared.health.degraded"),
+    Stale: t("shared.health.stale"),
+    Failing: t("shared.health.failing"),
+    Unknown: t("shared.health.unknown"),
+  }
   const Icon = status === "Operational" ? CheckCircle2 : status === "Failing" ? XCircle : (status === "Degraded" || status === "Stale") ? AlertTriangle : HelpCircle
-  return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${map[status]}`}><Icon className="size-3.5" />{status}</span>
+  return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${map[status]}`}><Icon className="size-3.5" />{label[status]}</span>
 }
 
 function HealthRow({ icon: Icon, label, status, detail }: { icon: any; label: string; status: HealthStatus; detail?: string | null }) {
@@ -42,6 +50,7 @@ function HealthRow({ icon: Icon, label, status, detail }: { icon: any; label: st
 
 export default function PlatformHealthPage() {
   const t = useTranslations("platformAdmin");
+  const tn = useTranslations("nav");
   const [health, setHealth] = useState<PlatformHealth | null>(null)
   const [backup, setBackup] = useState<BackupStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -88,13 +97,13 @@ export default function PlatformHealthPage() {
           <div className="mt-4 space-y-2 animate-pulse"><div className="h-12 rounded-xl bg-muted" /><div className="h-12 rounded-xl bg-muted" /></div>
         ) : health ? (
           <div className="mt-4 space-y-2">
-            <HealthRow icon={Database} label="Database" status={statusFromString(health.databaseStatus)} detail={health.databaseStatus} />
+            <HealthRow icon={Database} label={t("dashboard.database")} status={statusFromString(health.databaseStatus)} detail={health.databaseStatus} />
             <HealthRow icon={Server} label="API" status={statusFromString(health.apiStatus)} detail={health.apiStatus} />
-            <HealthRow icon={Radio} label="LiveKit / Realtime" status={statusFromString(health.livekitStatus)} detail={health.livekitStatus} />
-            <HealthRow icon={HardDrive} label="Storage / Media" status={statusFromString(health.storageStatus)} detail={health.storageStatus} />
-            <HealthRow icon={Cpu} label="Background Jobs" status={statusFromString(health.backgroundJobsStatus)} detail={health.heartbeatAt ? `heartbeat ${health.heartbeatAt}` : health.backgroundJobsStatus} />
-            <HealthRow icon={Activity} label="Payments" status={statusFromString(health.paymentsStatus)} detail={health.paymentsStatus} />
-            <HealthRow icon={HeartPulse} label="Notifications" status={statusFromString(health.notificationsStatus)} detail={health.notificationsStatus} />
+            <HealthRow icon={Radio} label={t("shared.health.livekitRealtime")} status={statusFromString(health.livekitStatus)} detail={health.livekitStatus} />
+            <HealthRow icon={HardDrive} label={t("shared.health.storageMedia")} status={statusFromString(health.storageStatus)} detail={health.storageStatus} />
+            <HealthRow icon={Cpu} label={t("shared.health.backgroundJobs")} status={statusFromString(health.backgroundJobsStatus)} detail={health.heartbeatAt ? t("shared.health.heartbeatAt", { p0: health.heartbeatAt }) : health.backgroundJobsStatus} />
+            <HealthRow icon={Activity} label={t("payments.payments")} status={statusFromString(health.paymentsStatus)} detail={health.paymentsStatus} />
+            <HealthRow icon={HeartPulse} label={tn("notifications")} status={statusFromString(health.notificationsStatus)} detail={health.notificationsStatus} />
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-border bg-muted/20 p-3 text-center"><p className="text-lg font-bold tabular-nums">{health.totalUsers.toLocaleString()}</p><p className="text-xs text-muted-foreground">{t("health.totalUsers")}</p></div>
               <div className="rounded-xl border border-border bg-muted/20 p-3 text-center"><p className="text-lg font-bold tabular-nums">{health.totalInstitutions.toLocaleString()}</p><p className="text-xs text-muted-foreground">{t("health.totalInstitutions")}</p></div>

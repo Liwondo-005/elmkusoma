@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -25,6 +26,7 @@ import tz.elmkusoma.parent.domain.SupportTicket;
 import tz.elmkusoma.parent.repository.SupportTicketRepository;
 import tz.elmkusoma.parent.domain.SupportTicketMessage;
 import tz.elmkusoma.parent.repository.SupportTicketMessageRepository;
+import tz.elmkusoma.shared.service.CommunicationIdempotencyService;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/v1/platform-admin")
 @RequiredArgsConstructor
+@Slf4j
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Platform Administration", description = "Platform-wide governance, ecosystem overview, and operational management")
 public class PlatformAdminController {
@@ -45,6 +48,8 @@ public class PlatformAdminController {
     private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
     private final tz.elmkusoma.certificate.service.CertificateGovernanceService certificateGovernanceService;
     private final tz.elmkusoma.institution.service.InstitutionService institutionService;
+    private final tz.elmkusoma.shared.service.CommunicationIdempotencyService idempotency;
+    private final tz.elmkusoma.learner.service.NotificationService notificationService;
 
     private static UUID actorId(HttpServletRequest request) {
         Object id = request.getAttribute("userId");
@@ -103,6 +108,25 @@ public class PlatformAdminController {
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String search) {
         PageResponse<UserSummaryResponse> response = platformAdminService.listUsers(page, size, role, search);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Everyone holding a membership scoped to one provider.
+     *
+     * <p>A distinct path rather than a {@code providerId} query parameter on {@code /users}: the
+     * provider list and the user list are both cross-platform reads, and mixing them behind one
+     * optional parameter made the paging semantics ambiguous - a provider filter has to narrow
+     * <em>before</em> paging, which the generic list cannot express.</p>
+     */
+    @GetMapping("/providers/{providerId}/users")
+    @Operation(summary = "List the users scoped to one provider")
+    public ResponseEntity<ApiResponse<PageResponse<UserSummaryResponse>>> listUsersByProvider(
+            @PathVariable UUID providerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        PageResponse<UserSummaryResponse> response =
+                platformAdminService.listUsersByProvider(providerId, page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -943,6 +967,7 @@ public class PlatformAdminController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> addSupportTicketMessage(
             @PathVariable UUID ticketId,
             @RequestBody java.util.Map<String, Object> body,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest request) {
         SupportTicket ticket = requireTicket(ticketId);
         String text = body.get("message") == null ? null : String.valueOf(body.get("message"));
@@ -952,17 +977,86 @@ public class PlatformAdminController {
         // "internal" is parsed defensively: a non-boolean body value must not silently become
         // an internal note, nor silently become a customer-visible reply by accident.
         boolean internal = Boolean.parseBoolean(String.valueOf(body.get("internal")));
+        UUID authorId = actorId(request);
+        String trimmed = text.trim();
 
-        SupportTicketMessage saved = supportTicketMessageRepository.save(
-                SupportTicketMessage.builder()
-                        .ticketId(ticket.getId())
-                        .senderId(actorId(request))
-                        .message(text.trim())
-                        .isInternal(internal)
-                        .build());
+        // A retried reply must land once. An internal note is hashed on its own so reusing a
+        // key across "reply" and "note" is a conflict rather than a silent cross-reveal.
+        String key = CommunicationIdempotencyService.normaliseKey(idempotencyKey).orElse(null);
+
+        SupportTicketMessage saved;
+        if (key == null) {
+            saved = persistTicketMessage(ticket, authorId, trimmed, internal);
+        } else {
+            saved = idempotency.execute(
+                    CommunicationIdempotencyService.actor(authorId),
+                    CommunicationIdempotencyService.OP_TICKET_MESSAGE,
+                    key,
+                    CommunicationIdempotencyService.hashOf(
+                            ticketId.toString(), trimmed, String.valueOf(internal)),
+                    prior -> supportTicketMessageRepository.findById(prior.resourceId())
+                            .orElseThrow(() -> new IllegalStateException(
+                                    "Idempotency key matched a message that no longer exists")),
+                    () -> persistTicketMessage(ticket, authorId, trimmed, internal),
+                    SupportTicketMessage::getId
+            ).result();
+        }
+
+        // The requester is told a staff reply arrived, but an internal note is never mentioned:
+        // it is not theirs to know about, and a notification naming it would leak its existence
+        // through a channel the thread filters carefully.
+        if (!internal) {
+            notifyTicketRequester(ticket, trimmed);
+        }
+
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "id", saved.getId(),
                 "internal", Boolean.TRUE.equals(saved.getIsInternal()))));
+    }
+
+    private SupportTicketMessage persistTicketMessage(SupportTicket ticket, UUID authorId,
+                                                      String text, boolean internal) {
+        return supportTicketMessageRepository.save(
+                SupportTicketMessage.builder()
+                        .ticketId(ticket.getId())
+                        .senderId(authorId)
+                        .message(text)
+                        .isInternal(internal)
+                        .build());
+    }
+
+    /**
+     * Tells the ticket's own user that staff replied.
+     *
+     * <p>Deliberately a summary, not the body: the notification list is a coarser surface than
+     * the thread, and a support reply may quote account details. The deep link points at the
+     * requester's own ticket, which is the only one they can reach.</p>
+     */
+    private void notifyTicketRequester(SupportTicket ticket, String reply) {
+        if (ticket.getUserId() == null) {
+            return;
+        }
+        String preview = reply.length() > 140 ? reply.substring(0, 137) + "..." : reply;
+        try {
+            notificationService.notifyUser(ticket.getUserId(),
+                    "Support replied to: " + truncateForTitle(ticket.getSubject()),
+                    preview,
+                    "SUPPORT_REPLY",
+                    "SUPPORT_TICKET",
+                    ticket.getId());
+        } catch (RuntimeException failure) {
+            // The reply is already committed and is the source of truth. Failing to raise a
+            // notification must not roll the reply back or fail the admin's request.
+            log.warn("Could not notify requester of ticket {}: {}",
+                    ticket.getId(), failure.getMessage());
+        }
+    }
+
+    private static String truncateForTitle(String subject) {
+        if (subject == null || subject.isBlank()) {
+            return "your case";
+        }
+        return subject.length() > 60 ? subject.substring(0, 57) + "..." : subject;
     }
 
     @GetMapping("/admins")

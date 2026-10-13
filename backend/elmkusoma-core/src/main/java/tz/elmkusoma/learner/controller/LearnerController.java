@@ -81,6 +81,26 @@ public class LearnerController {
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final LearnerGoalRepository learningGoalRepository;
     private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
+    /**
+     * Builds the application-owned playback URL that client-facing responses expose in place
+     * of the private object-storage location.
+     */
+    private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
+
+    /**
+     * What a client is told about a finished live-class recording: an entitlement-checked
+     * application playback URL, never the private object-storage location.
+     *
+     * <p>An {@code egress:<id>} marker or an absent value is passed through unchanged so the
+     * existing "processing"/"unavailable" consumers keep their current behaviour.</p>
+     */
+    private String recordingUrlForClient(LiveClass lc) {
+        String stored = lc.getRecordingUrl();
+        if (stored == null || stored.isBlank() || stored.startsWith("egress:")) {
+            return stored;
+        }
+        return recordingPlaybackUrls.forLiveClass(lc.getId());
+    }
 
     /** Video visibilities every learner may see; PRIVATE/DRAFT stay creator-only. */
     private static final java.util.Set<String> OPEN_VIDEO_VISIBILITIES =
@@ -1017,7 +1037,7 @@ public class LearnerController {
         summary.put("classGroupId", best.getClassGroupId());
         summary.put("sessionType", best.getSessionType() != null ? best.getSessionType().name() : "LECTURE");
         summary.put("recordingEnabled", Boolean.TRUE.equals(best.getRecordingEnabled()));
-        summary.put("recordingUrl", "CANCELLED".equals(best.getStatus()) ? null : best.getRecordingUrl());
+        summary.put("recordingUrl", "CANCELLED".equals(best.getStatus()) ? null : recordingUrlForClient(best));
         summary.put("canJoin", "IN_PROGRESS".equals(best.getStatus()) || "LIVE".equals(best.getStatus())
                 || "STARTING".equals(best.getStatus()));
         summary.put("inPast", best.getScheduledAt() != null
@@ -1565,7 +1585,7 @@ public class LearnerController {
                 .subjectId(lc.getSubjectId())
                 .teacherName(teacherName)
                 .subjectName(subjectName)
-                .recordingUrl("CANCELLED".equals(lc.getStatus()) ? null : lc.getRecordingUrl())
+                .recordingUrl("CANCELLED".equals(lc.getStatus()) ? null : recordingUrlForClient(lc))
                 .recordingEnabled(Boolean.TRUE.equals(lc.getRecordingEnabled()))
                 .sessionType(lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE")
                 .broadcastSource(lc.getBroadcastSource() != null

@@ -56,6 +56,7 @@ public class CoreScheduler {
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
     private final tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
+    private final tz.elmkusoma.shared.service.CommunicationIdempotencyService communicationIdempotencyService;
 
     /**
      * Authoritative live-class expiry. A started session ends when its ACTUAL start
@@ -74,6 +75,40 @@ public class CoreScheduler {
             }
         } catch (Exception e) {
             log.warn("Live class expiry sweep failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Files recordings whose upload finished after the class already ended.
+     *
+     * <p>The in-request polling window at session end is shorter than a real object-storage upload,
+     * and the LiveKit {@code egress_ended} webhook only arrives when a webhook URL is configured on
+     * the LiveKit side. With LiveKit Cloud neither is enough on its own, so a recording that was
+     * written successfully to the bucket would otherwise stay unresolved and invisible.
+     */
+    @Scheduled(fixedRate = 120000, initialDelay = 60000)
+    public void reconcilePendingRecordings() {
+        try {
+            liveClassService.reconcilePendingRecordings();
+        } catch (Exception e) {
+            log.warn("Recording reconciliation sweep failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Retention sweep for the communication idempotency ledger.
+     *
+     * <p>Finished keys only have to outlive a client's retry horizon, not persist forever, and
+     * a claim left behind by a request that died must not block that client's next honest
+     * attempt. Hourly is far more often than the seven-day window requires, and costs a single
+     * indexed delete when there is nothing to remove.</p>
+     */
+    @Scheduled(fixedRate = 3600000, initialDelay = 120000)
+    public void purgeExpiredIdempotencyKeys() {
+        try {
+            communicationIdempotencyService.purgeExpired();
+        } catch (Exception e) {
+            log.warn("Idempotency retention sweep failed: {}", e.getMessage());
         }
     }
 

@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react"
 import { Video, Loader2, Clock, Users } from "lucide-react"
 import { platformAdminApi, type LiveClassSummary, type PageResponse } from "@/lib/platform-admin-api"
+import { formatDateTime as fmtDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 const STATUS_OPTIONS = ["", "SCHEDULED", "LIVE", "COMPLETED", "CANCELLED"]
 const PAGE_SIZE = 20
@@ -13,6 +15,7 @@ export default function LiveClassesMonitorPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
   const ts = useTranslations("status");
+  const locale = useLocale()
   const [data, setData] = useState<PageResponse<LiveClassSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +54,7 @@ export default function LiveClassesMonitorPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  const formatDate = (d: string) => fmtDateTime(d, locale, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

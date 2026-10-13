@@ -25,4 +25,25 @@ public interface InstitutionMembershipRepository extends JpaRepository<Instituti
 
     @Query("SELECT COUNT(m) FROM InstitutionMembership m WHERE m.institutionId IN :institutionIds AND m.isDeleted = false")
     long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
+
+    /**
+     * Everyone holding a membership scoped to one provider - the provider's staff roster
+     * (authority level D), read from the same rows that enforce ownership, so the roster can
+     * never drift from what the access rules actually consult.
+     *
+     * <p>Includes inactive rows so a removed member still appears, greyed, rather than vanishing
+     * from the owner's view and looking like their access was revoked by accident.</p>
+     */
+    @Query("SELECT m FROM InstitutionMembership m WHERE m.providerId = :providerId AND m.isDeleted = false")
+    List<InstitutionMembership> findByProviderIdAndIsDeletedFalse(@Param("providerId") UUID providerId);
+
+    /**
+     * Every live membership for a page of users in one round trip.
+     *
+     * <p>Exists so the global user directory can show provider memberships without issuing one
+     * query per row: a directory page of 25 users would otherwise cost 25 extra queries, on the
+     * screen Platform Admin uses most.</p>
+     */
+    @Query("SELECT m FROM InstitutionMembership m WHERE m.userId IN :userIds AND m.isDeleted = false")
+    List<InstitutionMembership> findByUserIdInAndIsDeletedFalse(@Param("userIds") List<UUID> userIds);
 }

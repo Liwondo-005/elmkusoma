@@ -85,6 +85,43 @@ export const nfeApi = {
   deleteProvider: (id: string) => nfeRequest<void>(`/v1/nfe/providers/${id}`, { method: "DELETE" }),
 
   /**
+   * Provider staff (authority level C -> D).
+   *
+   * The provider id comes from resolveProviderId() rather than the caller, so the page cannot be
+   * pointed at a provider the signed-in account does not administer. The backend enforces this
+   * again on every call - the client-side resolution is convenience, not the security boundary.
+   *
+   * `inviteStaff` deliberately sends no role. The endpoint grants exactly PROVIDER_STAFF, so
+   * there is nothing for the UI to get wrong and nothing for a modified client to escalate.
+   */
+  listStaff: async (): Promise<any[]> => {
+    const providerId = await resolveProviderId()
+    if (!providerId) return []
+    return nfeRequest<any[]>(`/v1/nfe/providers/${providerId}/staff`)
+  },
+  inviteStaff: async (data: { email: string; responsibility?: string | null }) => {
+    const providerId = await requireProviderId()
+    return nfeRequest<any>(`/v1/nfe/providers/${providerId}/staff/invitations`, {
+      method: "POST",
+      body: JSON.stringify({
+        email: data.email,
+        responsibility: data.responsibility || null,
+      }),
+    })
+  },
+  setStaffResponsibility: async (userId: string, responsibility: string | null) => {
+    const providerId = await requireProviderId()
+    return nfeRequest<any>(`/v1/nfe/providers/${providerId}/staff/${userId}/responsibility`, {
+      method: "PUT",
+      body: JSON.stringify({ responsibility: responsibility || null }),
+    })
+  },
+  removeStaff: async (userId: string) => {
+    const providerId = await requireProviderId()
+    return nfeRequest<void>(`/v1/nfe/providers/${providerId}/staff/${userId}`, { method: "DELETE" })
+  },
+
+  /**
    * Audit B-32/B-33: these helpers appended `?providerId=`, which no backend list endpoint
    * declares — Spring ignores it, so callers received the whole institution-wide list while the
    * code read as if provider scoping were applied. They now call the routes that actually scope
