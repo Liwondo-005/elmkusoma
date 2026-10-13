@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -49,6 +50,10 @@ class CertificateOwnershipTest {
     @Mock private StudentRepository studentRepository;
     @Mock private ParentRepository parentRepository;
     @Mock private ParentStudentLinkRepository parentStudentLinkRepository;
+    // Injected into the controller for the download endpoint. A learner who cannot open a
+    // certificate must not be able to download it: a file that has left the system cannot be
+    // un-served the way a page can stop being served.
+    @Mock private tz.elmkusoma.certificate.pdf.CertificatePdfService certificatePdfService;
 
     @InjectMocks private CertificateController controller;
 
@@ -230,5 +235,94 @@ class CertificateOwnershipTest {
                 controller.getCertificateById(certificateId, institutionId, userId, "PARENT");
 
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    }
+
+    // ---- Download ----
+
+    @Test
+    @DisplayName("a student cannot download a classmate's certificate")
+    void aStudentCannotDownloadAnotherStudentsCertificate() {
+        UUID certificateId = UUID.randomUUID();
+        UUID someoneElseRowId = UUID.randomUUID();
+        when(studentRepository.findByUserIdAndIsDeletedFalse(userId))
+                .thenReturn(Optional.of(studentRowFor(studentRowId, userId)));
+        when(certificateService.getCertificateById(certificateId, institutionId))
+                .thenReturn(certificateOwnedBy(someoneElseRowId));
+
+        // Thrown rather than returned as a body: the success path has type byte[], so there is no
+        // place for an ApiResponse in this response and GlobalExceptionHandler maps it to 403.
+        assertThrows(tz.elmkusoma.exception.ForbiddenException.class,
+                () -> controller.exportCertificatePdf(certificateId, institutionId, userId, "STUDENT"));
+    }
+
+    @Test
+    @DisplayName("a student downloads their own certificate as a PDF")
+    void aStudentCanDownloadTheirOwnCertificate() {
+        UUID certificateId = UUID.randomUUID();
+        when(studentRepository.findByUserIdAndIsDeletedFalse(userId))
+                .thenReturn(Optional.of(studentRowFor(studentRowId, userId)));
+        when(certificateService.getCertificateById(certificateId, institutionId))
+                .thenReturn(certificateOwnedBy(studentRowId));
+        when(certificatePdfService.exportCertificate(certificateId, institutionId))
+                .thenReturn(new byte[]{'%', 'P', 'D', 'F'});
+
+        ResponseEntity<byte[]> response =
+                controller.exportCertificatePdf(certificateId, institutionId, userId, "STUDENT");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("application/pdf", response.getHeaders().getContentType().toString());
+        assertEquals("attachment; filename=\"certificate-CERT-OWN-001.pdf\"",
+                response.getHeaders().getFirst("Content-Disposition"),
+                "the serial goes into the filename, and a serial is operator-visible input");
+    }
+
+    @Test
+    @DisplayName("an unlinked parent cannot download either")
+    void anUnlinkedParentCannotDownload() {
+        UUID certificateId = UUID.randomUUID();
+        when(parentRepository.findByUserIdAndIsDeletedFalse(userId)).thenReturn(Optional.empty());
+        when(certificateService.getCertificateById(certificateId, institutionId))
+                .thenReturn(certificateOwnedBy(studentRowId));
+
+        assertThrows(tz.elmkusoma.exception.ForbiddenException.class,
+                () -> controller.exportCertificatePdf(certificateId, institutionId, userId, "PARENT"));
+    }
+
+    @Test
+    @DisplayName("staff are not ownership-checked, only tenant-checked by the service")
+    void staffCanDownload() {
+        UUID certificateId = UUID.randomUUID();
+        when(certificateService.getCertificateById(certificateId, institutionId))
+                .thenReturn(certificateOwnedBy(studentRowId));
+        when(certificatePdfService.exportCertificate(certificateId, institutionId))
+                .thenReturn(new byte[]{'%', 'P', 'D', 'F'});
+
+        ResponseEntity<byte[]> response =
+                controller.exportCertificatePdf(certificateId, institutionId, userId, "INSTITUTION_ADMIN");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("a serial that could break the header is sanitised out of the filename")
+    void theFilenameCannotEscapeTheHeader() {
+        UUID certificateId = UUID.randomUUID();
+        CertificateResponse response = certificateOwnedBy(studentRowId);
+        response.setSerialNumber("CERT-\"-INJECTED");
+        when(studentRepository.findByUserIdAndIsDeletedFalse(userId))
+                .thenReturn(Optional.of(studentRowFor(studentRowId, userId)));
+        when(certificateService.getCertificateById(certificateId, institutionId)).thenReturn(response);
+        when(certificatePdfService.exportCertificate(certificateId, institutionId))
+                .thenReturn(new byte[]{'%', 'P', 'D', 'F'});
+
+        ResponseEntity<byte[]> exported =
+                controller.exportCertificatePdf(certificateId, institutionId, userId, "STUDENT");
+
+        String disposition = exported.getHeaders().getFirst("Content-Disposition");
+        assertEquals("attachment; filename=\"certificate-CERT---INJECTED.pdf\"", disposition,
+                "the quote that would end the header early is replaced; the surrounding dashes are "
+                        + "already legal filename characters and are left alone");
+        assertEquals(1, disposition.chars().filter(c -> c == '"').count() / 2,
+                "the header must contain exactly one quoted filename");
     }
 }

@@ -1010,6 +1010,50 @@ export const certificateApi = {
   verify: (verificationCode: string) =>
     request<CertificateVerificationResponse>(`/v1/certificates/verify/${verificationCode}`),
 
+  /**
+   * Streams the rendered document for one certificate and hands it to the browser's download
+   * dialog.
+   *
+   * <p>Not built on {@link request}: that helper assumes a JSON envelope and would choke on a
+   * PDF body, and the file name arrives in {@code Content-Disposition}, which needs reading from
+   * the response before anything is written to disk.</p>
+   */
+  downloadPdf: async (certificateId: string, fallbackName = "certificate.pdf"): Promise<void> => {
+    const headers: Record<string, string> = {}
+    const token = getToken()
+    const institutionId = getInstitutionId()
+    if (token) headers["Authorization"] = `Bearer ${token}`
+    if (institutionId) headers["X-Institution-Id"] = institutionId
+
+    const res = await fetch(
+      `${API_BASE_URL}/v1/certificates/${encodeURIComponent(certificateId)}/pdf`,
+      { headers },
+    )
+    if (!res.ok) {
+      let message = `Request failed (HTTP ${res.status})`
+      try {
+        const body = (await res.json()) as { error?: string; message?: string }
+        message = body.error || body.message || message
+      } catch {
+        // A non-JSON body here means the endpoint is not the one we called; the status is the
+        // only useful information left, so keep it.
+      }
+      throw new ApiRequestError(message, res.status, null)
+    }
+
+    const disposition = res.headers.get("Content-Disposition") || ""
+    const match = disposition.match(/filename="?([^";]+)"?/)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = match?.[1] || fallbackName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
+
   // ── Approval workflow ───────────────────────────────────────────────────────────────
   //
   // Issuance is gated on approvals, so these are what make a certificate reviewable at all.

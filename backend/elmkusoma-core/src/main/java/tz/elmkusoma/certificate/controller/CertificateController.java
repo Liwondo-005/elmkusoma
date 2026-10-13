@@ -7,7 +7,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +39,7 @@ public class CertificateController {
     private final StudentRepository studentRepository;
     private final ParentRepository parentRepository;
     private final ParentStudentLinkRepository parentStudentLinkRepository;
+    private final tz.elmkusoma.certificate.pdf.CertificatePdfService certificatePdfService;
 
     // â”€â”€ Template Endpoints â”€â”€
 
@@ -151,22 +154,79 @@ public class CertificateController {
             @RequestAttribute("userRole") String userRole) {
         CertificateResponse response = certificateService.getCertificateById(certificateId, institutionId);
 
-        // Ownership, not just role. Previously a PARENT - and any teacher in the school - could
-        // read any certificate in the institution, including a child's classmate's. The transcript
-        // endpoint on this same controller already checks the parent-student link, so this was an
-        // inconsistency rather than a deliberate policy.
-        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
-            if (!isOwnCertificate(userId, response.getStudentId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ApiResponse.error("Access denied"));
-            }
-        } else if ("PARENT".equals(userRole)) {
-            if (!isParentOf(userId, response.getStudentId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ApiResponse.error("Access denied"));
-            }
+        String refusal = ownershipRefusal(userId, userRole, response.getStudentId());
+        if (refusal != null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(refusal));
         }
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Exports an issued certificate as a PDF.
+     *
+     * <p>Runs exactly the same tenant and ownership checks as reading the certificate above - a
+     * learner who cannot open a certificate must not be able to download it either, and a file
+     * that leaves the system is harder to recall than a page that can stop serving it.</p>
+     *
+     * <p>The remaining gate is status, enforced in the service: only ISSUED and REVOKED export,
+     * because a certificate that has not been released is not yet a document.</p>
+     */
+    @GetMapping("/{certificateId}/pdf")
+    @Operation(summary = "Download an issued certificate as a PDF")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'OTHER_LEARNER')")
+    public ResponseEntity<byte[]> exportCertificatePdf(
+            @PathVariable UUID certificateId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.getCertificateById(certificateId, institutionId);
+
+        String refusal = ownershipRefusal(userId, userRole, response.getStudentId());
+        if (refusal != null) {
+            throw new tz.elmkusoma.exception.ForbiddenException("certificate", "export");
+        }
+
+        byte[] pdf = certificatePdfService.exportCertificate(certificateId, institutionId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + pdfFileName(response) + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentLength(pdf.length)
+                .body(pdf);
+    }
+
+    /**
+     * A filesystem-safe download name. The serial is operator-visible and may carry characters a
+     * Content-Disposition header must not: a quote would terminate the filename early and let the
+     * remainder be read as another header.
+     */
+    private String pdfFileName(CertificateResponse response) {
+        String raw = response.getSerialNumber() != null && !response.getSerialNumber().isBlank()
+                ? response.getSerialNumber()
+                : String.valueOf(response.getId());
+        String safe = raw.replaceAll("[^A-Za-z0-9._-]", "-");
+        return "certificate-" + safe + ".pdf";
+    }
+
+    /**
+     * The ownership rule shared by every certificate read on this controller.
+     *
+     * <p>Role is not enough. Previously a PARENT - and any teacher in the school - could read any
+     * certificate in the institution, including a classmate's. The transcript endpoint on this
+     * same controller already checks the parent-student link, so this was an inconsistency rather
+     * than a deliberate policy.</p>
+     *
+     * @return an error message when the caller must be refused, or null when they may proceed
+     */
+    private String ownershipRefusal(UUID userId, String userRole, UUID certificateStudentId) {
+        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
+            return isOwnCertificate(userId, certificateStudentId) ? null : "Access denied";
+        }
+        if ("PARENT".equals(userRole)) {
+            return isParentOf(userId, certificateStudentId) ? null : "Access denied";
+        }
+        return null;
     }
 
     /**

@@ -29,6 +29,9 @@ export default function DashboardCertificatesPage() {
   const [certificates, setCertificates] = useState<CertificateListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // One spinner per row rather than one for the page: a download is a per-certificate action and
+  // a page-wide spinner would blank the list the operator is choosing from.
+  const [downloading, setDownloading] = useState<Record<string, boolean>>({})
 
   // Learners fetch their own list through /v1/learner/me/certificates, which resolves the
   // students.id from the authenticated principal. Calling certificateApi.list() with no studentId
@@ -135,6 +138,36 @@ export default function DashboardCertificatesPage() {
                 </div>
               </div>
               <div className="mt-4 flex gap-3">
+                {(cert.status === "ISSUED" || cert.status === "REVOKED") && (
+                  <button
+                    onClick={() => {
+                      setDownloading((prev) => ({ ...prev, [cert.id]: true }))
+                      certificateApi
+                        .downloadPdf(cert.id, `${cert.serialNumber || "certificate"}.pdf`)
+                        .catch((err) =>
+                          setError(
+                            err instanceof Error ? err.message : t("certificatesPage.downloadFailed"),
+                          ),
+                        )
+                        .finally(() =>
+                          setDownloading((prev) => {
+                            const next = { ...prev }
+                            delete next[cert.id]
+                            return next
+                          }),
+                        )
+                    }}
+                    disabled={downloading[cert.id]}
+                    className="flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {downloading[cert.id] ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Download className="size-3.5" />
+                    )}{" "}
+                    {t("certificatesPage.downloadPdf")}
+                  </button>
+                )}
                 {cert.status === "ISSUED" && (
                   <Link
                     href={`/certificates/verify`}

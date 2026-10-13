@@ -3070,6 +3070,8 @@
       "typeParticipation": "Ushiriki"
     },
     "certificatesPage": {
+      "downloadFailed": "Imeshindwa kupakua cheti",
+      "downloadPdf": "Pakua PDF",
       "loadFailed": "Imeshindwa kupakia vyeti",
       "serial": "Nambari ya mfululizo: {serial}",
       "subtitle": "Tazama na pakua vyeti ulivyopata.",

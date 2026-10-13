@@ -60,6 +60,22 @@ public final class CertificateQrCode {
      * a string the database stores on every row.</p>
      */
     public static String svg(String content) {
+        BitMatrix matrix = matrix(content);
+        if (matrix == null) {
+            return null;
+        }
+        return toSvg(matrix);
+    }
+
+    /**
+     * The raw module grid, or null when the content is empty or cannot be encoded.
+     *
+     * <p>Exposed for callers that do not write markup. The PDF renderer draws this as filled
+     * rectangles rather than embedding the SVG: PDFBox cannot rasterise vector markup without a
+     * browser, and a rectangle per horizontal run is exact at any print size - which is the whole
+     * reason the SVG is vector in the first place.</p>
+     */
+    public static BitMatrix matrix(String content) {
         if (content == null || content.isBlank()) {
             return null;
         }
@@ -71,8 +87,7 @@ public final class CertificateQrCode {
             hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
             // Left at the library default of 4 modules, which is what the QR specification
             // requires as a quiet zone. A tighter margin scans worse than it looks.
-            BitMatrix matrix = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints);
-            return toSvg(matrix);
+            return new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints);
         } catch (Exception e) {
             // WriterException for content too long for the largest version, or a malformed
             // argument. The verification URL already exists on the certificate, so the QR is

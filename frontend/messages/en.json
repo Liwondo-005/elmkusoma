@@ -3072,6 +3072,8 @@
       "typeParticipation": "Participation"
     },
     "certificatesPage": {
+      "downloadFailed": "Failed to download the certificate",
+      "downloadPdf": "Download PDF",
       "loadFailed": "Failed to load certificates",
       "serial": "Serial: {serial}",
       "subtitle": "View and download your earned certificates.",
