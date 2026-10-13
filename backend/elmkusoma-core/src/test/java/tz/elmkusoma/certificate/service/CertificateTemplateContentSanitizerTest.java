@@ -218,4 +218,54 @@ class CertificateTemplateContentSanitizerTest {
 
         assertThrows(IllegalArgumentException.class, () -> sanitizer.sanitizeCss(oversized));
     }
+
+    // ---- Ways of not looking like a url() ----
+
+    @Test
+    @DisplayName("a space between url and the bracket does not make the rule miss")
+    void urlsSeparatedByWhitespaceAreStillScanned() {
+        // Detection allowed this and the scan did not, so the whole declaration came through
+        // untouched: one space was enough to reach out from a preview.
+        String clean = sanitizer.sanitizeCss(
+                "body { background: url (https://evil.example/track.gif) } h1 { color: blue }");
+
+        assertFalse(clean.contains("evil.example"), clean);
+        assertTrue(clean.contains("color: blue"), clean);
+    }
+
+    @Test
+    @DisplayName("a keyword split by a comment is still caught once the comment is gone")
+    void commentsCannotSplitAKeywordPastTheRules() {
+        String clean = sanitizer.sanitizeCss(
+                "body { background: u/*x*/rl(https://evil.example/track.gif) }");
+
+        assertFalse(clean.contains("evil.example"), clean);
+        assertFalse(clean.contains("url("), clean);
+    }
+
+    @Test
+    @DisplayName("comments are removed before anything is judged, and the rules still apply")
+    void commentsAreStrippedAndDeclarationsSurvive() {
+        String clean = sanitizer.sanitizeCss("/* header */ h1 { color: blue } /* tail */");
+
+        assertFalse(clean.contains("/*"), clean);
+        assertTrue(clean.contains("color: blue"), clean);
+    }
+
+    @Test
+    @DisplayName("an unterminated comment drops the rest rather than leaving it unexamined")
+    void unterminatedCommentsDropTheTail() {
+        String clean = sanitizer.sanitizeCss(
+                "h1 { color: blue } /* never closes, and hides url(https://evil.example/x)");
+
+        assertFalse(clean.contains("evil.example"), clean);
+        assertTrue(clean.contains("color: blue"), clean);
+    }
+
+    @Test
+    @DisplayName("a benign data image still survives the comment pass")
+    void dataImagesSurviveCommentStripping() {
+        assertTrue(sanitizer.sanitizeCss(
+                        "/* bg */ background: url(data:image/png;base64,AAAA)").contains("data:image/png"));
+    }
 }

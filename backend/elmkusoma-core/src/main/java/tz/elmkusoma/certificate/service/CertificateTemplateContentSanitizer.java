@@ -145,44 +145,80 @@ public class CertificateTemplateContentSanitizer {
                     "Template stylesheet is too large (limit " + MAX_CSS_LENGTH + " characters)");
         }
 
-        String scrubbed = css;
+        String scrubbed = stripCssComments(css);
         scrubbed = CSS_AT_IMPORT.matcher(scrubbed).replaceAll("");
         scrubbed = CSS_EXPRESSION.matcher(scrubbed).replaceAll("");
         scrubbed = stripUnsafeUrls(scrubbed);
         scrubbed = scrubbed.replace("<", "");
-        // A comment could conceal any of the above from the patterns: remove them first is not
-        // possible without a parser, so they are neutralised by flattening */ which would
-        // otherwise allow a construct to be split across a comment boundary.
-        scrubbed = scrubbed.replace("</", "<\\/");
         return scrubbed.trim();
     }
 
     /**
-     * Removes every {@code url()} except a data image or an https resource.
+     * Removes CSS comments before anything is inspected.
+     *
+     * <p>A comment is not inert here. Browsers strip comments during tokenisation, so a word
+     * split by a comment - {@code u} then a comment then {@code rl} - becomes one keyword to a
+     * renderer while looking like nothing at all to a pattern reading the raw text, and any rule
+     * below that ran first would be judging a string the browser never sees. Removing them first
+     * means every rule judges the same text the browser will.</p>
+     *
+     * <p>An unterminated {@code /*} drops the rest of the input. That is the only safe reading of
+     * a construct that does not close: the alternative is to leave the tail unexamined.</p>
+     */
+    private static String stripCssComments(String css) {
+        int open = css.indexOf("/*");
+        if (open < 0) {
+            return css;
+        }
+        StringBuilder out = new StringBuilder(css.length());
+        int cursor = 0;
+        while (open >= 0) {
+            int close = css.indexOf("*/", open + 2);
+            if (close < 0) {
+                out.append(css, cursor, open);
+                return out.toString();
+            }
+            out.append(css, cursor, open);
+            cursor = close + 2;
+            open = css.indexOf("/*", cursor);
+        }
+        out.append(css, cursor, css.length());
+        return out.toString();
+    }
+
+    /**
+     * Removes every {@code url()} that is not a data image.
      *
      * <p>{@code url(javascript:...)} has been dead in browsers for years, but a stylesheet can
      * still make the renderer fetch an arbitrary host on every preview - which turns anyone who
-     * opens a template into a beacon. Restricting to {@code data:image/} and {@code https://} keeps
-     * background images working while removing the request a document has no need to make.</p>
+     * opens a template into a beacon. Restricting to {@code data:image/} removes the request a
+     * document has no need to make. A logo with a real source belongs in {@code img src}, which
+     * the markup rules allow over https.</p>
+     *
+     * <p>The scan is driven by {@link #CSS_URL}, the same expression that decided whether there
+     * was anything to do at all. Searching for a literal {@code url(} instead meant the detector
+     * accepted {@code url (} with a space while the scanner did not, so one space was enough to
+     * send the whole declaration through untouched - the same disagreement, one rule along, that
+     * made {@code behavior:} slip past the first cut.</p>
      */
     private String stripUnsafeUrls(String css) {
         if (!CSS_URL.matcher(css).find()) {
             return css;
         }
-        // Split on url( so each call site can be judged on its own opening.
         StringBuilder out = new StringBuilder(css.length());
+        java.util.regex.Matcher matcher = CSS_URL.matcher(css);
         int cursor = 0;
-        java.util.Locale locale = Locale.ROOT;
-        while (true) {
-            int at = indexOfIgnoreCase(css, "url(", cursor, locale);
-            if (at < 0) {
-                out.append(css, cursor, css.length());
-                break;
+        while (matcher.find()) {
+            int at = matcher.start();
+            if (at < cursor) {
+                // A url( nested inside a call already judged: the earlier scan consumed past it.
+                continue;
             }
             int close = css.indexOf(')', at);
             if (close < 0) {
                 // Unbalanced: drop the remainder rather than let a half-open construct through.
-                break;
+                out.append(css, cursor, at);
+                return out.toString();
             }
             String call = css.substring(at, close + 1);
             out.append(css, cursor, at);
@@ -191,11 +227,10 @@ public class CertificateTemplateContentSanitizer {
             }
             cursor = close + 1;
         }
+        if (cursor < css.length()) {
+            out.append(css, cursor, css.length());
+        }
         return out.toString();
-    }
-
-    private int indexOfIgnoreCase(String haystack, String needle, int from, Locale locale) {
-        return haystack.toLowerCase(locale).indexOf(needle.toLowerCase(locale), from);
     }
 
     /** Inline style attributes get the same treatment as the stylesheet. */
