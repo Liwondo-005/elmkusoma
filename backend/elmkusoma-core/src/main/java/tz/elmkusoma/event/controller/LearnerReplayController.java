@@ -62,9 +62,8 @@ public class LearnerReplayController {
                     .toList();
             total = replays.size();
         }
-        // The list is filtered to sessions the learner actually took part in, matching the
-        // per-replay entitlement check below, so the listing cannot advertise recordings the
-        // learner is not allowed to open.
+        // The list is filtered by the same entitlement the per-replay check below applies, so the
+        // listing cannot advertise recordings the learner is not allowed to open.
         if (userId != null) {
             replays = replays.stream()
                     .filter(r -> replayEntitlementService.hasEntitlement(r, userId)).toList();
@@ -83,9 +82,10 @@ public class LearnerReplayController {
             @PathVariable UUID id,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userId", required = false) UUID userId) {
-        // Entitlement check: a learner may only open a replay of a session they were actually part
-        // of (live-class participant row, or event registration). Institution membership alone
-        // used to be enough, which exposed every recording in the institution to every student.
+        // Entitlement check: a learner may open a replay of a session they were part of, or one
+        // recorded for a class they belong to (live-class participant row, audience membership,
+        // or event registration). Institution membership alone used to be enough, which exposed
+        // every recording in the institution to every student.
         Replay replay = replayRepository.findById(id)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
@@ -96,7 +96,7 @@ public class LearnerReplayController {
         if (userId != null && !replayEntitlementService.hasEntitlement(replay, userId)) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
                     .body(tz.elmkusoma.common.ApiResponse.error(
-                            "You were not a participant in this recorded session"));
+                            "You are not entitled to this recorded session"));
         }
         {
             Replay r = replay;

@@ -34,6 +34,7 @@ const nurseryNav: Array<{ label: string; labelKey?: string; href: string; icon: 
   { label: "My Progress", labelKey: "myProgress", href: "/dashboard/nursery/progress", icon: BarChart3 },
   { label: "Backpack", labelKey: "backpack", href: "/dashboard/nursery/backpack", icon: Award },
   { label: "Live Class", labelKey: "liveClass", href: "/dashboard/nursery/live", icon: Video },
+  { label: "Recorded Classes", labelKey: "recordedClasses", href: "/dashboard/learner/replays", icon: Film },
   { label: "Notifications", labelKey: "notifications", href: "/dashboard/nursery/notifications", icon: Bell },
   { label: "Profile", labelKey: "profile", href: "/dashboard/nursery/profile", icon: User },
 ]
@@ -88,6 +89,7 @@ const primaryNavSections: PrimaryNavSection[] = [
     group: "TRACKING", groupKey: "groupTracking",
     items: [
       { label: "Live Learning", labelKey: "liveLearning", href: "/dashboard/live-classes", icon: Video, dotColor: "bg-red-500" },
+      { label: "Recorded Classes", labelKey: "recordedClasses", href: "/dashboard/learner/replays", icon: Film, dotColor: "bg-red-500" },
       { label: "Progress", labelKey: "progress", href: "/dashboard/progress", icon: BarChart3, dotColor: "bg-cyan-500" },
       { label: "Grades", labelKey: "grades", href: "/dashboard/results", icon: Award, dotColor: "bg-purple-500" },
       { label: "Evidence", labelKey: "evidence", href: "/dashboard/evidence", icon: Award, dotColor: "bg-green-500" },
@@ -119,6 +121,7 @@ const secondaryNav: Array<{ label: string; labelKey?: string; href: string; icon
   { label: "Grades", labelKey: "grades", href: "/dashboard/results", icon: Award },
   { label: "Revision", labelKey: "revision", href: "/dashboard/secondary/revision", icon: TrendingUp },
   { label: "Live", labelKey: "live", href: "/dashboard/secondary/live", icon: Video },
+  { label: "Recorded Classes", labelKey: "recordedClasses", href: "/dashboard/learner/replays", icon: Film },
   { label: "Projects", labelKey: "projects", href: "/dashboard/secondary/projects", icon: FileText },
   { label: "Research", labelKey: "research", href: "/dashboard/secondary/learn/research", icon: BookOpen },
   { label: "Science Lab", labelKey: "scienceLab", href: "/dashboard/secondary/learn/science-lab", icon: Library },
@@ -154,6 +157,7 @@ const collegeNavSections: CollegeNavSection[] = [
     group: "LIVE & MEDIA", groupKey: "groupLiveMedia",
     items: [
       { label: "Live Campus", labelKey: "liveCampus", href: "/dashboard/learner/live-campus", icon: Radio, dotColor: "bg-red-500" },
+      { label: "Recorded Classes", labelKey: "recordedClasses", href: "/dashboard/learner/replays", icon: Film, dotColor: "bg-orange-500" },
       { label: "Media Library", labelKey: "mediaLibrary", href: "/dashboard/learner/media-library", icon: Film, dotColor: "bg-pink-500" },
       { label: "Resources", labelKey: "resources", href: "/dashboard/learner/resources", icon: Library, dotColor: "bg-amber-500" },
       { label: "Events", labelKey: "events", href: "/dashboard/learner/events", icon: Calendar, dotColor: "bg-purple-500" },
@@ -245,6 +249,7 @@ const universityNavSections: NavSection[] = [
     children: [
       { label: "Live Now", labelKey: "liveNow", href: "/dashboard/learner/live-campus", icon: Radio },
       { label: "Live Classes", labelKey: "liveClasses", href: "/dashboard/learner/live-classes", icon: Video },
+      { label: "Recorded Classes", labelKey: "recordedClasses", href: "/dashboard/learner/replays", icon: Film },
       { label: "Media Library", labelKey: "mediaLibrary", href: "/dashboard/learner/media-library", icon: Film },
       { label: "Workshops & Labs", labelKey: "workshopsLabs", href: "/dashboard/learner/workshops", icon: FlaskConical },
     ],
@@ -334,7 +339,7 @@ const learnerNavSections: LearnerNavSection[] = [
       { label: "Live Classes", labelKey: "liveClasses", href: "/dashboard/learner/live-classes", icon: Video },
       { label: "Events & Workshops", labelKey: "eventsWorkshops", href: "/dashboard/learner/events", icon: Calendar },
       { label: "My Registrations", labelKey: "myRegistrations", href: "/dashboard/learner/events/registered", icon: ClipboardList },
-      { label: "Replays", labelKey: "replays", href: "/dashboard/learner/replays", icon: Film },
+      { label: "Recorded Classes", labelKey: "recordedClasses", href: "/dashboard/learner/replays", icon: Film },
     ],
   },
   {
