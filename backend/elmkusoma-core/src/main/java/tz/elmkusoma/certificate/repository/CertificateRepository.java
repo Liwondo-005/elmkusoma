@@ -122,6 +122,37 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
                                         @Param("title") String title);
 
     /**
+     * Certificates for the same award that were released before the one being issued now.
+     *
+     * <p>The award scope is the identity V162 made unique - student, template, type and title - so
+     * this is the same key the duplicate-award guard uses. Anything narrower would link unrelated
+     * certificates; anything wider would link a participation certificate to a completion one.</p>
+     *
+     * <p>Only ISSUED and REVOKED rows are returned. A certificate in DRAFT, PENDING_APPROVAL or
+     * APPROVED was never handed to anyone, so no one can be holding a copy of it and there is
+     * nothing for it to have been replaced <em>by</em>. In practice the query can only return
+     * REVOKED rows anyway: {@link #findLiveAward} refuses issuance while a non-revoked predecessor
+     * exists, so by the time this runs every predecessor for the scope has been revoked.</p>
+     *
+     * <p>Soft-deleted rows are excluded - archival is not something a holder needs chasing.</p>
+     *
+     * @param certificateId the certificate being issued, so it never marks itself superseded
+     */
+    @Query("SELECT c FROM Certificate c WHERE c.studentId = :studentId "
+            + "AND c.templateId = :templateId "
+            + "AND c.certificateType = :certificateType "
+            + "AND c.title = :title "
+            + "AND c.isDeleted = false "
+            + "AND c.id <> :certificateId "
+            + "AND c.status IN (tz.elmkusoma.certificate.domain.Certificate$CertificateStatus.ISSUED, "
+            + "                tz.elmkusoma.certificate.domain.Certificate$CertificateStatus.REVOKED)")
+    List<Certificate> findPriorAwards(@Param("studentId") UUID studentId,
+                                      @Param("templateId") UUID templateId,
+                                      @Param("certificateType") Certificate.CertificateType certificateType,
+                                      @Param("title") String title,
+                                      @Param("certificateId") UUID certificateId);
+
+    /**
      * Loads many certificates at once, skipping soft-deleted rows.
      *
      * <p>Used by the approval queue, which renders a list of pending decisions. Each decision needs

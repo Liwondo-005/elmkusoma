@@ -108,6 +108,28 @@ public class Certificate extends BaseEntity {
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
 
+    /**
+     * The certificate that took this award's place, when this one was replaced by a re-issue.
+     *
+     * <p>Deliberately a reference rather than a value in {@link CertificateStatus}. A certificate
+     * in the normal re-issue flow is both revoked and superseded, and one status column cannot
+     * hold both facts without dropping one of them. See V164 for the full reasoning.</p>
+     *
+     * <p>Null for a certificate nobody has replaced - the overwhelming majority.</p>
+     */
+    @Column(name = "superseded_by_certificate_id")
+    private UUID supersededByCertificateId;
+
+    /** When {@link #supersededByCertificateId} was recorded. Null whenever that reference is. */
+    @Column(name = "superseded_at")
+    private LocalDateTime supersededAt;
+
+    /** True once a later certificate has taken this award's place. */
+    @Transient
+    public boolean isSuperseded() {
+        return supersededByCertificateId != null;
+    }
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, Object> metadata;

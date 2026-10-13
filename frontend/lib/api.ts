@@ -864,6 +864,15 @@ export interface CertificateVerificationResponse {
   issueDate: string | null
   status: string | null
   message: string | null
+  /**
+   * Serial of the certificate that took this award's place, when the one presented has been
+   * replaced by a re-issue. Null for a certificate nobody has replaced.
+   *
+   * Present so a holder turning up with the withdrawn copy is told which document is current,
+   * not merely that theirs is worthless.
+   */
+  supersededBySerialNumber: string | null
+  supersededAt: string | null
 }
 
 /**

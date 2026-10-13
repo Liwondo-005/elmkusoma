@@ -31,4 +31,16 @@ public class CertificateVerificationResponse {
     private LocalDateTime issueDate;
     private String status;
     private String message;
+
+    /**
+     * Serial of the certificate that took this award's place, when this one was replaced by a
+     * re-issue. Null for a certificate nobody has replaced.
+     *
+     * <p>Exposed so a holder holding the withdrawn copy can be told which document is current
+     * rather than only that theirs is not.</p>
+     */
+    private String supersededBySerialNumber;
+
+    /** When the supersession was recorded. Null whenever {@link #supersededBySerialNumber} is. */
+    private LocalDateTime supersededAt;
 }

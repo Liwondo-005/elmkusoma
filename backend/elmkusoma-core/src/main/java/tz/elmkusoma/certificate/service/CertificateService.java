@@ -307,6 +307,11 @@ public class CertificateService {
         // of documents issued years ago.
         captureSignatorySnapshots(certificate, issueTemplate);
 
+        // Point every certificate this issuance replaced at the new one, while both are still
+        // inside the same transaction as the issuance itself. Recording it after the commit would
+        // leave a window in which the replacement exists but nothing says so.
+        markSupersededPredecessors(certificate, institutionId, actorUserId, userEmail, userRole);
+
         certificate.setStatus(CertificateStatus.ISSUED);
         certificate.setIssueDate(LocalDateTime.now());
         certificateRepository.save(certificate);
@@ -466,6 +471,70 @@ public class CertificateService {
                 });
     }
 
+    /**
+     * Records that this issuance replaced earlier certificates for the same award.
+     *
+     * <p>{@link #requireNotAlreadyAwarded} is what makes a re-issue possible at all: it refuses a
+     * second copy of an award while a live one exists, and tells the operator to revoke first.
+     * That step - revoke, then re-issue - is the whole remedy, and until now nothing recorded
+     * that the two rows were the same award at different moments.</p>
+     *
+     * <p>It matters from outside. A holder of the revoked copy scans its QR, which this codebase
+     * now stamps on every certificate, and is told "revoked" - true, but it does not tell them a
+     * valid replacement exists or which one. {@link #verifyCertificate} answers that using the
+     * pointer written here.</p>
+     *
+     * <p>Runs only at the moment of issuance. Pointing at a certificate still in PENDING_APPROVAL
+     * would mark the holder's existing document as replaced by something that may never be
+     * issued.</p>
+     *
+     * <p>The award scope is deliberately the same key the duplicate guard uses. A predecessor is
+     * only a predecessor of the same award.</p>
+     */
+    private void markSupersededPredecessors(Certificate certificate, UUID institutionId,
+                                            UUID actorUserId, String userEmail, String userRole) {
+        if (certificate.getTemplateId() == null || certificate.getTitle() == null
+                || certificate.getTitle().isBlank()) {
+            // The automatic participation routes create certificates with no template. They
+            // de-duplicate against the session title instead, and there is no template identity
+            // to match a predecessor on - the same reason requireNotAlreadyAwarded skips them.
+            return;
+        }
+
+        List<Certificate> predecessors = certificateRepository.findPriorAwards(
+                certificate.getStudentId(),
+                certificate.getTemplateId(),
+                certificate.getCertificateType(),
+                certificate.getTitle(),
+                certificate.getId());
+
+        if (predecessors.isEmpty()) {
+            return;
+        }
+
+        LocalDateTime supersededAt = LocalDateTime.now();
+        for (Certificate prior : predecessors) {
+            String previousStatus = prior.getStatus().name();
+            prior.setSupersededByCertificateId(certificate.getId());
+            prior.setSupersededAt(supersededAt);
+            certificateRepository.save(prior);
+
+            try {
+                auditService.recordAuditLog(institutionId, actorUserId, userEmail, userRole,
+                        "Certificate", prior.getId(), prior.getSerialNumber(),
+                        AuditLog.AuditAction.UPDATE,
+                        Map.of("status", previousStatus),
+                        Map.of("status", previousStatus,
+                                "supersededBy", certificate.getSerialNumber()));
+            } catch (Exception e) {
+                // The link is written; only the trail of who wrote it failed. Losing the audit
+                // entry must not roll back an issuance that has otherwise succeeded.
+                log.warn("Failed to audit supersession of certificate {}: {}",
+                        prior.getSerialNumber(), e.getMessage());
+            }
+        }
+    }
+
     private void requireAuthorizedSignatories(Certificate certificate) {
         List<CertificateTemplateSignatory> links =
                 templateSignatoryRepository.findByTemplateId(certificate.getTemplateId());
@@ -603,7 +672,8 @@ public class CertificateService {
                         .map(tz.elmkusoma.shared.domain.Institution::getName)
                         .orElse(null);
 
-        // Resolve the four states the public page must distinguish, in precedence order.
+        // Resolve the states the public page must distinguish, in precedence order.
+        boolean superseded = certificate.getSupersededByCertificateId() != null;
         boolean revoked = certificate.getStatus() == CertificateStatus.REVOKED;
         boolean expired = certificate.getExpiryDate() != null
                 && certificate.getExpiryDate().isBefore(LocalDate.now());
@@ -612,7 +682,20 @@ public class CertificateService {
         final boolean valid;
         final String publicStatus;
         final String message;
-        if (revoked) {
+        if (superseded) {
+            // Above REVOKED deliberately. In the normal re-issue flow the predecessor is both
+            // revoked and superseded, and "revoked" alone sends a holder away empty-handed: it
+            // says the document in their hand is worthless without saying a valid one now exists
+            // and which it is. Supersession is the more actionable fact, so it is reported first.
+            //
+            // SUPERSEDED is a public presentation value, not a stored lifecycle value. The stored
+            // column still says REVOKED. This distinction already exists here - EXPIRED, the next
+            // branch below, appears in no enum either.
+            valid = false;
+            publicStatus = "SUPERSEDED";
+            message = "This certificate has been replaced by a newer certificate issued for "
+                    + "the same award.";
+        } else if (revoked) {
             valid = false;
             publicStatus = "REVOKED";
             // Deliberately not the stored reason: it is free text an administrator typed and may
@@ -668,7 +751,26 @@ public class CertificateService {
                 .status(publicStatus)
                 .issueDate(certificate.getIssueDate())
                 .message(message)
+                .supersededBySerialNumber(resolveSupersededBySerial(certificate))
+                .supersededAt(certificate.getSupersededAt())
                 .build();
+    }
+
+    /**
+     * Serial of the certificate that replaced this one, or null when nothing has.
+     *
+     * <p>Resolved through the foreign key rather than stored alongside it, so the serial can never
+     * drift from the certificate it names if one of the two were edited. A failure to load leaves
+     * the pointer reported as a bare supersession rather than raising: the holder is still owed the
+     * fact that their document was replaced, even if the replacement cannot be named.</p>
+     */
+    private String resolveSupersededBySerial(Certificate certificate) {
+        if (certificate.getSupersededByCertificateId() == null) {
+            return null;
+        }
+        return certificateRepository.findById(certificate.getSupersededByCertificateId())
+                .map(Certificate::getSerialNumber)
+                .orElse(null);
     }
 
     /**

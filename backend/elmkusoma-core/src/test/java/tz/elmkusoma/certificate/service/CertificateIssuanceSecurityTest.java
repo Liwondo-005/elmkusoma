@@ -41,6 +41,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,6 +50,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -563,6 +565,129 @@ class CertificateIssuanceSecurityTest {
 
         // A different caller is unaffected.
         assertDoesNotThrowVerify("10.0.0.2");
+    }
+
+    /**
+     * Revoke-then-re-issue is the documented remedy for a wrong certificate, and the message the
+     * service returns tells the operator to do exactly that. Nothing until now recorded that the
+     * two rows were the same award at different moments.
+     *
+     * <p>The gap is visible from outside: a holder of the withdrawn copy scans its QR, which every
+     * certificate now carries, is told "revoked", and has no way of knowing a valid replacement
+     * exists - let alone which one to ask for.</p>
+     */
+    @Test
+    void issue_marksTheCertificateItReplaced() {
+        Certificate replacement = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(replacement.getId()))
+                .thenReturn(Optional.of(replacement));
+        when(templateSignatoryRepository.findByTemplateId(templateId))
+                .thenReturn(List.of(link()));
+        when(signatoryRepository.findByIdAndIsDeletedFalse(any())).thenReturn(Optional.of(
+                signatory(CertificateSignatory.SignatoryStatus.ACTIVE, institutionId,
+                        LocalDate.now().minusDays(10), LocalDate.now().plusDays(10))));
+        when(learnerNotificationRepository.save(any(tz.elmkusoma.learner.domain.LearnerNotification.class)))
+                .thenReturn(null);
+
+        Certificate withdrawn = issuedCertificate();
+        withdrawn.setSerialNumber("CERT-CMP-2026-000000");
+        withdrawn.setStatus(Certificate.CertificateStatus.REVOKED);
+        when(certificateRepository.findPriorAwards(studentId, templateId,
+                replacement.getCertificateType(), replacement.getTitle(), replacement.getId()))
+                .thenReturn(List.of(withdrawn));
+
+        certificateService.issueCertificate(replacement.getId(), institutionId,
+                UUID.randomUUID(), "admin@x.tz", "ADMIN");
+
+        assertEquals(replacement.getId(), withdrawn.getSupersededByCertificateId(),
+                "the replacement must be recorded on the certificate it replaced");
+        assertNotNull(withdrawn.getSupersededAt(), "a link without a time cannot be audited later");
+        assertEquals(Certificate.CertificateStatus.REVOKED, withdrawn.getStatus(),
+                "supersession is a reference, not a lifecycle value: the stored status must not move");
+
+        verify(auditService).recordAuditLog(
+                eq(institutionId), any(), eq("admin@x.tz"), eq("ADMIN"),
+                eq("Certificate"), eq(withdrawn.getId()), eq("CERT-CMP-2026-000000"),
+                eq(AuditLog.AuditAction.UPDATE), any(), any());
+    }
+
+    /**
+     * Issuing an award nobody holds before is the ordinary case and must leave every other
+     * certificate alone. The predecessor lookup is scoped to one award, not to the student.
+     */
+    @Test
+    void issue_leavesOtherCertificatesUnsuperseded() {
+        Certificate certificate = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+        when(templateSignatoryRepository.findByTemplateId(templateId))
+                .thenReturn(List.of(link()));
+        when(signatoryRepository.findByIdAndIsDeletedFalse(any())).thenReturn(Optional.of(
+                signatory(CertificateSignatory.SignatoryStatus.ACTIVE, institutionId,
+                        LocalDate.now().minusDays(10), LocalDate.now().plusDays(10))));
+        when(learnerNotificationRepository.save(any(tz.elmkusoma.learner.domain.LearnerNotification.class)))
+                .thenReturn(null);
+        // No predecessor for this award. The new lookup must be safe with an empty result and must
+        // not reach for a certificate outside the award scope.
+        when(certificateRepository.findPriorAwards(any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+
+        certificateService.issueCertificate(certificate.getId(), institutionId,
+                UUID.randomUUID(), "admin@x.tz", "ADMIN");
+
+        assertEquals(Certificate.CertificateStatus.ISSUED, certificate.getStatus(),
+                "an ordinary first issuance must be unaffected by the predecessor lookup");
+        // Exactly one certificate row written: the one being issued. Nothing else was touched.
+        verify(certificateRepository, times(1)).save(any(Certificate.class));
+    }
+
+    /**
+     * Supersession sits above revocation in the precedence order, because in the normal re-issue
+     * flow a certificate is both and only the successor is actionable to a holder. This pins the
+     * case where there is no successor: a certificate withdrawn without a replacement is still a
+     * revocation, and must not start claiming it was superseded by nothing.
+     */
+    @Test
+    void verification_aRevokedCertificateWithNoReplacementStillReportsRevoked() {
+        Certificate revoked = draftCertificate();
+        revoked.setStatus(Certificate.CertificateStatus.REVOKED);
+        when(certificateRepository.findByVerificationCodeAndIsDeletedFalse("CODE123"))
+                .thenReturn(Optional.of(revoked));
+
+        var response = certificateService.verifyCertificate("CODE123", "1.2.3.4");
+
+        assertEquals("REVOKED", response.getStatus());
+        assertFalse(response.isValid());
+        assertNull(response.getSupersededBySerialNumber());
+    }
+
+    /**
+     * The whole point of the link: a holder presenting the withdrawn copy is told which document
+     * is current, not merely that theirs is worthless.
+     */
+    @Test
+    void verification_aSupersededCertificateNamesItsReplacement() {
+        Certificate withdrawn = draftCertificate();
+        withdrawn.setStatus(Certificate.CertificateStatus.REVOKED);
+        UUID successorId = UUID.randomUUID();
+        withdrawn.setSupersededByCertificateId(successorId);
+        withdrawn.setSupersededAt(java.time.LocalDateTime.now());
+
+        Certificate successor = draftCertificate();
+        successor.setId(successorId);
+        successor.setSerialNumber("CERT-CMP-2026-000002");
+
+        when(certificateRepository.findByVerificationCodeAndIsDeletedFalse("CODE123"))
+                .thenReturn(Optional.of(withdrawn));
+        when(certificateRepository.findById(successorId)).thenReturn(Optional.of(successor));
+
+        var response = certificateService.verifyCertificate("CODE123", "1.2.3.4");
+
+        assertEquals("SUPERSEDED", response.getStatus(),
+                "supersession outranks revocation: the successor is the fact a holder can act on");
+        assertFalse(response.isValid());
+        assertEquals("CERT-CMP-2026-000002", response.getSupersededBySerialNumber());
+        assertNotNull(response.getSupersededAt());
     }
 
     private void assertDoesNotThrowVerify(String clientKey) {

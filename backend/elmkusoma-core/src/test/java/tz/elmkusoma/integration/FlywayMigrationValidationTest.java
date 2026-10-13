@@ -580,6 +580,40 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * V164 records which certificate replaced which, so a holder of a withdrawn copy can be told
+     * that a valid replacement exists and which one it is.
+     *
+     * <p>Both columns are mapped by the entity. Without the migration the whole approval and QR
+     * feature set still passes against the Hibernate-generated test schema, while a real database -
+     * which runs ddl-auto=none - fails on every supersession with an unknown-column error.</p>
+     *
+     * <p>Also pins the self-referencing foreign key. The pointer is only worth having if it cannot
+     * name a certificate that is not there; a plain uuid column would accept any 16 bytes.</p>
+     */
+    @Test
+    void certificateSupersessionColumns_AreDeclaredInMigrations() throws IOException {
+        Map<String, String> added = declaredColumns(Set.of(
+                "certificates.superseded_by_certificate_id",
+                "certificates.superseded_at"));
+        assertTrue("uuid".equals(added.get("certificates.superseded_by_certificate_id")),
+                "certificates.superseded_by_certificate_id must be uuid but is \""
+                        + added.get("certificates.superseded_by_certificate_id") + "\"");
+        assertTrue("timestamptz".equals(added.get("certificates.superseded_at")),
+                "certificates.superseded_at must be timestamptz but is \""
+                        + added.get("certificates.superseded_at") + "\"");
+
+        String migration = readMigration("V164__certificate_supersession_link.sql");
+        assertTrue(migration.contains("fk_certificates_superseded_by"),
+                "V164 must name its self-reference so it can be found and, if ever needed, dropped");
+        assertTrue(migration.contains("REFERENCES certificates"),
+                "V164 must point superseded_by_certificate_id at certificates(id); an unconstrained "
+                        + "uuid would accept an id that does not exist and strand the verification "
+                        + "page on a pointer to nothing");
+        assertTrue(migration.contains("idx_certificates_superseded_by"),
+                "the verification lookup resolves a supersession by this column and needs the index");
+    }
+
+    /**
      * V161 must not narrow {@code certificates.status}. The live column is varchar(255); shrinking
      * it to today's longest status name would silently truncate every future lifecycle value
      * someone adds, and the damage would only show up later as an unreadable status on a stored
