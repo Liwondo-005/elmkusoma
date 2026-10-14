@@ -186,6 +186,28 @@ app:
 payment:
   webhook:
     secret: ${PAYMENT_WEBHOOK_SECRET:}
+  # Active outbound mobile-money provider adapter. "none" keeps the legacy
+  # manual-verification flow exactly as before (no gateway calls, no behavior
+  # change). Set ELMKUSOMA_PAYMENT_PROVIDER=stakaba only together with
+  # STAKABA_ENABLED=true and a sandbox API key - StakabaConfigurationValidator
+  # refuses to start the app if the provider is enabled without valid
+  # sandbox credentials.
+  provider: ${ELMKUSOMA_PAYMENT_PROVIDER:none}
+  # Stakaba mobile-money gateway (https://docs.stakaba.com/).
+  #
+  # Sandbox and live share one base URL; the API key selects the environment.
+  # This deployment is SANDBOX ONLY: a key beginning with sk_live_ is refused
+  # at startup unless payment.stakaba.allow-live is explicitly set to true,
+  # which is never done automatically and must not be set without a completed
+  # go-live approval. api-key must come from the environment (backend/.env or
+  # process env) - never from a committed file, the frontend, or a log line.
+  stakaba:
+    enabled: ${STAKABA_ENABLED:false}
+    base-url: ${STAKABA_BASE_URL:https://api.stakaba.com}
+    api-key: ${STAKABA_API_KEY:}
+    connect-timeout-ms: ${STAKABA_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${STAKABA_READ_TIMEOUT_MS:15000}
+    allow-live: ${STAKABA_ALLOW_LIVE:false}
 
 services:
   media:

@@ -500,6 +500,276 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * V169 creates pricing_policies, the versioned catalogue every chargeable amount is read from.
+     *
+     * <p>The stakes are the same as the certificate case and higher: because the test profile
+     * builds tables from the entity with ddl-auto=create-drop, a migration that omitted or
+     * mistyped a column here leaves the entire suite green and then breaks every payment against
+     * a real database. Worse, a monetary column declared as text would still round-trip in tests
+     * and only misbehave once real arithmetic ran on it.</p>
+     */
+    @Test
+    void pricingPolicyColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> columnNames = Set.of(
+                "policy_key", "policy_version", "status", "service_type", "education_level",
+                "min_amount", "max_amount", "default_amount", "currency", "access_days",
+                "created_at", "updated_at", "created_by", "updated_by", "is_deleted");
+
+        Map<String, String> types = resolvedColumnTypes(columnNames);
+
+        List<String> missing = columnNames.stream()
+                .map(name -> "pricing_policies." + name)
+                .filter(key -> !types.containsKey(key))
+                .sorted()
+                .toList();
+        assertTrue(missing.isEmpty(),
+                "PricingPolicy maps these columns but no migration declares them, so resolving a "
+                        + "price would fail against a real database while the suite stayed green: " + missing);
+
+        // Money is BigDecimal on the entity. A text column would still pass Hibernate's generated
+        // schema in tests and only fail once real arithmetic ran on it.
+        for (String money : List.of("min_amount", "max_amount", "default_amount")) {
+            String type = types.get("pricing_policies." + money);
+            assertTrue(type != null && (type.startsWith("numeric") || type.startsWith("decimal")),
+                    "pricing_policies." + money + " must be a numeric/decimal money column but was "
+                            + "declared as \"" + type + "\" at " + declaredIn.get("pricing_policies." + money));
+        }
+
+        String version = types.get("pricing_policies.policy_version");
+        assertTrue(version != null && version.startsWith("integer"),
+                "policy_version must be an integer so versions sort numerically, not as text");
+
+        String accessDays = types.get("pricing_policies.access_days");
+        assertTrue(accessDays != null && accessDays.startsWith("integer"),
+                "access_days must be an integer day count");
+    }
+
+    /**
+     * V169 installs the user-selected TZS catalogue as DRAFT, never as an active price.
+     *
+     * <p>Payment.md requires that pricing activation be an authorized Platform Admin decision.
+     * A migration that seeded any row ACTIVE would install an approved price without an approval,
+     * which is precisely the gate the DRAFT status exists to enforce - so this pins the whole
+     * catalogue at DRAFT and the ACTIVE-only uniqueness at the storage layer.</p>
+     */
+    @Test
+    void pricingPolicySeed_IsDraftNeverActive_andEnforcesSingleActiveAtTheStorageLayer()
+            throws IOException {
+        String sql;
+        try (var stream = Files.list(migrationDir)) {
+            Path v169 = stream.filter(p -> p.getFileName().toString().startsWith("V169__"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("V169 pricing_policies migration is missing"));
+            sql = Files.readString(v169, StandardCharsets.UTF_8);
+        }
+
+        // Every INSERT into pricing_policies must declare DRAFT in its column list. An ACTIVE
+        // seed would be an approved price with no approval behind it.
+        for (String line : sql.split("\\R")) {
+            if (!line.contains("'SERVICE_DEFAULT_PRICE'") && !line.contains("'EDUCATION_LEVEL_BAND'")) {
+                continue;
+            }
+            assertTrue(line.contains("'DRAFT'"),
+                    "A pricing seed row was not DRAFT, which would activate a price without an "
+                            + "authorized approval: " + line.trim());
+            assertFalse(line.contains("'ACTIVE'"),
+                    "No pricing policy may be seeded ACTIVE; activation is an authorized decision: "
+                            + line.trim());
+        }
+
+        // A partial unique index per service type / education level on ACTIVE rows only, so a
+        // racing second approval is refused by Postgres rather than by application code.
+        assertTrue(sql.contains("CREATE UNIQUE INDEX") && sql.contains("status = 'ACTIVE'"),
+                "pricing_policies needs a partial unique index on ACTIVE service_type so two "
+                        + "authoritative prices for one service cannot both exist");
+        assertTrue(sql.contains("education_level") && sql.contains("status = 'ACTIVE'"),
+                "pricing_policies needs a partial unique index on ACTIVE education_level so two "
+                        + "authoritative bands for one level cannot both exist");
+    }
+
+    /**
+     * V170 preserves the terms each transaction was sold under, on the payments table.
+     *
+     * <p>These are the columns every policy-snapshot and refund calculation reads, and they are
+     * added with ALTER TABLE rather than CREATE TABLE, so the test profile's create-drop schema
+     * would hide a mismatch. A monetary column declared as text would round-trip happily in tests
+     * and only misbehave once real arithmetic ran on it against a live database.</p>
+     */
+    @Test
+    void paymentIntegrityColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> columnNames = Set.of(
+                "policy_key", "policy_version", "gross_amount", "discount_amount", "net_amount",
+                "idempotency_key", "access_days", "refunded_amount", "receipt_number",
+                "commission_amount", "provider_share_amount", "commission_status",
+                "commission_policy_key", "commission_policy_version");
+
+        Map<String, String> types = resolvedColumnTypes(columnNames);
+
+        List<String> missing = columnNames.stream()
+                .map(name -> "payments." + name)
+                .filter(key -> !types.containsKey(key))
+                .sorted()
+                .toList();
+        assertTrue(missing.isEmpty(),
+                "Payment maps these columns but no migration declares them, so a confirmed "
+                        + "payment would fail to persist the terms it was sold under against a "
+                        + "real database while the suite stayed green: " + missing);
+
+        for (String money : List.of("gross_amount", "discount_amount", "net_amount",
+                "refunded_amount", "commission_amount", "provider_share_amount")) {
+            String type = types.get("payments." + money);
+            assertTrue(type != null && (type.startsWith("numeric") || type.startsWith("decimal")),
+                    "payments." + money + " must be a numeric/decimal money column but was "
+                            + "declared as \"" + type + "\" at " + declaredIn.get("payments." + money));
+        }
+
+        assertTrue(types.get("payments.policy_version").startsWith("integer"),
+                "policy_version must be an integer so versions sort numerically, not as text");
+        assertTrue(types.get("payments.access_days").startsWith("integer"),
+                "access_days must be an integer day count");
+        assertTrue(types.get("payments.idempotency_key").startsWith("character")
+                        || types.get("payments.idempotency_key").startsWith("varchar"),
+                "idempotency_key is a client-supplied token and must be text");
+    }
+
+    /**
+     * V170 seeds commission policies with no rate at all, and leaves the fee bearer undecided.
+     *
+     * <p>This is the single most important assertion in the financial work. Payment.md forbids a
+     * universal commission percentage, so the rate column stays NULL until an authorized business
+     * decision is recorded. A migration that seeded a rate - or that defaulted fee_bearer to a
+     * party - would install an unapproved business term that every subsequent payout would treat
+     * as settled fact, which is the concealed financial diversion the rules specifically forbid.</p>
+     */
+    @Test
+    void commissionSeed_CarriesNoRateAndNoInventedFeeBearer() throws IOException {
+        String sql;
+        try (var stream = Files.list(migrationDir)) {
+            Path v170 = stream.filter(p -> p.getFileName().toString().startsWith("V170__"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("V170 financial integrity migration is missing"));
+            sql = Files.readString(v170, StandardCharsets.UTF_8);
+        }
+
+        // The INSERT itself must declare DRAFT. Only the seed statement is inspected; the
+        // idempotence guard in the WHERE clause also names the policy key but is not a row.
+        for (String line : sql.split("\\R")) {
+            if (!line.contains("'PLATFORM_COMMISSION'") || line.contains("WHERE")) {
+                continue;
+            }
+            assertTrue(line.contains("'DRAFT'"),
+                    "A commission policy was seeded other than DRAFT, activating a rate without "
+                            + "an authorized approval: " + line.trim());
+            assertFalse(line.contains("'ACTIVE'"),
+                    "No commission policy may be seeded ACTIVE; a rate is a business decision: "
+                            + line.trim());
+        }
+
+        // The seeded row states the status, the service type and then a NULL rate, in that
+        // order, so an unapproved rate can never be mistaken for an approved zero.
+        assertTrue(sql.contains("'DRAFT', s.service_type, NULL"),
+                "commission_policies must seed commission_rate as NULL, not as zero - an "
+                        + "unapproved rate and a zero rate are different facts");
+        assertTrue(sql.contains("commission_rate"),
+                "commission_policies must expose a commission_rate column at all");
+
+        // Who bears the gateway fee stays undecided unless a policy records it.
+        assertTrue(sql.contains("fee_bearer VARCHAR(30)"),
+                "fee_bearer must exist as a column and stay NULL until a business decision");
+
+        // The storage layer refuses a second ACTIVE policy for one service, so a racing second
+        // approval is stopped by Postgres rather than by application code.
+        assertTrue(sql.contains("uniq_commission_active_service_type")
+                        && sql.contains("status = 'ACTIVE'"),
+                "commission_policies needs a partial unique index on ACTIVE service_type so two "
+                        + "authoritative rates for one service cannot both exist");
+    }
+
+    /**
+     * V170 adds the refund lifecycle, receipt and reconciliation tables with their storage-layer
+     * guards.
+     *
+     * <p>The partial unique indexes are the point. Two concurrent refund requests for one payment,
+     * or two receipts for one payment, or a re-run of detection flooding open exceptions, are all
+     * refused by Postgres itself, so a race cannot produce a duplicate that application-level
+     * checks would have missed.</p>
+     */
+    @Test
+    void financialIntegrityTables_AreDeclaredWithStorageLayerGuards() throws IOException {
+        String sql;
+        try (var stream = Files.list(migrationDir)) {
+            Path v170 = stream.filter(p -> p.getFileName().toString().startsWith("V170__"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("V170 financial integrity migration is missing"));
+            sql = Files.readString(v170, StandardCharsets.UTF_8);
+        }
+
+        for (String table : List.of("refund_requests", "payment_receipts",
+                "reconciliation_exceptions", "commission_policies", "discount_rules")) {
+            assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS " + table),
+                    "V170 must create " + table + " so the refund, receipt, commission and "
+                            + "reconciliation lifecycles have storage behind them");
+        }
+
+        // One refund in flight per payment, enforced by the database.
+        assertTrue(sql.contains("uniq_refund_open_per_payment"),
+                "refund_requests needs a partial unique index allowing only one open refund per "
+                        + "payment, so two concurrent requests cannot both proceed");
+        assertTrue(sql.contains("status IN ('REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'PROCESSING')"),
+                "the open-refund index must cover every non-terminal state");
+
+        // Exactly one receipt per payment; a refund produces a credit note, never a second receipt.
+        assertTrue(sql.contains("uniq_payment_receipts_number") && sql.contains("uniq_payment_receipts_payment"),
+                "payment_receipts needs unique indexes on receipt_number and payment_id so a "
+                        + "duplicate gateway callback cannot duplicate financial documents");
+
+        // Re-detection must not spam duplicates of an exception already open.
+        assertTrue(sql.contains("uniq_recon_open_per_reference"),
+                "reconciliation_exceptions needs a partial unique index on OPEN (type, reference) "
+                        + "so re-running a scan does not produce a wall of duplicates");
+
+        // Exactly one mechanism per discount rule: both or neither is ambiguous.
+        assertTrue(sql.contains("chk_discount_one_mechanism")
+                        && sql.contains("num_nonnulls(percent_off, fixed_amount_off) = 1"),
+                "discount_rules must enforce exactly one of percent_off / fixed_amount_off");
+
+        // No discount rule is activated by the migration either.
+        assertFalse(sql.matches("(?s).*INSERT INTO\\s+discount_rules(?s).*'ACTIVE'.*"),
+                "no discount rule may be seeded ACTIVE; a discount is an authorized decision");
+    }
+
+    /**
+     * V171 makes the refundable-balance invariant a property of the database.
+     *
+     * <p>The application now routes both refund paths through one adjustment that takes a row
+     * lock and re-checks the balance, but a financial rule this basic should not rest on every
+     * call site remembering to do it right. These constraints are the backstop: a future path
+     * that skips the check cannot record more refunded than was charged, so the same money can
+     * never be returned twice.</p>
+     *
+     * <p>Additive only - {@code refunded_amount} defaults to 0 and the governed path never wrote
+     * it above the charged amount, so every existing row already satisfies both rules.</p>
+     */
+    @Test
+    void refundIntegrityConstraints_AreDeclaredInMigrations() throws IOException {
+        String sql = readMigration("V171__refund_integrity.sql");
+
+        assertTrue(sql.contains("chk_refunded_not_overpaid")
+                        && sql.contains("CHECK (refunded_amount <= amount)"),
+                "V171 must forbid recording more refunded than charged, so a payment can never "
+                        + "be refunded beyond what was actually taken");
+        assertTrue(sql.contains("chk_refunded_not_negative")
+                        && sql.contains("CHECK (refunded_amount >= 0)"),
+                "V171 must forbid a negative refunded amount");
+
+        // Additive only: no history is rewritten and no existing column is dropped or narrowed,
+        // so applying it over live data cannot lose a transaction.
+        assertFalse(sql.matches("(?s).*(DROP COLUMN|ALTER COLUMN|RENAME TO).*"),
+                "V171 must be purely additive; a refund-invariant migration must never rewrite "
+                        + "payment history");
+    }
+
+    /**
      * V157 adds the publication/access columns that make a live class publicly discoverable.
      *
      * <p>The same reasoning as the news assertion applies, and it matters more here: the test

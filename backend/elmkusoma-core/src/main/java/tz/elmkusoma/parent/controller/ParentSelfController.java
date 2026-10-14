@@ -280,12 +280,15 @@ public class ParentSelfController {
         requireChildAccess(userId, req.getStudentId());
 
         var payment = paymentService.initiatePayment(userId, req.getStudentId(), institutionId,
-                req.getAmount(), req.getServiceType(), req.getServiceId(), req.getDescription());
+                req.getAmount(), req.getServiceType(), req.getServiceId(), req.getDescription(),
+                req.getIdempotencyKey());
 
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "paymentId", payment.getId().toString(),
                 "status", payment.getStatus(),
-                "amount", payment.getAmount()
+                "amount", payment.getAmount(),
+                "policyKey", payment.getPolicyKey() == null ? "" : payment.getPolicyKey(),
+                "policyVersion", payment.getPolicyVersion() == null ? 0 : payment.getPolicyVersion()
         )));
     }
 

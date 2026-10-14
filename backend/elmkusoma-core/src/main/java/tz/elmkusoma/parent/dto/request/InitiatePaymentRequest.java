@@ -23,4 +23,12 @@ public class InitiatePaymentRequest {
 
     private UUID serviceId;
     private String description;
+
+    /**
+     * Client-generated idempotency key. A retry after a lost response replays the payment
+     * already created instead of charging twice. Optional, but a checkout that can be retried
+     * should always send one.
+     */
+    @jakarta.validation.constraints.Size(max = 128, message = "An idempotency key must be at most 128 characters")
+    private String idempotencyKey;
 }
