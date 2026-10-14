@@ -232,6 +232,63 @@ export interface ParentPayments {
   pendingPayments: PaymentItem[]
 }
 
+/**
+ * Mobile-money networks Stakaba accepts. The value is case-sensitive on the
+ * wire and must be exactly one of these four strings.
+ */
+export type MobileMoneyNetwork = "Mpesa" | "AirtelMoney" | "TigoPesa" | "HaloPesa"
+
+export const MOBILE_MONEY_NETWORKS: { value: MobileMoneyNetwork; label: string }[] = [
+  { value: "Mpesa", label: "M-Pesa (Vodacom)" },
+  { value: "AirtelMoney", label: "Airtel Money" },
+  { value: "TigoPesa", label: "Mixx by Yas (Tigo Pesa)" },
+  { value: "HaloPesa", label: "HaloPesa" },
+]
+
+/**
+ * Normalises a Tanzanian number to the MSISDN form the gateway requires
+ * (255XXXXXXXXX). Mirrors the server-side rule so the user gets an immediate
+ * error instead of a round-trip; the server normalises again regardless.
+ */
+export function normaliseMsisdn(raw: string): string | null {
+  let v = (raw || "").trim().replace(/[\s()-]/g, "")
+  if (v.startsWith("+")) v = v.slice(1)
+  if (v.startsWith("0")) v = `255${v.slice(1)}`
+  else if (!v.startsWith("255") && v.length === 9) v = `255${v}`
+  return /^255[67]\d{8}$/.test(v) ? v : null
+}
+
+export interface PricingQuote {
+  serviceType: string
+  amount: number
+  discountAmount: number
+  netAmount: number
+  currency: string
+  accessDays: number
+  policyKey: string
+  policyVersion: number
+}
+
+export interface PaymentInitiationResult {
+  paymentId: string
+  status: string
+  amount: number
+  currency?: string
+  provider?: string
+  providerReference?: string
+  instructions?: string
+}
+
+export interface PaymentStatusResult {
+  paymentId: string
+  status: string
+  amount: number
+  currency?: string
+  paidAt?: string
+  providerReference?: string
+  receiptNumber?: string
+}
+
 export interface AchievementItem {
   id: string
   title: string
@@ -489,11 +546,39 @@ parentFetch<LiveClassData>(`/v1/my/children/${id}/live-classes`),
 
   getPayments: () => parentFetch<ParentPayments>("/v1/my/payments"),
   getChildPayments: (id: string) => parentFetch<PaymentItem[]>(`/v1/my/children/${id}/payments`),
-  initiatePayment: (data: { studentId: string; amount: number; serviceType: string; serviceId?: string; description?: string }) =>
-    parentFetch<{ paymentId: string; status: string; amount: number }>("/v1/my/payments/initiate", {
+
+  // Authoritative price for a service type. The server owns pricing, so the
+  // checkout shows this figure and echoes it back on initiate; the backend
+  // refuses any amount that disagrees with the ACTIVE pricing policy.
+  getPricingQuote: (serviceType: string) =>
+    parentFetch<PricingQuote>(`/v1/my/pricing/quote?serviceType=${encodeURIComponent(serviceType)}`),
+
+  initiatePayment: (data: {
+    studentId: string
+    amount: number
+    serviceType: string
+    serviceId?: string
+    description?: string
+    idempotencyKey?: string
+    mobileNumber?: string
+    network?: MobileMoneyNetwork
+  }) =>
+    parentFetch<PaymentInitiationResult>("/v1/my/payments/initiate", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // Starts (or safely replays) a mobile-money collection for a pending payment.
+  payWithMobileMoney: (paymentId: string, data: { mobileNumber: string; network: MobileMoneyNetwork }) =>
+    parentFetch<PaymentInitiationResult>(`/v1/my/payments/${paymentId}/mobile-money`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Re-checks a payment against the gateway. This is what grants access - a
+  // pending USSD prompt never does on its own.
+  getPaymentStatus: (paymentId: string) =>
+    parentFetch<PaymentStatusResult>(`/v1/my/payments/${paymentId}/status`, { method: "POST" }),
 
   getMessages: () => parentFetch<MessageData[]>("/v1/my/messages"),
   getSentMessages: () => parentFetch<MessageData[]>("/v1/my/messages/sent"),
