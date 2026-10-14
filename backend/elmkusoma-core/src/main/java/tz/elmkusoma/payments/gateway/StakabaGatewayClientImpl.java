@@ -3,6 +3,7 @@ package tz.elmkusoma.payments.gateway;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.HttpHeaders;
@@ -57,6 +58,13 @@ public class StakabaGatewayClientImpl implements StakabaGatewayClient {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
+    /**
+     * The Spring constructor. There are two constructors here, so Spring cannot choose one by
+     * itself and would fall back to looking for a default constructor that does not exist -
+     * which fails the whole application context, not just this bean. Marked {@code @Autowired}
+     * so it is unambiguous which one the container uses.
+     */
+    @Autowired
     public StakabaGatewayClientImpl(StakabaProperties properties, ObjectMapper objectMapper) {
         this(properties, buildClient(properties), objectMapper);
     }
@@ -103,7 +111,7 @@ public class StakabaGatewayClientImpl implements StakabaGatewayClient {
                     .header("x-api-key", properties.getApiKey())
                     .body(body)
                     .retrieve()
-                    .body(new TypeReference<Map<String, Object>>() {
+                    .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
                     });
         } catch (HttpClientErrorException | HttpServerErrorException ex) {
             // A 5xx on a NON-idempotent collection is ambiguous: the prompt may
@@ -139,7 +147,7 @@ public class StakabaGatewayClientImpl implements StakabaGatewayClient {
                         .uri(TRANSACTION_PATH, internalReference)
                         .header("x-api-key", properties.getApiKey())
                         .retrieve()
-                        .body(new TypeReference<Map<String, Object>>() {
+                        .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
                         });
                 return parseTransaction(internalReference, response);
             } catch (HttpClientErrorException ex) {
