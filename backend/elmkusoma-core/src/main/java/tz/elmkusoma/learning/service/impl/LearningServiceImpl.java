@@ -4,9 +4,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.academic.domain.ClassGroup;
+import tz.elmkusoma.academic.domain.Subject;
+import tz.elmkusoma.academic.repository.ClassGroupRepository;
+import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.common.ClassAccessGuard;
+import tz.elmkusoma.common.OwnershipGuard;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.learning.domain.*;
@@ -24,6 +29,9 @@ import tz.elmkusoma.student.domain.StudentClassAssignment;
 import tz.elmkusoma.student.domain.StudentStatus;
 import tz.elmkusoma.student.repository.StudentClassAssignmentRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
+import tz.elmkusoma.teacher.domain.Teacher;
+import tz.elmkusoma.teacher.repository.TeacherAssignmentRepository;
+import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -49,14 +57,25 @@ public class LearningServiceImpl implements LearningService {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final ClassAccessGuard classAccessGuard;
+    private final OwnershipGuard ownershipGuard;
+    private final ClassGroupRepository classGroupRepository;
+    private final SubjectRepository subjectRepository;
+    private final TeacherRepository teacherRepository;
+    private final TeacherAssignmentRepository teacherAssignmentRepository;
 
     @Override
     public LessonResponse createLesson(UUID institutionId, LessonRequest request) {
-        return createLesson(institutionId, request, null);
+        return createLesson(institutionId, request, null, null);
     }
 
     @Override
     public LessonResponse createLesson(UUID institutionId, LessonRequest request, UUID publisherId) {
+        return createLesson(institutionId, request, publisherId, null);
+    }
+
+    @Override
+    public LessonResponse createLesson(UUID institutionId, LessonRequest request, UUID publisherId, String userRole) {
+        validateAudience(institutionId, request.getClassGroupId(), request.getSubjectId(), publisherId, userRole);
         boolean published = request.getIsPublished() != null && request.getIsPublished();
         Lesson lesson = Lesson.builder()
                 .institutionId(institutionId)
@@ -247,6 +266,70 @@ public class LearningServiceImpl implements LearningService {
                 .map(this::toLessonResponse).toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<LessonResponse> getLessonsByClass(UUID classGroupId, UUID institutionId, boolean includeUnpublished) {
+        verifyClassGroupBelongsToInstitution(classGroupId, institutionId);
+        return getLessonsByClass(classGroupId, includeUnpublished);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId, UUID institutionId,
+                                                            boolean includeUnpublished) {
+        verifyClassGroupBelongsToInstitution(classGroupId, institutionId);
+        return getLessonsBySubjectAndClass(subjectId, classGroupId, includeUnpublished);
+    }
+
+    /**
+     * Create/retarget audience guard: the target class group must exist and belong
+     * to the caller's institution (a crafted UUID pointing at another tenant's
+     * class is rejected before anything is persisted), and a TEACHER caller must
+     * additionally hold an active teaching assignment for that class. Admin roles
+     * satisfy institution containment only. Mirrors the teacher-assignment gate in
+     * {@code ResourceService#assertAssignmentAudience}.
+     */
+    private void validateAudience(UUID institutionId, UUID classGroupId, UUID subjectId,
+                                  UUID userId, String userRole) {
+        verifyClassGroupBelongsToInstitution(classGroupId, institutionId);
+        verifySubjectBelongsToInstitution(institutionId, subjectId);
+        if (classGroupId == null || !"TEACHER".equals(userRole)) {
+            return;
+        }
+        UUID teacherId = teacherRepository
+                .findByUserIdAndInstitutionId(userId, institutionId)
+                .map(Teacher::getId)
+                .orElse(null);
+        boolean assigned = teacherId != null
+                && teacherAssignmentRepository.existsByTeacherIdAndClassGroupIdAndIsDeletedFalse(
+                        teacherId, classGroupId);
+        if (!assigned) {
+            throw new SecurityException("You are not assigned to this class");
+        }
+    }
+
+    /** Cross-tenant guard for a class-group target: 404 when missing, 403 when foreign. */
+    private void verifyClassGroupBelongsToInstitution(UUID classGroupId, UUID institutionId) {
+        if (classGroupId == null) {
+            return;
+        }
+        ClassGroup classGroup = classGroupRepository.findById(classGroupId)
+                .filter(cg -> !Boolean.TRUE.equals(cg.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("ClassGroup", "id", classGroupId));
+        ownershipGuard.verifyInstitution(classGroup.getInstitutionId(), institutionId);
+    }
+
+    /** Cross-tenant guard for a subject target: 404 when missing, 403 when foreign. */
+    private void verifySubjectBelongsToInstitution(UUID institutionId, UUID subjectId) {
+        if (subjectId == null) {
+            return;
+        }
+        Subject subject = subjectRepository.findById(subjectId)
+                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", subjectId));
+        ownershipGuard.verifyInstitution(subject.getInstitutionId(), institutionId);
+    }
+
     /** Institution + ownership enforcement: creator or admin only. */
     private void assertCanManage(Lesson lesson, UUID institutionId, String userEmail, String userRole) {
         if (institutionId == null || !institutionId.equals(lesson.getInstitutionId())) {
@@ -318,6 +401,8 @@ public class LearningServiceImpl implements LearningService {
 
     @Override
     public AssignmentResponse createAssignment(UUID institutionId, AssignmentRequest request, String userEmail, String userRole) {
+        validateAudience(institutionId, request.getClassGroupId(), request.getSubjectId(),
+                resolveActorUserId(userEmail), userRole);
         Assignment assignment = Assignment.builder()
                 .institutionId(institutionId)
                 .subjectId(request.getSubjectId())
@@ -385,6 +470,33 @@ public class LearningServiceImpl implements LearningService {
                 AuditLog.AuditAction.UPDATE, oldValues,
                 Map.of("title", saved.getTitle(), "status", String.valueOf(saved.getStatus())));
         return toAssignmentResponse(saved);
+    }
+
+    /**
+     * Pre-flight retarget guard for {@code PUT /assignments/{id}}, called by the
+     * controller before {@link #updateAssignment}: when the request points the
+     * assignment at a different class group or subject than the stored row, the new
+     * target must exist and belong to the caller's institution (404 / 403), and a
+     * TEACHER caller must hold an active teaching assignment for the new class.
+     * Unchanged targets and admin roles keep their existing behavior.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public void assertAssignmentRetargetInScope(UUID assignmentId, UUID institutionId, AssignmentRequest request,
+                                                String userEmail, String userRole) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", assignmentId));
+        assertCanManageAssignment(assignment, institutionId, userEmail, userRole);
+
+        boolean classRetargeted = request.getClassGroupId() != null
+                && !request.getClassGroupId().equals(assignment.getClassGroupId());
+        boolean subjectRetargeted = request.getSubjectId() != null
+                && !request.getSubjectId().equals(assignment.getSubjectId());
+        if (classRetargeted || subjectRetargeted) {
+            validateAudience(institutionId, request.getClassGroupId(), request.getSubjectId(),
+                    resolveActorUserId(userEmail), userRole);
+        }
     }
 
     @Override

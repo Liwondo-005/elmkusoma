@@ -3,6 +3,7 @@ package tz.elmkusoma.grading.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.common.OwnershipGuard;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.grading.domain.GradeBoundary;
 import tz.elmkusoma.grading.dto.request.CreateGradeBoundaryRequest;
@@ -21,6 +22,14 @@ import java.util.stream.Collectors;
 public class GradeBoundaryServiceImpl implements GradeBoundaryService {
 
     private final GradeBoundaryRepository gradeBoundaryRepository;
+    private final OwnershipGuard ownershipGuard;
+
+    /** Fails closed: {@link OwnershipGuard} rejects nulls; only platform ADMIN skips the check. */
+    private void verifyOwnership(UUID resourceInstitutionId, UUID institutionId, String userRole) {
+        if (!"ADMIN".equals(userRole)) {
+            ownershipGuard.verifyInstitution(resourceInstitutionId, institutionId);
+        }
+    }
 
     @Override
     public GradeBoundaryResponse create(UUID institutionId, CreateGradeBoundaryRequest request) {
@@ -41,9 +50,14 @@ public class GradeBoundaryServiceImpl implements GradeBoundaryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<GradeBoundaryResponse> getByGradingScaleId(UUID gradingScaleId) {
-        return gradeBoundaryRepository.findByGradingScaleIdAndIsDeletedFalse(gradingScaleId)
-                .stream()
+    public List<GradeBoundaryResponse> getByGradingScaleId(UUID gradingScaleId, UUID institutionId, String userRole) {
+        List<GradeBoundary> boundaries =
+                gradeBoundaryRepository.findByGradingScaleIdAndIsDeletedFalse(gradingScaleId);
+        // Empty list leaks nothing — keep the existing "unknown id → empty" behavior.
+        for (GradeBoundary boundary : boundaries) {
+            verifyOwnership(boundary.getInstitutionId(), institutionId, userRole);
+        }
+        return boundaries.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -59,18 +73,20 @@ public class GradeBoundaryServiceImpl implements GradeBoundaryService {
 
     @Override
     @Transactional(readOnly = true)
-    public GradeBoundaryResponse getById(UUID id) {
+    public GradeBoundaryResponse getById(UUID id, UUID institutionId, String userRole) {
         GradeBoundary boundary = gradeBoundaryRepository.findById(id)
                 .filter(b -> !b.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grade boundary not found"));
+        verifyOwnership(boundary.getInstitutionId(), institutionId, userRole);
         return mapToResponse(boundary);
     }
 
     @Override
-    public GradeBoundaryResponse update(UUID id, CreateGradeBoundaryRequest request) {
+    public GradeBoundaryResponse update(UUID id, UUID institutionId, String userRole, CreateGradeBoundaryRequest request) {
         GradeBoundary boundary = gradeBoundaryRepository.findById(id)
                 .filter(b -> !b.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grade boundary not found"));
+        verifyOwnership(boundary.getInstitutionId(), institutionId, userRole);
 
         boundary.setGradeLabel(request.getGradeLabel());
         boundary.setGradeName(request.getGradeName());
@@ -84,9 +100,10 @@ public class GradeBoundaryServiceImpl implements GradeBoundaryService {
     }
 
     @Override
-    public void delete(UUID id) {
+    public void delete(UUID id, UUID institutionId, String userRole) {
         GradeBoundary boundary = gradeBoundaryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade boundary not found"));
+        verifyOwnership(boundary.getInstitutionId(), institutionId, userRole);
         boundary.setIsDeleted(true);
         gradeBoundaryRepository.save(boundary);
     }

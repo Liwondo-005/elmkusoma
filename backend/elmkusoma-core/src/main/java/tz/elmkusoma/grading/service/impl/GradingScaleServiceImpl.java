@@ -3,6 +3,7 @@ package tz.elmkusoma.grading.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.common.OwnershipGuard;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.grading.domain.GradingScale;
 import tz.elmkusoma.grading.dto.request.CreateGradingScaleRequest;
@@ -24,6 +25,14 @@ public class GradingScaleServiceImpl implements GradingScaleService {
 
     private final GradingScaleRepository gradingScaleRepository;
     private final GradeBoundaryRepository gradeBoundaryRepository;
+    private final OwnershipGuard ownershipGuard;
+
+    /** Fails closed: {@link OwnershipGuard} rejects nulls; only platform ADMIN skips the check. */
+    private void verifyOwnership(UUID resourceInstitutionId, UUID institutionId, String userRole) {
+        if (!"ADMIN".equals(userRole)) {
+            ownershipGuard.verifyInstitution(resourceInstitutionId, institutionId);
+        }
+    }
 
     @Override
     public GradingScaleResponse create(UUID institutionId, CreateGradingScaleRequest request) {
@@ -52,18 +61,20 @@ public class GradingScaleServiceImpl implements GradingScaleService {
 
     @Override
     @Transactional(readOnly = true)
-    public GradingScaleResponse getById(UUID id) {
+    public GradingScaleResponse getById(UUID id, UUID institutionId, String userRole) {
         GradingScale scale = gradingScaleRepository.findById(id)
                 .filter(s -> !s.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grading scale not found"));
+        verifyOwnership(scale.getInstitutionId(), institutionId, userRole);
         return mapToResponse(scale);
     }
 
     @Override
-    public GradingScaleResponse update(UUID id, CreateGradingScaleRequest request) {
+    public GradingScaleResponse update(UUID id, UUID institutionId, String userRole, CreateGradingScaleRequest request) {
         GradingScale scale = gradingScaleRepository.findById(id)
                 .filter(s -> !s.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grading scale not found"));
+        verifyOwnership(scale.getInstitutionId(), institutionId, userRole);
 
         scale.setName(request.getName());
         scale.setDescription(request.getDescription());
@@ -77,9 +88,10 @@ public class GradingScaleServiceImpl implements GradingScaleService {
     }
 
     @Override
-    public void delete(UUID id) {
+    public void delete(UUID id, UUID institutionId, String userRole) {
         GradingScale scale = gradingScaleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grading scale not found"));
+        verifyOwnership(scale.getInstitutionId(), institutionId, userRole);
         scale.setIsDeleted(true);
         gradingScaleRepository.save(scale);
     }

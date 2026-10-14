@@ -70,8 +70,11 @@ public class GradingController {
     @GetMapping("/scales/{id}")
     @Operation(summary = "Get grading scale by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<GradingScaleResponse>> getGradingScale(@PathVariable UUID id) {
-        GradingScaleResponse response = gradingScaleService.getById(id);
+    public ResponseEntity<ApiResponse<GradingScaleResponse>> getGradingScale(
+            @PathVariable UUID id,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        GradingScaleResponse response = gradingScaleService.getById(id, institutionId, userRole);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -80,16 +83,21 @@ public class GradingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<GradingScaleResponse>> updateGradingScale(
             @PathVariable UUID id,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userRole") String userRole,
             @Valid @RequestBody CreateGradingScaleRequest request) {
-        GradingScaleResponse response = gradingScaleService.update(id, request);
+        GradingScaleResponse response = gradingScaleService.update(id, institutionId, userRole, request);
         return ResponseEntity.ok(ApiResponse.success("Grading scale updated successfully", response));
     }
 
     @DeleteMapping("/scales/{id}")
     @Operation(summary = "Delete grading scale")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteGradingScale(@PathVariable UUID id) {
-        gradingScaleService.delete(id);
+    public ResponseEntity<ApiResponse<Void>> deleteGradingScale(
+            @PathVariable UUID id,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        gradingScaleService.delete(id, institutionId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Grading scale deleted successfully", null));
     }
 
@@ -107,16 +115,22 @@ public class GradingController {
     @GetMapping("/boundaries/scale/{scaleId}")
     @Operation(summary = "Get grade boundaries by scale")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<List<GradeBoundaryResponse>>> getGradeBoundaries(@PathVariable UUID scaleId) {
-        List<GradeBoundaryResponse> response = gradeBoundaryService.getByGradingScaleId(scaleId);
+    public ResponseEntity<ApiResponse<List<GradeBoundaryResponse>>> getGradeBoundaries(
+            @PathVariable UUID scaleId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        List<GradeBoundaryResponse> response = gradeBoundaryService.getByGradingScaleId(scaleId, institutionId, userRole);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/boundaries/{id}")
     @Operation(summary = "Get grade boundary by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<GradeBoundaryResponse>> getGradeBoundary(@PathVariable UUID id) {
-        GradeBoundaryResponse response = gradeBoundaryService.getById(id);
+    public ResponseEntity<ApiResponse<GradeBoundaryResponse>> getGradeBoundary(
+            @PathVariable UUID id,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        GradeBoundaryResponse response = gradeBoundaryService.getById(id, institutionId, userRole);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -125,16 +139,21 @@ public class GradingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<GradeBoundaryResponse>> updateGradeBoundary(
             @PathVariable UUID id,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userRole") String userRole,
             @Valid @RequestBody CreateGradeBoundaryRequest request) {
-        GradeBoundaryResponse response = gradeBoundaryService.update(id, request);
+        GradeBoundaryResponse response = gradeBoundaryService.update(id, institutionId, userRole, request);
         return ResponseEntity.ok(ApiResponse.success("Grade boundary updated successfully", response));
     }
 
     @DeleteMapping("/boundaries/{id}")
     @Operation(summary = "Delete grade boundary")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteGradeBoundary(@PathVariable UUID id) {
-        gradeBoundaryService.delete(id);
+    public ResponseEntity<ApiResponse<Void>> deleteGradeBoundary(
+            @PathVariable UUID id,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        gradeBoundaryService.delete(id, institutionId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Grade boundary deleted successfully", null));
     }
 
@@ -214,8 +233,17 @@ public class GradingController {
     public ResponseEntity<ApiResponse<ReportCardResponse>> updateReportCardStatus(
             @PathVariable UUID id,
             @RequestParam String status,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {
+        if (!"ADMIN".equals(userRole)) {
+            var card = reportCardService.getById(id);
+            var student = studentRepository.findById(card.getStudentId()).orElse(null);
+            if (student != null && student.getInstitutionId() != null && !student.getInstitutionId().equals(institutionId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied: report card belongs to another institution"));
+            }
+        }
         ReportCardResponse response = reportCardService.updateStatus(id, status, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Report card status updated", response));
     }

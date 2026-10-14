@@ -7,19 +7,23 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Reads and writes are tenant-scoped: every method takes the caller's
+ * institutionId (server-derived) and fails closed across tenants (403).
+ */
 public interface NurseryActivityService {
 
     NurseryActivityResponse create(UUID institutionId, UUID conductedBy, CreateNurseryActivityRequest request);
 
-    List<NurseryActivityResponse> getByClassGroupId(UUID classGroupId);
+    List<NurseryActivityResponse> getByClassGroupId(UUID institutionId, UUID classGroupId);
 
-    List<NurseryActivityResponse> getByClassAndDate(UUID classGroupId, LocalDate date);
+    List<NurseryActivityResponse> getByClassAndDate(UUID institutionId, UUID classGroupId, LocalDate date);
 
-    NurseryActivityResponse getById(UUID id);
+    NurseryActivityResponse getById(UUID institutionId, UUID id);
 
-    NurseryActivityResponse update(UUID id, CreateNurseryActivityRequest request);
+    NurseryActivityResponse update(UUID institutionId, UUID id, CreateNurseryActivityRequest request);
 
-    void delete(UUID id);
+    void delete(UUID institutionId, UUID id);
 
-    List<NurseryActivityResponse> getByType(String activityType);
+    List<NurseryActivityResponse> getByType(UUID institutionId, String activityType);
 }

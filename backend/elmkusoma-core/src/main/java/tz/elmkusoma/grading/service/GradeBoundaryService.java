@@ -12,15 +12,19 @@ public interface GradeBoundaryService {
 
     GradeBoundaryResponse create(UUID institutionId, CreateGradeBoundaryRequest request);
 
-    List<GradeBoundaryResponse> getByGradingScaleId(UUID gradingScaleId);
+    /** Institution-scoped read; platform {@code ADMIN} bypasses the institution check. */
+    List<GradeBoundaryResponse> getByGradingScaleId(UUID gradingScaleId, UUID institutionId, String userRole);
 
     List<GradeBoundaryResponse> getByInstitutionId(UUID institutionId);
 
-    GradeBoundaryResponse getById(UUID id);
+    /** Institution-scoped read; platform {@code ADMIN} bypasses the institution check. */
+    GradeBoundaryResponse getById(UUID id, UUID institutionId, String userRole);
 
-    GradeBoundaryResponse update(UUID id, CreateGradeBoundaryRequest request);
+    /** Institution-scoped update; platform {@code ADMIN} bypasses the institution check. */
+    GradeBoundaryResponse update(UUID id, UUID institutionId, String userRole, CreateGradeBoundaryRequest request);
 
-    void delete(UUID id);
+    /** Institution-scoped delete; platform {@code ADMIN} bypasses the institution check. */
+    void delete(UUID id, UUID institutionId, String userRole);
 
     String calculateGradeForPercentage(UUID gradingScaleId, java.math.BigDecimal percentage);
 }

@@ -35,8 +35,10 @@ public class AssessmentController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole,
+            @RequestAttribute("userId") UUID userId,
             @Valid @RequestBody AssessmentRequest request) {
-        AssessmentResponse response = assessmentService.createAssessment(institutionId, request, userEmail, userRole);
+        AssessmentResponse response =
+                assessmentService.createAssessment(institutionId, request, userEmail, userRole, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Assessment created", response));
     }
@@ -49,8 +51,10 @@ public class AssessmentController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole,
+            @RequestAttribute("userId") UUID userId,
             @Valid @RequestBody AssessmentRequest request) {
-        AssessmentResponse response = assessmentService.updateAssessment(id, request, institutionId, userEmail, userRole);
+        AssessmentResponse response =
+                assessmentService.updateAssessment(id, request, institutionId, userEmail, userRole, userId);
         return ResponseEntity.ok(ApiResponse.success("Assessment updated", response));
     }
 

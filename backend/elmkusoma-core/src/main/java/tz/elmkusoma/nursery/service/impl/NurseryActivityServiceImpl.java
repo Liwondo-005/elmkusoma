@@ -3,6 +3,9 @@ package tz.elmkusoma.nursery.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.academic.domain.ClassGroup;
+import tz.elmkusoma.academic.repository.ClassGroupRepository;
+import tz.elmkusoma.common.OwnershipGuard;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.nursery.domain.NurseryActivity;
 import tz.elmkusoma.nursery.dto.request.CreateNurseryActivityRequest;
@@ -20,6 +23,8 @@ import java.util.stream.Collectors;
 public class NurseryActivityServiceImpl implements NurseryActivityService {
 
     private final NurseryActivityRepository nurseryActivityRepository;
+    private final OwnershipGuard ownershipGuard;
+    private final ClassGroupRepository classGroupRepository;
 
     @Override
     public NurseryActivityResponse create(UUID institutionId, UUID conductedBy, CreateNurseryActivityRequest request) {
@@ -45,7 +50,8 @@ public class NurseryActivityServiceImpl implements NurseryActivityService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryActivityResponse> getByClassGroupId(UUID classGroupId) {
+    public List<NurseryActivityResponse> getByClassGroupId(UUID institutionId, UUID classGroupId) {
+        verifyClassGroupInScope(institutionId, classGroupId);
         return nurseryActivityRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId)
                 .stream()
                 .map(this::mapToResponse)
@@ -54,7 +60,8 @@ public class NurseryActivityServiceImpl implements NurseryActivityService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryActivityResponse> getByClassAndDate(UUID classGroupId, java.time.LocalDate date) {
+    public List<NurseryActivityResponse> getByClassAndDate(UUID institutionId, UUID classGroupId, java.time.LocalDate date) {
+        verifyClassGroupInScope(institutionId, classGroupId);
         return nurseryActivityRepository.findByClassGroupIdAndActivityDateAndIsDeletedFalse(classGroupId, date)
                 .stream()
                 .map(this::mapToResponse)
@@ -63,18 +70,20 @@ public class NurseryActivityServiceImpl implements NurseryActivityService {
 
     @Override
     @Transactional(readOnly = true)
-    public NurseryActivityResponse getById(UUID id) {
+    public NurseryActivityResponse getById(UUID institutionId, UUID id) {
         NurseryActivity activity = nurseryActivityRepository.findById(id)
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery activity not found"));
+        verifyClassGroupInScope(institutionId, activity.getClassGroupId());
         return mapToResponse(activity);
     }
 
     @Override
-    public NurseryActivityResponse update(UUID id, CreateNurseryActivityRequest request) {
+    public NurseryActivityResponse update(UUID institutionId, UUID id, CreateNurseryActivityRequest request) {
         NurseryActivity activity = nurseryActivityRepository.findById(id)
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery activity not found"));
+        verifyClassGroupInScope(institutionId, activity.getClassGroupId());
 
         activity.setActivityName(request.getActivityName());
         activity.setActivityType(NurseryActivity.ActivityType.valueOf(request.getActivityType()));
@@ -92,21 +101,36 @@ public class NurseryActivityServiceImpl implements NurseryActivityService {
     }
 
     @Override
-    public void delete(UUID id) {
+    public void delete(UUID institutionId, UUID id) {
         NurseryActivity activity = nurseryActivityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery activity not found"));
+        verifyClassGroupInScope(institutionId, activity.getClassGroupId());
         activity.setIsDeleted(true);
         nurseryActivityRepository.save(activity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryActivityResponse> getByType(String activityType) {
-        return nurseryActivityRepository.findByActivityTypeAndIsDeletedFalse(
-                        NurseryActivity.ActivityType.valueOf(activityType))
+    public List<NurseryActivityResponse> getByType(UUID institutionId, String activityType) {
+        NurseryActivity.ActivityType type = NurseryActivity.ActivityType.valueOf(activityType);
+        // Scoped by institution at the query level; the unscoped type finder would
+        // leak every tenant's activities to any caller.
+        return nurseryActivityRepository.findByInstitutionIdAndIsDeletedFalse(institutionId)
                 .stream()
+                .filter(a -> type == a.getActivityType())
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Tenant check for class-keyed access: the class group owns the tenant
+     * boundary (its {@code institution_id} column is NOT NULL and server-set).
+     * Unknown class group -&gt; 404; another tenant's class group -&gt; 403.
+     */
+    private void verifyClassGroupInScope(UUID institutionId, UUID classGroupId) {
+        ClassGroup classGroup = classGroupRepository.findById(classGroupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Class group not found"));
+        ownershipGuard.verifyInstitution(classGroup.getInstitutionId(), institutionId);
     }
 
     private NurseryActivityResponse mapToResponse(NurseryActivity activity) {

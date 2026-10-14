@@ -11,5 +11,6 @@ import java.util.UUID;
 public interface NurseryTanzaniaDiscoveryRepository extends JpaRepository<NurseryTanzaniaDiscovery, UUID> {
     List<NurseryTanzaniaDiscovery> findByIsPublishedAndIsDeletedFalse(Boolean isPublished);
     List<NurseryTanzaniaDiscovery> findByCategoryAndIsDeletedFalse(NurseryTanzaniaDiscovery.DiscoveryCategory category);
+    List<NurseryTanzaniaDiscovery> findByCategoryAndInstitutionIdAndIsDeletedFalse(NurseryTanzaniaDiscovery.DiscoveryCategory category, UUID institutionId);
     List<NurseryTanzaniaDiscovery> findByClassGroupIdAndIsDeletedFalse(UUID classGroupId);
 }

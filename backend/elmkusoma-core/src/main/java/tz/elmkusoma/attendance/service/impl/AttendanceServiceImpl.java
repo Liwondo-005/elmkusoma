@@ -3,6 +3,8 @@ package tz.elmkusoma.attendance.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.academic.domain.ClassGroup;
+import tz.elmkusoma.academic.repository.ClassGroupRepository;
 import tz.elmkusoma.attendance.domain.AttendanceRecord;
 import tz.elmkusoma.attendance.domain.AttendanceSummary;
 import tz.elmkusoma.attendance.dto.request.BulkMarkAttendanceRequest;
@@ -12,6 +14,10 @@ import tz.elmkusoma.attendance.dto.response.AttendanceSummaryResponse;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
 import tz.elmkusoma.attendance.repository.AttendanceSummaryRepository;
 import tz.elmkusoma.attendance.service.AttendanceService;
+import tz.elmkusoma.common.OwnershipGuard;
+import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,6 +34,9 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final AttendanceSummaryRepository attendanceSummaryRepository;
+    private final OwnershipGuard ownershipGuard;
+    private final ClassGroupRepository classGroupRepository;
+    private final StudentRepository studentRepository;
 
     @Override
     public AttendanceRecordResponse markAttendance(UUID institutionId, UUID markedBy, MarkAttendanceRequest request) {
@@ -47,7 +56,8 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttendanceRecordResponse> getByClassAndDate(UUID classGroupId, LocalDate date) {
+    public List<AttendanceRecordResponse> getByClassAndDate(UUID institutionId, UUID classGroupId, LocalDate date) {
+        verifyClassGroupInScope(institutionId, classGroupId);
         return attendanceRecordRepository.findByClassGroupIdAndAttendanceDateAndIsDeletedFalse(classGroupId, date)
                 .stream()
                 .map(this::mapToResponse)
@@ -56,7 +66,8 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttendanceRecordResponse> getByStudentAndDateRange(UUID studentId, LocalDate startDate, LocalDate endDate) {
+    public List<AttendanceRecordResponse> getByStudentAndDateRange(UUID institutionId, UUID studentId, LocalDate startDate, LocalDate endDate) {
+        verifyStudentInScope(institutionId, studentId);
         return attendanceRecordRepository.findByStudentAndDateRange(studentId, startDate, endDate)
                 .stream()
                 .map(this::mapToResponse)
@@ -65,7 +76,8 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional(readOnly = true)
-    public AttendanceSummaryResponse getSummary(UUID studentId, UUID termId) {
+    public AttendanceSummaryResponse getSummary(UUID institutionId, UUID studentId, UUID termId) {
+        verifyStudentInScope(institutionId, studentId);
         return attendanceSummaryRepository.findByStudentIdAndTermIdAndIsDeletedFalse(studentId, termId)
                 .map(this::mapToSummaryResponse)
                 .orElse(null);
@@ -73,7 +85,8 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttendanceSummaryResponse> getByClassAndTerm(UUID classGroupId, UUID termId) {
+    public List<AttendanceSummaryResponse> getByClassAndTerm(UUID institutionId, UUID classGroupId, UUID termId) {
+        verifyClassGroupInScope(institutionId, classGroupId);
         return attendanceSummaryRepository.findByClassGroupIdAndTermIdAndIsDeletedFalse(classGroupId, termId)
                 .stream()
                 .map(this::mapToSummaryResponse)
@@ -141,6 +154,29 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         attendanceSummaryRepository.save(summary);
+    }
+
+    /**
+     * Tenant check for class-keyed attendance reads: the class group owns the
+     * tenant boundary (its {@code institution_id} column is NOT NULL and
+     * server-set). Unknown class group -&gt; 404; another tenant's class
+     * group -&gt; 403.
+     */
+    private void verifyClassGroupInScope(UUID institutionId, UUID classGroupId) {
+        ClassGroup classGroup = classGroupRepository.findById(classGroupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Class group not found"));
+        ownershipGuard.verifyInstitution(classGroup.getInstitutionId(), institutionId);
+    }
+
+    /**
+     * Tenant check for student-keyed attendance reads: the student owns the
+     * tenant boundary. Unknown student -&gt; 404; another tenant's student
+     * -&gt; 403.
+     */
+    private void verifyStudentInScope(UUID institutionId, UUID studentId) {
+        Student student = studentRepository.findByIdAndIsDeletedFalse(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        ownershipGuard.verifyInstitution(student.getInstitutionId(), institutionId);
     }
 
     private AttendanceRecordResponse mapToResponse(AttendanceRecord record) {
