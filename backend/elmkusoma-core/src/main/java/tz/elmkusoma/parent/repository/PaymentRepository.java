@@ -28,6 +28,9 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     Page<Payment> findAllByIsDeletedFalse(Pageable pageable);
     boolean existsByProviderReferenceAndIdNotAndIsDeletedFalse(String providerReference, UUID id);
 
+    /** Gateway (or manual) reference lookup - used to bind inbound callbacks to the local payment. */
+    Optional<Payment> findByProviderReferenceAndIsDeletedFalse(String providerReference);
+
     /** Idempotent replay: the same purchase retried resolves to the payment already created. */
     Optional<Payment> findByIdempotencyKeyAndIsDeletedFalse(String idempotencyKey);
 

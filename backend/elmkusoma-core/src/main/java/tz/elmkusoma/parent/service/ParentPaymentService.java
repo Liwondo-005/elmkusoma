@@ -153,6 +153,24 @@ public class ParentPaymentService {
 
     @Transactional
     public Payment verifyPayment(UUID paymentId, String providerReference, UUID verifiedBy) {
+        return verifyPayment(paymentId, providerReference, verifiedBy, "manual");
+    }
+
+    /**
+     * Confirms a payment and grants its entitlement exactly once.
+     *
+     * @param provider which gateway confirmed this payment; the historical
+     *                 default is {@code "manual"} (admin verification). The
+     *                 Stakaba adapter passes {@code "stakaba"} so the audit
+     *                 trail and reports show how the confirmation happened.
+     *                 Callers MUST have already reconciled amount/currency
+     *                 against the stored record (the webhook controller and
+     *                 {@code PaymentGatewayService} both do this before
+     *                 calling).
+     */
+    @Transactional
+    public Payment verifyPayment(UUID paymentId, String providerReference, UUID verifiedBy,
+                                 String provider) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("Payment not found"));
 
@@ -167,7 +185,7 @@ public class ParentPaymentService {
         // record is authoritative; the webhook controller reconciles any gateway-sent
         // amount/currency against it before calling verify.
         payment.setProviderReference(providerReference);
-        payment.setProvider("manual");
+        payment.setProvider(provider == null || provider.isBlank() ? "manual" : provider);
         payment.setStatus("COMPLETED");
         payment.setPaidAt(LocalDateTime.now());
 
