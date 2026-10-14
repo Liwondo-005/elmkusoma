@@ -56,7 +56,21 @@ public class CertificateTemplate extends BaseEntity {
     void onCreate() {
         if (version == null) version = 1;
         if (isActive == null) isActive = true;
+        if (templateFamily == null) templateFamily = TemplateFamily.FAMILY_TRAINING;
     }
+
+    /**
+     * Which foundational family this template belongs to.
+     *
+     * <p>Added by V161 and defaulting to the training family, so every pre-existing template keeps
+     * working unchanged. {@code TemplateType} is left exactly as it was: it describes what a
+     * certificate is for, while the family describes the document shape and how much review it
+     * attracts. Both families share one entity, one lifecycle and one verification path.</p>
+     */
+    @Column(name = "template_family", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private TemplateFamily templateFamily = TemplateFamily.FAMILY_TRAINING;
 
     public enum TemplateType {
         COMPLETION,
@@ -64,5 +78,19 @@ public class CertificateTemplate extends BaseEntity {
         PARTICIPATION,
         TRANSCRIPT,
         CUSTOM
+    }
+
+    /**
+     * FOUNDATIONAL FAMILIES.
+     *
+     * <p>FAMILY_ACADEMIC is for formal academic awards. It is not a claim that any qualification
+     * is accredited or nationally recognised - that is a property of the issuer's authority and the
+     * qualification's status, not of the template, and this system does not assert it anywhere.</p>
+     */
+    public enum TemplateFamily {
+        /** Course or training completion, attendance and achievement documents. */
+        FAMILY_TRAINING,
+        /** Formal academic award documents issued by an eligible institution. */
+        FAMILY_ACADEMIC
     }
 }

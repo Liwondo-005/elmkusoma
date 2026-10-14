@@ -401,6 +401,8 @@ const teacherNavSections: TeacherNavSection[] = [
       { label: "Assignments", labelKey: "assignments", href: "/dashboard/teacher/assignments", icon: FileText },
       { label: "Assessments", labelKey: "assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
       { label: "Grading", labelKey: "grading", href: "/dashboard/teacher/grading", icon: Award },
+      { label: "Certificates", labelKey: "certificates", href: "/dashboard/certificates", icon: FileText },
+      { label: "Approval Queue", labelKey: "approvalQueue", href: "/dashboard/certificates/approvals", icon: ClipboardCheck },
     ],
   },
   {
@@ -545,14 +547,22 @@ const adminNavGroups: AdminNavGroup[] = [
     ],
   },
   {
+    id: "certificates",
+    group: "LEARNING",
+    groupKey: "groupLearning",
+    items: [
+      { label: "Certificates", labelKey: "certificates", href: "/dashboard/certificates", icon: Award },
+      { label: "Approval Queue", labelKey: "approvalQueue", href: "/dashboard/certificates/approvals", icon: ClipboardCheck },
+    ],
+  },
+  {
     id: "insights",
     group: "INSIGHTS",
     groupKey: "groupInsights",
     items: [
       { label: "Audit Log", labelKey: "auditLog", href: "/dashboard/admin/audit", icon: Eye },
     ],
-  },
-  {
+  },  {
     id: "administration",
     group: "ADMINISTRATION",
     groupKey: "groupAdministration",

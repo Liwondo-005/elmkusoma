@@ -4,22 +4,61 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Award, Download, ExternalLink, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { certificateApi, type CertificateResponse } from "@/lib/api"
+import { certificateApi } from "@/lib/api"
+import { learnerApi } from "@/lib/learner-api"
+import { useAuth } from "@/lib/auth"
+
+const LEARNER_ROLES = new Set(["Student", "Other Learner", "Learner", "Parent"])
+
+// The staff and learner endpoints return different wrappers, but the card only reads this
+// subset, so both are narrowed to it rather than duplicated or cast to a single interface.
+type CertificateListItem = {
+  id: string
+  title: string
+  status: string
+  serialNumber: string | null
+  completionDate?: string | null
+  certificateType?: string | null
+  skills?: string[] | null
+}
 
 export default function DashboardCertificatesPage() {
   const t = useTranslations("learner")
   const tc = useTranslations("common")
-  const [certificates, setCertificates] = useState<CertificateResponse[]>([])
+  const { user, loading: authLoading } = useAuth()
+  const [certificates, setCertificates] = useState<CertificateListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // One spinner per row rather than one for the page: a download is a per-certificate action and
+  // a page-wide spinner would blank the list the operator is choosing from.
+  const [downloading, setDownloading] = useState<Record<string, boolean>>({})
+
+  // Learners fetch their own list through /v1/learner/me/certificates, which resolves the
+  // students.id from the authenticated principal. Calling certificateApi.list() with no studentId
+  // is the institution-wide view and is refused for learner roles, so that branch is staff-only.
+  const role = user?.role
+  const isLearner = role == null || LEARNER_ROLES.has(role)
 
   useEffect(() => {
-    certificateApi
-      .list()
-      .then(setCertificates)
-      .catch((err) => setError(err instanceof Error ? err.message : t("certificatesPage.loadFailed")))
-      .finally(() => setLoading(false))
-  }, [])
+    // Wait for auth: with no resolved role the learner endpoint is the safe default, but
+    // fetching it before `user` lands would fire a second request and flash an error for staff.
+    if (authLoading) return
+    const request = isLearner ? learnerApi.getCertificates() : certificateApi.list()
+    let cancelled = false
+    request
+      .then((rows) => {
+        if (!cancelled) setCertificates(rows)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : t("certificatesPage.loadFailed"))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isLearner, authLoading, t])
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -63,7 +102,9 @@ export default function DashboardCertificatesPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base font-semibold text-foreground">{cert.title}</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{t("certificatesPage.serial", { serial: cert.serialNumber })}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t("certificatesPage.serial", { serial: cert.serialNumber ?? "-" })}
+                  </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                       {cert.certificateType}
@@ -97,6 +138,36 @@ export default function DashboardCertificatesPage() {
                 </div>
               </div>
               <div className="mt-4 flex gap-3">
+                {(cert.status === "ISSUED" || cert.status === "REVOKED") && (
+                  <button
+                    onClick={() => {
+                      setDownloading((prev) => ({ ...prev, [cert.id]: true }))
+                      certificateApi
+                        .downloadPdf(cert.id, `${cert.serialNumber || "certificate"}.pdf`)
+                        .catch((err) =>
+                          setError(
+                            err instanceof Error ? err.message : t("certificatesPage.downloadFailed"),
+                          ),
+                        )
+                        .finally(() =>
+                          setDownloading((prev) => {
+                            const next = { ...prev }
+                            delete next[cert.id]
+                            return next
+                          }),
+                        )
+                    }}
+                    disabled={downloading[cert.id]}
+                    className="flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {downloading[cert.id] ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Download className="size-3.5" />
+                    )}{" "}
+                    {t("certificatesPage.downloadPdf")}
+                  </button>
+                )}
                 {cert.status === "ISSUED" && (
                   <Link
                     href={`/certificates/verify`}

@@ -56,6 +56,11 @@ class LiveClassServiceTest {
     @Mock private LiveClassAttendanceDetailRepository attendanceDetailRepository;
     @Mock private AttendanceRecordRepository attendanceRecordRepository;
     @Mock private CertificateRepository certificateRepository;
+    // The expiry sweep calls into this support for the verification code, canonical URL and the
+    // automatic-issuance audit entry. Without it the dependency is null, and endExpiredSessions
+    // swallows the resulting NPE per session - so the failure surfaced only as "0 sessions ended"
+    // rather than as an obvious missing mock.
+    @Mock private tz.elmkusoma.certificate.service.CertificateIssuanceSupport certificateIssuanceSupport;
     @Mock private LessonRepository lessonRepository;
     @Mock private TeacherAssignmentRepository teacherAssignmentRepository;
     @Mock private NotificationService notificationService;
@@ -916,6 +921,9 @@ class LiveClassServiceTest {
         when(attendanceRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(certificateRepository.findAllByStudentId(studentId)).thenReturn(Collections.emptyList());
         when(certificateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(certificateIssuanceSupport.newVerificationCode()).thenReturn("AUTO-CODE-0001");
+        when(certificateIssuanceSupport.verificationUrl("AUTO-CODE-0001"))
+                .thenReturn("https://verify.elmkusoma.tz/verify/AUTO-CODE-0001");
 
         assertEquals(1, liveClassService.endExpiredSessions());
 

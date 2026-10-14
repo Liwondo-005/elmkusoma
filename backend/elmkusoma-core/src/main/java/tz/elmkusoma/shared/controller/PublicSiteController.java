@@ -15,6 +15,7 @@ import tz.elmkusoma.shared.domain.LegalDocumentVersion;
 import tz.elmkusoma.shared.dto.ContactReceipt;
 import tz.elmkusoma.shared.dto.ContactRequest;
 import tz.elmkusoma.shared.dto.LegalDocumentView;
+import tz.elmkusoma.config.security.ClientIpResolver;
 import tz.elmkusoma.shared.service.ContactMessageService;
 import tz.elmkusoma.shared.service.LegalContentService;
 import tz.elmkusoma.shared.service.PublicSiteSettingsService;
@@ -57,6 +58,7 @@ public class PublicSiteController {
     private final ContactMessageService contactMessageService;
     private final LegalContentService legalContentService;
     private final RateLimitService rateLimitService;
+    private final ClientIpResolver clientIpResolver;
 
     @GetMapping("/site-settings")
     @Operation(summary = "Approved public site settings (contact details and social links)")
@@ -142,12 +144,15 @@ public class PublicSiteController {
                 .build();
     }
 
-    private static String clientAddress(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            // First hop is the original client when a trusted proxy appends to the chain.
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+    /**
+     * Address used to key the contact-form rate limit.
+     *
+     * <p>Delegated to the shared resolver. This previously trusted the first {@code X-Forwarded-For}
+     * entry from any caller, so varying the header per submission gave an unlimited number of
+     * buckets and made the contact-form limit ineffective. Without a configured trusted proxy the
+     * socket address is used, which a client cannot forge.</p>
+     */
+    private String clientAddress(HttpServletRequest request) {
+        return clientIpResolver.resolve(request);
     }
 }

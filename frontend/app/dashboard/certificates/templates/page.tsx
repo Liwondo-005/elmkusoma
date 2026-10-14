@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { FileText, Loader2, Plus, Trash2, X, Save } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { certificateApi, getInstitutionId, type TemplateResponse } from "@/lib/api"
+import { CertificateTemplatePreview } from "@/components/certificates/certificate-template-preview"
 
 export default function CertificateTemplatesPage() {
   const t = useTranslations("learner")
@@ -127,6 +128,13 @@ export default function CertificateTemplatesPage() {
                 <X className="size-3.5" /> {tc("cancel")}
               </button>
             </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t("certTemplates.previewLabel")}
+              </p>
+              <CertificateTemplatePreview htmlContent={newHtml} height={200} />
+              <p className="text-[11px] text-muted-foreground">{t("certTemplates.previewHint")}</p>
+            </div>
           </div>
         </div>
       )}
@@ -157,6 +165,14 @@ export default function CertificateTemplatesPage() {
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {new Date(tpl.createdAt).toLocaleDateString()}
                 </span>
+              </div>
+              <div className="mt-4">
+                <CertificateTemplatePreview
+                  htmlContent={tpl.htmlContent}
+                  cssContent={tpl.cssContent}
+                  title={tpl.name}
+                  height={180}
+                />
               </div>
             </div>
           ))}

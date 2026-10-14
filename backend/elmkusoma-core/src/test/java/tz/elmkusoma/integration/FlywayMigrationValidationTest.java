@@ -23,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -234,6 +235,121 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * JPA maps an enum field to an int (ORDINAL) unless @Enumerated(EnumType.STRING) says
+     * otherwise, but the migrations store enums as varchar. The unit tests run with
+     * ddl-auto=create-drop, so Hibernate derives the schema FROM the entity and the two sides
+     * can silently disagree while every test still passes.
+     *
+     * <p>That is exactly what broke the platform certificate screens: template_family had no
+     * @Enumerated, so Hibernate wrote ('0'::int2) into a varchar(30) CHECK column and read the
+     * column back as an ordinal. POST /v1/platform-admin/certificate-templates failed on the
+     * check constraint and GET failed with "Bad value for type byte : FAMILY_TRAINING"; both
+     * surfaced to the UI as HTTP 409 "Data conflict ... a constraint violation".</p>
+     */
+    @Test
+    void enumColumns_MigrationTypesAgreeWithTheEntityStrategies() throws IOException {
+        Path sourceRoot = Path.of("src/main/java");
+        assertTrue(Files.isDirectory(sourceRoot), "entity sources must be reachable: " + sourceRoot);
+
+        Pattern enumField = Pattern.compile("^\\s*private\\s+(\\w+)\\s+(\\w+)\\s*(=|;)");
+        Pattern columnName = Pattern.compile("@Column\\s*\\(\\s*name\\s*=\\s*\"([^\"]+)\"");
+        Pattern tableName = Pattern.compile("@Table\\s*\\(\\s*name\\s*=\\s*\"([^\"]+)\"");
+        Pattern enumDecl = Pattern.compile("\\benum\\s+(\\w+)");
+
+        Map<String, String> strategyByColumn = new LinkedHashMap<>();
+        try (Stream<Path> sources = Files.walk(sourceRoot)) {
+            for (Path file : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String text = Files.readString(file, StandardCharsets.UTF_8);
+                if (!text.contains("@Entity")) {
+                    continue;
+                }
+                Matcher tm = tableName.matcher(text);
+                String table = tm.find()
+                        ? tm.group(1)
+                        : file.getFileName().toString().replace(".java", "")
+                                .replaceAll("([a-z0-9])([A-Z])", "$1_$2").toLowerCase();
+                Set<String> enums = new HashSet<>();
+                Matcher em = enumDecl.matcher(text);
+                while (em.find()) {
+                    enums.add(em.group(1));
+                }
+                if (enums.isEmpty()) {
+                    continue;
+                }
+
+                String[] lines = text.split("\n", -1);
+                for (int i = 0; i < lines.length; i++) {
+                    Matcher fm = enumField.matcher(lines[i]);
+                    if (!fm.find() || !enums.contains(fm.group(1))) {
+                        continue;
+                    }
+                    String col = null;
+                    Boolean asString = null;
+                    for (int j = i - 1; j >= 0 && j >= i - 8; j--) {
+                        if (lines[j].contains("private ") || lines[j].contains("public ")
+                                || lines[j].contains(" class ") || lines[j].contains(" enum ")) {
+                            break;
+                        }
+                        Matcher cm = columnName.matcher(lines[j]);
+                        if (cm.find() && col == null) {
+                            col = cm.group(1);
+                        }
+                        if (asString == null && lines[j].contains("@Enumerated")) {
+                            asString = lines[j].contains("EnumType.STRING");
+                        }
+                    }
+                    if (col == null) {
+                        continue;
+                    }
+                    strategyByColumn.putIfAbsent(table.toLowerCase() + "." + col.toLowerCase(),
+                            Boolean.TRUE.equals(asString) ? "STRING" : "ORDINAL");
+                }
+            }
+        }
+        assertTrue(!strategyByColumn.isEmpty(), "expected enum columns in the entity sources");
+
+        Set<String> bare = new HashSet<>();
+        for (String key : strategyByColumn.keySet()) {
+            bare.add(key.substring(key.indexOf('.') + 1));
+        }
+        Map<String, String> declared = resolvedColumnTypes(bare);
+
+        Map<String, Set<String>> typesByColumn = new LinkedHashMap<>();
+        for (Map.Entry<String, String> e : declared.entrySet()) {
+            typesByColumn.computeIfAbsent(e.getKey().substring(e.getKey().indexOf('.') + 1),
+                    k -> new HashSet<>()).add(e.getValue());
+        }
+
+        List<String> offenders = new ArrayList<>();
+        List<String> unchecked = new ArrayList<>();
+        for (Map.Entry<String, String> e : strategyByColumn.entrySet()) {
+            String key = e.getKey();
+            String type = declared.get(key);
+            if (type == null) {
+                Set<String> candidates = typesByColumn.get(key.substring(key.indexOf('.') + 1));
+                if (candidates == null || candidates.size() != 1) {
+                    unchecked.add(key);
+                    continue;
+                }
+                type = candidates.iterator().next();
+            }
+            boolean character = type.startsWith("character") || type.startsWith("varchar")
+                    || type.startsWith("text") || type.startsWith("citext");
+            boolean integral = type.matches("(?s)int.*|smallint|bigint|serial.*|numeric.*|decimal.*");
+            boolean ok = "STRING".equals(e.getValue()) ? character : integral;
+            if (!ok) {
+                offenders.add(key + " = " + type + " but the entity declares @Enumerated("
+                        + e.getValue() + ") (last declared at " + declaredIn.get(key) + ")");
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "an enum column whose migration type disagrees with the entity's @Enumerated strategy "
+                        + "breaks every read AND write against a real database, while every "
+                        + "ddl-auto=create-drop test keeps passing because Hibernate builds the schema "
+                        + "from the entity. Offenders: " + offenders + " (unchecked: " + unchecked + ")");
+    }
+
+    /**
      * live_classes.started_at is the authoritative expiry baseline (V135). The unit tests run
      * with spring.flyway.enabled=false and ddl-auto=create-drop, so Hibernate builds the schema
      * from the entity and the migration can silently go missing while every test still passes -
@@ -344,6 +460,46 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * V161 created certificate_signatory_snapshots with only created_at and is_deleted, but
+     * CertificateSignatorySnapshot extends BaseEntity, which also maps updated_at, created_by and
+     * updated_by. Hibernate still builds the full column set in the test profile
+     * (ddl-auto=create-drop, flyway disabled), so the entire Spring suite stayed green while every
+     * read of the snapshot failed against a real database with "column ... does not exist" - which
+     * is exactly what broke certificate PDF export, the table's only consumer.
+     *
+     * <p>V168 adds the three missing columns. This asserts all five audit columns resolve through
+     * the replay, because a column present on the entity but absent from the migrations can only
+     * surface at runtime against a real database.</p>
+     */
+    @Test
+    void certificateSignatorySnapshotAuditColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> columnNames = Set.of("created_at", "updated_at", "created_by", "updated_by", "is_deleted");
+
+        Map<String, String> types = resolvedColumnTypes(columnNames);
+
+        List<String> missing = columnNames.stream()
+                .map(name -> "certificate_signatory_snapshots." + name)
+                .filter(key -> !types.containsKey(key))
+                .sorted()
+                .toList();
+        assertTrue(missing.isEmpty(),
+                "CertificateSignatorySnapshot extends BaseEntity and maps these columns, but no "
+                        + "migration declares them, so reading a signatory snapshot fails with a bare "
+                        + "HTTP 500 (this is what broke certificate PDF export): " + missing);
+
+        // created_at backs BaseEntity's @PrePersist and is NOT NULL on every certificate table.
+        String createdAt = types.get("certificate_signatory_snapshots.created_at");
+        assertTrue(createdAt != null && createdAt.startsWith("timestamp"),
+                "certificate_signatory_snapshots.created_at must be a timestamp but was declared as \""
+                        + createdAt + "\" at " + declaredIn.get("certificate_signatory_snapshots.created_at"));
+
+        String isDeleted = types.get("certificate_signatory_snapshots.is_deleted");
+        assertTrue(isDeleted != null && isDeleted.startsWith("boolean"),
+                "is_deleted is a boolean on the entity; a migration that declared it as text would "
+                        + "still pass Hibernate's generated schema in tests");
+    }
+
+    /**
      * V157 adds the publication/access columns that make a live class publicly discoverable.
      *
      * <p>The same reasoning as the news assertion applies, and it matters more here: the test
@@ -428,7 +584,54 @@ class FlywayMigrationValidationTest {
                         + firstLineContaining(migration, "access_level VARCHAR"));
     }
 
-    /** Reads a migration by file name from the located migration directory. */
+    /**
+     * V162 makes duplicate live awards impossible. The index must stay PARTIAL: an unconditional
+     * unique index would permanently block re-issuing an award after a mistake, because the revoked
+     * row would still occupy the key and the operator would have to destroy the record of the
+     * error to fix it.
+     */
+    @Test
+    void liveAwardUniqueness_IsPartialSoRevokedCertificatesDoNotBlockReissue() throws IOException {
+        String migration = readMigration("V162__certificate_live_award_uniqueness.sql");
+
+        assertTrue(migration.contains("ux_certificates_live_award"),
+                "V162 must prevent two live certificates for one award");
+        assertTrue(migration.contains("WHERE is_deleted = false AND status <> 'REVOKED'"),
+                "the live-award index must exclude revoked and soft-deleted rows, otherwise a "
+                        + "withdrawn award could never be re-issued");
+        // The service-level check alone is a check-then-act race; only the database arbitrates two
+        // concurrent issuances.
+        assertTrue(migration.contains("CREATE UNIQUE INDEX"),
+                "V162 must use a UNIQUE index: an application-level check cannot survive two "
+                        + "concurrent issuances both reading 'no existing certificate'");
+    }
+
+    /**
+     * qr_code_url held a QR image as of V163, and it was created as varchar(255) in V81 - a width
+     * no real QR fits, which is why nothing had ever written to it. Widening to text is the only
+     * direction this column may move: shrinking it would truncate a stored image at read time into
+     * a data URI that no parser will accept, and the certificate would silently lose its code.
+     */
+    @Test
+    void certificateQrCodeUrl_OnlyEverWidens() throws IOException {
+        String migration = readMigration(
+                "V163__certificate_qr_code_url_holds_a_data_uri.sql");
+
+        assertTrue(migration.contains("qr_code_url"),
+                "V163 must retype certificates.qr_code_url");
+        assertTrue(migration.matches("(?s).*ALTER COLUMN qr_code_url TYPE text;.*"),
+                "V163 must widen qr_code_url to text so a stored QR is not truncated");
+        assertFalse(migration.matches("(?s).*qr_code_url TYPE character varying.*"),
+                "V163 must not re-widen to a length-bounded type: a data URI of any fixed length "
+                        + "is one longer value away from being cut in half");
+        // Dropping and re-adding the column would discard whatever is in it.
+        assertFalse(migration.matches("(?s).*DROP COLUMN qr_code_url.*"),
+                "V163 must alter the column in place, not drop and recreate it");
+    }
+
+    /**
+     * Reads a migration by file name from the located migration directory.
+     */
     private String readMigration(String fileName) throws IOException {
         Path path = migrationDir.resolve(fileName);
         assertTrue(Files.exists(path), "migration must exist: " + fileName);
@@ -497,7 +700,129 @@ class FlywayMigrationValidationTest {
                         + declared.get("course_modules.module_code") + "\"");
     }
 
-    /** Column type per "table.column" for columns added via ADD COLUMN, last declaration winning. */
+    /**
+     * V161 adds the approval tables and the template-family column. The approval gate is only real
+     * if the tables exist: a missing migration would leave issuance referencing entities that do
+     * not exist on a real database while the whole Hibernate-generated test schema passed.
+     *
+     * <p>Also pins the additive lifecycle values. {@code certificates.status} is an unconstrained
+     * varchar, so nothing would stop a future edit from dropping one of them and breaking every
+     * certificate already stored in that state.</p>
+     */
+    @Test
+    void certificateApprovalAndFamilyColumns_AreDeclaredInMigrations() throws IOException {
+        // template_family is added to an existing table, so the ADD COLUMN helper can see it.
+        Map<String, String> added = declaredColumns(Set.of("certificate_templates.template_family"));
+        assertTrue("varchar(30)".equals(added.get("certificate_templates.template_family")),
+                "certificate_templates.template_family must be varchar(30) but is \""
+                        + added.get("certificate_templates.template_family") + "\"");
+
+        // The approval tables are created wholesale, so they are checked as table definitions.
+        String migration = readMigration("V161__certificate_approvals_and_template_families.sql");
+        for (String column : List.of(
+                "certificate_id", "stage", "decision_status", "actor_user_id",
+                "template_version", "decided_at")) {
+            assertTrue(migration.contains(column),
+                    "certificate_approvals." + column + " is mapped by the approval service but V161 does not declare it");
+        }
+        for (String column : List.of("certificate_id", "full_name", "signature_image")) {
+            assertTrue(migration.contains(column),
+                    "certificate_signatory_snapshots." + column
+                            + " is mapped by the approval service but V161 does not declare it");
+        }
+        assertTrue(migration.contains("template_family"),
+                "certificate_templates.template_family is mapped by the template entity but V161 does not declare it");
+    }
+
+    /**
+     * V164 records which certificate replaced which, so a holder of a withdrawn copy can be told
+     * that a valid replacement exists and which one it is.
+     *
+     * <p>Both columns are mapped by the entity. Without the migration the whole approval and QR
+     * feature set still passes against the Hibernate-generated test schema, while a real database -
+     * which runs ddl-auto=none - fails on every supersession with an unknown-column error.</p>
+     *
+     * <p>Also pins the self-referencing foreign key. The pointer is only worth having if it cannot
+     * name a certificate that is not there; a plain uuid column would accept any 16 bytes.</p>
+     */
+    @Test
+    void certificateSupersessionColumns_AreDeclaredInMigrations() throws IOException {
+        Map<String, String> added = declaredColumns(Set.of(
+                "certificates.superseded_by_certificate_id",
+                "certificates.superseded_at"));
+        assertTrue("uuid".equals(added.get("certificates.superseded_by_certificate_id")),
+                "certificates.superseded_by_certificate_id must be uuid but is \""
+                        + added.get("certificates.superseded_by_certificate_id") + "\"");
+        assertTrue("timestamptz".equals(added.get("certificates.superseded_at")),
+                "certificates.superseded_at must be timestamptz but is \""
+                        + added.get("certificates.superseded_at") + "\"");
+
+        String migration = readMigration("V164__certificate_supersession_link.sql");
+        assertTrue(migration.contains("fk_certificates_superseded_by"),
+                "V164 must name its self-reference so it can be found and, if ever needed, dropped");
+        assertTrue(migration.contains("REFERENCES certificates"),
+                "V164 must point superseded_by_certificate_id at certificates(id); an unconstrained "
+                        + "uuid would accept an id that does not exist and strand the verification "
+                        + "page on a pointer to nothing");
+        assertTrue(migration.contains("idx_certificates_superseded_by"),
+                "the verification lookup resolves a supersession by this column and needs the index");
+    }
+
+    /**
+     * V161 must not narrow {@code certificates.status}. The live column is varchar(255); shrinking
+     * it to today's longest status name would silently truncate every future lifecycle value
+     * someone adds, and the damage would only show up later as an unreadable status on a stored
+     * certificate.
+     *
+     * <p>16 is not arbitrary: {@code PENDING_APPROVAL} is exactly 16 characters (7 + 1 + 8). The
+     * guard has to reject varchar(15) and accept varchar(16).</p>
+     */
+    @Test
+    void certificateStatus_IsNeverNarrowed() throws IOException {
+        String migration = readMigration("V161__certificate_approvals_and_template_families.sql");
+
+        assertFalse(migration.contains("ALTER COLUMN status TYPE"),
+                "V161 must not retype certificates.status; narrowing a lifecycle column truncates "
+                        + "future status values");
+        assertTrue(migration.contains("character_maximum_length"),
+                "V161 should assert the existing status width instead of replacing it");
+
+        Map<String, String> status = declaredColumns(Set.of("certificates.status"));
+        // The guard threshold must equal the real length of the longest status value.
+        int pendingApproval = "PENDING_APPROVAL".length();
+        assertEquals(16, pendingApproval,
+                "PENDING_APPROVAL length changed; update the V161 width guard to match");
+        assertTrue(migration.contains("< " + pendingApproval),
+                "V161 width guard must reject any width below " + pendingApproval);
+    }
+
+    /**
+     * The partial index is what makes re-approval after rejection possible while still preventing
+     * two live decisions for one stage. Asserting only that the index exists would not catch it
+     * being redefined as unconditional.
+     */
+    @Test
+    void certificateApprovals_ConstrainOneCurrentDecisionPerStage() throws IOException {
+        String migration = readMigration("V161__certificate_approvals_and_template_families.sql");
+
+        assertTrue(migration.contains("certificate_approvals"),
+                "V161 must create the approval table");
+        // The partial unique index is what stops a second live decision appearing for a stage.
+        assertTrue(migration.contains("ux_certificate_approvals_current_stage"),
+                "V161 must enforce one current decision per (certificate, stage)");
+        // It must be partial. An unconditional index would forbid a REJECTED row coexisting with a
+        // later re-submitted one, which is the exact case the workflow exists to support.
+        assertTrue(migration.contains("WHERE is_deleted = false AND decision_status IN ('PENDING', 'APPROVED')"),
+                "ux_certificate_approvals_current_stage must be a PARTIAL index covering only current "
+                        + "PENDING/APPROVED decisions, so a refusal can stay on record alongside a re-approval");
+        assertTrue(migration.contains("FOREIGN KEY (certificate_id) REFERENCES certificates (id)"),
+                "approvals must reference the certificate they belong to");
+    }
+
+    /**
+     * Column type per "table.column" for columns added via ALTER TABLE ADD COLUMN, last
+     * declaration winning. Does not see CREATE TABLE columns.
+     */
     private Map<String, String> declaredColumns(Set<String> wanted) throws IOException {
         Map<String, String> declared = new LinkedHashMap<>();
         List<Path> ordered = migrationFiles.stream()
@@ -545,6 +870,118 @@ class FlywayMigrationValidationTest {
     }
 
     /** Effective (post-all-migrations) type per "table.column", last declaration winning. */
+    /**
+     * Effective type per "table.column", last declaration winning, replaying every form the
+     * migrations actually use: columns inside CREATE TABLE, a bare {@code ALTER TABLE t} followed
+     * by an indented {@code ADD COLUMN}, {@code ALTER TABLE t ADD COLUMN ...} on one line, and
+     * {@code ALTER ... COLUMN ... TYPE}. {@link #effectiveColumnTypes} handles only the first and
+     * last, so a column introduced by ADD COLUMN - such as V161's certificate_templates
+     * template_family - resolves to "unknown" there and any entity/migration mismatch on it goes
+     * unchecked. Stores file:line in {@link #declaredIn} for offender messages.
+     */
+    private Map<String, String> resolvedColumnTypes(Set<String> watchedColumns) throws IOException {
+        if (watchedColumns.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        Set<String> watched = new HashSet<>();
+        for (String column : watchedColumns) {
+            watched.add(column.toLowerCase());
+        }
+        String alt = String.join("|", watchedColumns.stream().sorted().toList());
+
+        Pattern createTable = Pattern.compile(
+                "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_\\\".]+)\\s*\\(",
+                Pattern.CASE_INSENSITIVE);
+        Pattern columnLine = Pattern.compile("^(" + alt + ")\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern bareAlter = Pattern.compile("^ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s*;?\\s*$",
+                Pattern.CASE_INSENSITIVE);
+        Pattern sameLineAdd = Pattern.compile(
+                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ADD\\s+COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?\"?([A-Za-z0-9_]+)\"?\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern splitAdd = Pattern.compile(
+                "^ADD\\s+COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?\"?([A-Za-z0-9_]+)\"?\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern sameLineType = Pattern.compile(
+                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ALTER\\s+COLUMN\\s+(" + alt + ")\\s+TYPE\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern splitType = Pattern.compile(
+                "^ALTER\\s+COLUMN\\s+(" + alt + ")\\s+TYPE\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+
+        Map<String, String> effectiveType = new LinkedHashMap<>();
+        declaredIn = new LinkedHashMap<>();
+
+        List<Path> ordered = migrationFiles.stream()
+                .sorted(Comparator.comparingInt(FlywayMigrationValidationTest::versionOf))
+                .toList();
+
+        for (Path file : ordered) {
+            String currentTable = null;
+            String pendingTable = null;
+            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i).trim();
+                if (line.isEmpty() || line.startsWith("--")) {
+                    continue;
+                }
+                Matcher created = createTable.matcher(line);
+                if (created.find()) {
+                    currentTable = unquote(created.group(1));
+                    pendingTable = null;
+                    continue;
+                }
+                if (currentTable != null && line.startsWith(")")) {
+                    currentTable = null;
+                    continue;
+                }
+                Matcher bare = bareAlter.matcher(line);
+                if (bare.find()) {
+                    pendingTable = unquote(bare.group(1));
+                    currentTable = null;
+                    continue;
+                }
+                Matcher inlineAdd = sameLineAdd.matcher(line);
+                if (inlineAdd.find()) {
+                    recordType(effectiveType, file, i, unquote(inlineAdd.group(1)),
+                            inlineAdd.group(2), inlineAdd.group(3));
+                    continue;
+                }
+                Matcher split = splitAdd.matcher(line);
+                if (pendingTable != null && split.find() && watched.contains(split.group(1).toLowerCase())) {
+                    recordType(effectiveType, file, i, pendingTable, split.group(1), split.group(2));
+                    continue;
+                }
+                Matcher inlineType = sameLineType.matcher(line);
+                if (inlineType.find()) {
+                    recordType(effectiveType, file, i, unquote(inlineType.group(1)),
+                            inlineType.group(2), inlineType.group(3));
+                    continue;
+                }
+                Matcher splitTypeM = splitType.matcher(line);
+                if (pendingTable != null && splitTypeM.find()) {
+                    recordType(effectiveType, file, i, pendingTable, splitTypeM.group(1), splitTypeM.group(2));
+                    continue;
+                }
+                String upper = line.toUpperCase();
+                if (currentTable != null && !upper.contains("FOREIGN KEY") && !upper.contains("REFERENCES")) {
+                    Matcher column = columnLine.matcher(line);
+                    if (column.find()) {
+                        recordType(effectiveType, file, i, currentTable, column.group(1), column.group(2));
+                    }
+                }
+            }
+        }
+        return effectiveType;
+    }
+
+    private void recordType(Map<String, String> effectiveType, Path file, int lineIndex,
+                            String table, String column, String rawType) {
+        String key = table.toLowerCase() + "." + column.toLowerCase();
+        effectiveType.put(key, normalizeDeclaredType(rawType));
+        declaredIn.put(key, file.getFileName() + ":" + (lineIndex + 1));
+    }
+
     private Map<String, String> effectiveColumnTypes(Set<String> watchedColumns) throws IOException {
         Pattern createTable = Pattern.compile(
                 "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_\\\".]+)\\s*\\(",

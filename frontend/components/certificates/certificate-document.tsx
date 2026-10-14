@@ -38,6 +38,14 @@ export interface DocumentCertificate {
   status?: string | null
   verificationCode: string
   verificationUrl?: string | null
+  /**
+   * The QR the server rendered for this certificate, as a data URI.
+   *
+   * Preferred when present: it encodes the canonical verification URL rather than whatever origin
+   * this page happens to be served from, and it survives being printed, exported or screenshotted
+   * without re-running JavaScript.
+   */
+  qrCodeUrl?: string | null
   revokedReason?: string | null
   revokedAt?: string | null
 }
@@ -140,14 +148,18 @@ export function CertificateDocument({
 }: CertificateDocumentProps) {
   const locale = useLocale()
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
-  const [origin, setOrigin] = useState<string>("")
 
   const verifyPath = `/certificates/verify/${certificate.verificationCode}`
-  const verifyUrl = `${origin || ""}${verifyPath}`
+  // The certificate's own code wins: it encodes the canonical verification URL rather than
+  // whatever origin this page is served from, so the same document scans to the same place on a
+  // laptop, on a printout and in an exported PDF. The browser generates one only for
+  // certificates issued before the server started carrying it.
+  const qrSource = certificate.qrCodeUrl || qrDataUrl
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    setOrigin(window.location.origin)
+    // Nothing to generate when the certificate already carries its own code.
+    if (certificate.qrCodeUrl) return
     let cancelled = false
     QRCode.toDataURL(`${window.location.origin}${verifyPath}`, {
       width: 128,
@@ -165,7 +177,7 @@ export function CertificateDocument({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [certificate.verificationCode])
+  }, [certificate.verificationCode, certificate.qrCodeUrl])
 
   const context = buildContext(certificate, { institutionName, logoUrl }, locale)
   const heading = TYPE_HEADINGS[certificate.certificateType] || "CERTIFICATE"
@@ -313,9 +325,9 @@ export function CertificateDocument({
                 <p className="font-mono text-neutral-700">{certificate.serialNumber}</p>
               </div>
               <div className="flex h-24 w-24 items-center justify-center rounded border border-neutral-300 bg-white p-1">
-                {qrDataUrl ? (
+                {qrSource ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={qrDataUrl} alt="Verification QR code" className="h-full w-full" />
+                  <img src={qrSource} alt="Verification QR code" className="h-full w-full" />
                 ) : (
                   <span className="text-[9px] text-neutral-400">Generating QR…</span>
                 )}

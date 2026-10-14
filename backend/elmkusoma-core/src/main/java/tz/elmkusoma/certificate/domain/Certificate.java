@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
+import tz.elmkusoma.certificate.qr.CertificateQrCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -79,7 +80,16 @@ public class Certificate extends BaseEntity {
     @Column(name = "verification_url")
     private String verificationUrl;
 
-    @Column(name = "qr_code_url")
+    /**
+     * The QR the certificate carries, as a self-contained SVG data URI.
+     *
+     * <p>{@code text} rather than the JPA default of varchar(255): a stored code is a few
+     * kilobytes, and Hibernate's default would create a column far too small to hold one. The
+     * database column was widened to text by V163 for the same reason. (Production runs
+     * ddl-auto=none, but the test profile uses create-drop, so the declared type has to be right
+     * here too or every issuance in a test would fail on a length overflow.)</p>
+     */
+    @Column(name = "qr_code_url", columnDefinition = "text")
     private String qrCodeUrl;
 
     @Column(name = "instructor_name")
@@ -98,6 +108,28 @@ public class Certificate extends BaseEntity {
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
 
+    /**
+     * The certificate that took this award's place, when this one was replaced by a re-issue.
+     *
+     * <p>Deliberately a reference rather than a value in {@link CertificateStatus}. A certificate
+     * in the normal re-issue flow is both revoked and superseded, and one status column cannot
+     * hold both facts without dropping one of them. See V164 for the full reasoning.</p>
+     *
+     * <p>Null for a certificate nobody has replaced - the overwhelming majority.</p>
+     */
+    @Column(name = "superseded_by_certificate_id")
+    private UUID supersededByCertificateId;
+
+    /** When {@link #supersededByCertificateId} was recorded. Null whenever that reference is. */
+    @Column(name = "superseded_at")
+    private LocalDateTime supersededAt;
+
+    /** True once a later certificate has taken this award's place. */
+    @Transient
+    public boolean isSuperseded() {
+        return supersededByCertificateId != null;
+    }
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, Object> metadata;
@@ -106,11 +138,21 @@ public class Certificate extends BaseEntity {
      * certificate_number is NOT NULL + UNIQUE in the database but has no default,
      * so every INSERT must provide it. Generate one automatically when the caller
      * did not set it explicitly.
+     *
+     * <p>The QR is stamped here rather than at each issuance site. There are four - the manual
+     * service, live-class expiry, event attendance and NFE - and any one of them forgetting to
+     * call back would produce certificates that scan and certificates that do not, indistinguishable
+     * until somebody tries. A lifecycle callback cannot be skipped.</p>
      */
     @PrePersist
     void onCreate() {
         if (certificateNumber == null || certificateNumber.isBlank()) {
             certificateNumber = "CERT-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+        }
+        // Only when there is something to encode, and only when a code is not already set, so a
+        // caller that generated one deliberately keeps it.
+        if (qrCodeUrl == null && verificationUrl != null && !verificationUrl.isBlank()) {
+            qrCodeUrl = CertificateQrCode.svgDataUri(verificationUrl);
         }
     }
 
@@ -121,9 +163,26 @@ public class Certificate extends BaseEntity {
         TRANSCRIPT
     }
 
+    /**
+     * The authoritative lifecycle of a certificate.
+     *
+     * <p>Extended additively by V161. There is deliberately no second state machine: DRAFT,
+     * PENDING_APPROVAL and APPROVED sit in the same column as ISSUED and REVOKED so a certificate
+     * always has exactly one lifecycle field.</p>
+     *
+     * <p>Existing rows are unaffected - the column was an unconstrained varchar, and the new
+     * values are only ever written by the approval workflow.</p>
+     */
     public enum CertificateStatus {
+        /** Prepared, not yet submitted for review. */
         DRAFT,
+        /** Submitted; at least one required approval stage is still outstanding. */
+        PENDING_APPROVAL,
+        /** Every stage the policy requires is approved. Issuable. */
+        APPROVED,
+        /** Released to the holder. */
         ISSUED,
+        /** Withdrawn after issuance. */
         REVOKED
     }
 }

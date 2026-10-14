@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.course.domain.*;
 import tz.elmkusoma.course.repository.*;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
@@ -79,6 +80,7 @@ public class LearnerController {
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final LearnerGoalRepository learningGoalRepository;
+    private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
     /**
      * Builds the application-owned playback URL that client-facing responses expose in place
      * of the private object-storage location.
@@ -394,53 +396,31 @@ public class LearnerController {
                 LearnerNotification completionNotification = LearnerNotification.builder()
                         .userId(userId)
                         .title("Course Completed!")
-                        .message("Congratulations! You have completed " + (course != null ? course.getTitle() : "the course") + ". Check your certificates.")
+                        .message("Congratulations! You have completed " + (course != null ? course.getTitle() : "the course")
+                                + ". Your certificate will appear here once the issuing institution has issued it.")
                         .notificationType("COURSE_COMPLETION")
                         .targetType("course")
                         .targetId(courseId)
                         .build();
                 notificationRepository.save(completionNotification);
 
-                try {
-                    List<CertificateTemplate> templates = certificateTemplateRepository.findAllByInstitutionId(course != null ? course.getInstitutionId() : null);
-                    if (templates != null && !templates.isEmpty()) {
-                        CertificateTemplate template = templates.get(0);
-                        User user = userRepository.findById(userId).orElse(null);
-                        String studentName = user != null ? user.getFullName() : "Student";
-                        String serialNumber = "CERT-" + System.currentTimeMillis() + "-" + userId.toString().substring(0, 8);
-                        String verificationCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
-
-                        Certificate certificate = Certificate.builder()
-                                .templateId(template.getId())
-                                .studentId(userId)
-                                .issuedBy(userId)
-                                .serialNumber(serialNumber)
-                                .certificateType(CertificateType.COMPLETION)
-                                .title("Certificate of Completion - " + (course != null ? course.getTitle() : ""))
-                                .description("Awarded for successfully completing " + (course != null ? course.getTitle() : "the course"))
-                                .studentName(studentName)
-                                .courseOrProgramme(course != null ? course.getTitle() : null)
-                                .completionDate(LocalDate.now())
-                                .issueDate(LocalDateTime.now())
-                                .status(CertificateStatus.ISSUED)
-                                .verificationCode(verificationCode)
-                                .build();
-                        if (course != null) certificate.setInstitutionId(course.getInstitutionId());
-                        certificateRepository.save(certificate);
-
-                        LearnerNotification certNotification = LearnerNotification.builder()
-                                .userId(userId)
-                                .title("Certificate Issued!")
-                                .message("Your certificate for " + (course != null ? course.getTitle() : "the course") + " is ready. Verification code: " + verificationCode)
-                                .notificationType("CERTIFICATE")
-                                .targetType("certificate")
-                                .targetId(certificate.getId())
-                                .build();
-                        notificationRepository.save(certNotification);
-                    }
-                } catch (Exception ex) {
-                    log.warn("Failed to auto-issue certificate for user {} course {}: {}", userId, courseId, ex.getMessage());
-                }
+                // A COMPLETION certificate is deliberately NOT issued here.
+                //
+                // This used to happen on a learner-facing GET, and it was wrong three ways:
+                //   - certificates.issued_by was set to the learner's own user id, so the
+                //     certificate recorded the student as the person who issued it;
+                //   - certificates.student_id has a FK to students(id), not users(id), and a
+                //     user id was being written into it;
+                //   - nothing was audited, so the certificate appeared with no record at all.
+                //
+                // Issuing an academic credential is an institutional act. It belongs to the
+                // certificate service, which derives the recipient from the student record,
+                // checks the template is active and owned, records who issued it, and writes the
+                // audit entry. A learner clicking a progress page must not be able to mint one.
+                //
+                // Completion is still recorded here - that evidence is what an issuer acts on.
+                log.debug("Course completion recorded for learner {} course {}; certificate issuance "
+                        + "is left to the issuing institution", userId, courseId);
             }
             enrollmentRepository.save(e);
         });
@@ -837,7 +817,15 @@ public class LearnerController {
     @Operation(summary = "List my issued certificates")
     public ResponseEntity<ApiResponse<List<Certificate>>> myCertificates(
             @RequestAttribute("userId") UUID userId) {
-        List<Certificate> certificates = certificateRepository.findIssuedByStudentId(userId);
+        // certificates.student_id is a students.id, but the authenticated principal is a users.id.
+        // Querying with the user id compared two unrelated identifiers, so a learner saw none of
+        // their own certificates. Resolve the student record first, as the certificate controller
+        // does, so the comparison happens in one identifier space.
+        Student student = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (student == null) {
+            return ResponseEntity.ok(ApiResponse.success(List.of()));
+        }
+        List<Certificate> certificates = certificateRepository.findIssuedByStudentId(student.getId());
         return ResponseEntity.ok(ApiResponse.success(certificates));
     }
 
@@ -846,8 +834,14 @@ public class LearnerController {
     public ResponseEntity<ApiResponse<Certificate>> myCertificateDetail(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID certificateId) {
+        Student student = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (student == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Certificate not found"));
+        }
         return certificateRepository.findById(certificateId)
-                .filter(c -> c.getStudentId().equals(userId) && !Boolean.TRUE.equals(c.getIsDeleted()))
+                .filter(c -> c.getStudentId().equals(student.getId())
+                        && !Boolean.TRUE.equals(c.getIsDeleted()))
                 .map(c -> ResponseEntity.ok(ApiResponse.success(c)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Certificate not found")));
     }

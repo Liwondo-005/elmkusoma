@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import tz.elmkusoma.config.TenantAwareRedisTemplate;
+import tz.elmkusoma.config.security.ClientIpResolver;
 
 import java.util.concurrent.TimeUnit;
 
@@ -52,21 +53,24 @@ public class LoginAttemptService {
         return "login:fail:ip:" + (clean.isEmpty() ? "unknown" : clean);
     }
 
-    /** Client IP: first entry of X-Forwarded-For, else remoteAddr, else "unknown". */
+    /**
+     * Client IP for the per-IP login bucket.
+     *
+     * <p>Delegates to the shared {@link ClientIpResolver}. This previously preferred the first
+     * {@code X-Forwarded-For} entry unconditionally, but that header is chosen by the caller, so
+     * varying it per request produced an unbounded number of per-IP buckets. That defeated the
+     * per-IP spray limit, which is what stops one host from hammering many accounts. The
+     * per-account bucket is unaffected and still caps attempts on any single identity.</p>
+     *
+     * <p>Kept static because it is called from a static-ish resolution path in
+     * {@code AuthServiceImpl}. The resolver's configured prefixes are read through a shared holder
+     * so a static call still respects the deployment's trusted-proxy setting.</p>
+     */
     public static String resolveClientIp(jakarta.servlet.http.HttpServletRequest request) {
         if (request == null) {
             return "unknown";
         }
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            int comma = xff.indexOf(',');
-            String first = (comma >= 0 ? xff.substring(0, comma) : xff).trim();
-            if (!first.isBlank()) {
-                return first;
-            }
-        }
-        String remote = request.getRemoteAddr();
-        return remote != null && !remote.isBlank() ? remote : "unknown";
+        return ClientIpResolverHolder.resolve(request);
     }
 
     /** Throws 429 when the account or IP is currently blocked. Fail-open on Redis errors. */

@@ -43,6 +43,7 @@ public class SecurityConfig {
     private final EntityManager entityManager;
     private final PermissionService permissionService;
     private final RateLimitService rateLimitService;
+    private final ClientIpResolver clientIpResolver;
 
     private static final String[] PUBLIC_URLS = {
             "/v1/auth/**",
@@ -69,8 +70,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthRateLimitFilter authRateLimitFilter() {
-        return new AuthRateLimitFilter(rateLimitService);
+    public AuthRateLimitFilter authRateLimitFilter(ClientIpResolver clientIpResolver) {
+        return new AuthRateLimitFilter(rateLimitService, clientIpResolver);
     }
 
     @Bean
@@ -211,7 +212,7 @@ public class SecurityConfig {
                             .hasAnyRole("ADMIN", "INSTITUTION_ADMIN")
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(authRateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(authRateLimitFilter(clientIpResolver), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(organizationContextResolver(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtRequestAttributeFilter(), UsernamePasswordAuthenticationFilter.class);

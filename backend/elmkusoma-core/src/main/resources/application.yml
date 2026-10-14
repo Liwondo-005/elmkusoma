@@ -160,6 +160,21 @@ app:
     admin-bootstrap:
       enabled: ${ELM_BOOTSTRAP_ADMIN:false}
 
+    # Networks (comma-separated address prefixes) whose X-Forwarded-For header may
+    # be believed, e.g. the reverse proxy or load balancer in front of this app.
+    #
+    # Empty by default, and empty is the safe setting: X-Forwarded-For is chosen
+    # by the caller, so trusting it lets one client present a fresh rate-limit
+    # bucket per request. With nothing listed, every per-IP control (certificate
+    # verification, login, auth, send-code, contact form) keys on the socket
+    # address instead, which cannot be forged.
+    #
+    # Set this ONLY when the app is genuinely unreachable except through a proxy
+    # you control. Listing a range that includes untrusted networks reintroduces
+    # the spoofing this property exists to prevent.
+    #   TRUSTED_PROXIES=10.0.0.,172.16.
+    trusted-proxies: ${TRUSTED_PROXIES:}
+
 # Payment provider webhook signature secret. Empty by default, which is
 # deliberate and fail-closed: PaymentWebhookController rejects every webhook and
 # logs that the secret is not configured. Mapped explicitly so that the same

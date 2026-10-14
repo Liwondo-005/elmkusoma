@@ -864,7 +864,54 @@ export interface CertificateVerificationResponse {
   issueDate: string | null
   status: string | null
   message: string | null
+  /**
+   * Serial of the certificate that took this award's place, when the one presented has been
+   * replaced by a re-issue. Null for a certificate nobody has replaced.
+   *
+   * Present so a holder turning up with the withdrawn copy is told which document is current,
+   * not merely that theirs is worthless.
+   */
+  supersededBySerialNumber: string | null
+  supersededAt: string | null
 }
+
+/**
+ * The gate a decision satisfies. Mirrors CertificateApproval.ApprovalStage on the server.
+ *
+ * TRAINING   - the award was prepared correctly. Always required.
+ * VALIDATION - evidence was checked. Required for the academic family only.
+ * APPROVAL   - the institution authorises release. Always required.
+ */
+export type CertificateApprovalStage = "PREPARATION" | "VALIDATION" | "APPROVAL"
+
+export type CertificateDecisionStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN"
+
+export interface CertificateApprovalResponse {
+  id: string
+  certificateId: string
+  certificateSerialNumber: string | null
+  certificateTitle: string | null
+  certificateType: string | null
+  certificateStatus: string | null
+  studentName: string | null
+  stage: CertificateApprovalStage
+  decisionStatus: CertificateDecisionStatus
+  actorUserId: string | null
+  actorEmail: string | null
+  actorRole: string | null
+  templateVersion: number | null
+  reason: string | null
+  decidedAt: string | null
+  createdAt: string
+}
+
+/** The certificate lifecycle, including the review states added by V161. */
+export type CertificateLifecycleStatus =
+  | "DRAFT"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "ISSUED"
+  | "REVOKED"
 
 export interface TranscriptEntryResponse {
   id: string
@@ -963,11 +1010,110 @@ export const certificateApi = {
   verify: (verificationCode: string) =>
     request<CertificateVerificationResponse>(`/v1/certificates/verify/${verificationCode}`),
 
+  /**
+   * Streams the rendered document for one certificate and hands it to the browser's download
+   * dialog.
+   *
+   * <p>Not built on {@link request}: that helper assumes a JSON envelope and would choke on a
+   * PDF body, and the file name arrives in {@code Content-Disposition}, which needs reading from
+   * the response before anything is written to disk.</p>
+   */
+  downloadPdf: async (certificateId: string, fallbackName = "certificate.pdf"): Promise<void> => {
+    const headers: Record<string, string> = {}
+    const token = getToken()
+    const institutionId = getInstitutionId()
+    if (token) headers["Authorization"] = `Bearer ${token}`
+    if (institutionId) headers["X-Institution-Id"] = institutionId
+
+    const res = await fetch(
+      `${API_BASE_URL}/v1/certificates/${encodeURIComponent(certificateId)}/pdf`,
+      { headers },
+    )
+    if (!res.ok) {
+      let message = `Request failed (HTTP ${res.status})`
+      try {
+        const body = (await res.json()) as { error?: string; message?: string }
+        message = body.error || body.message || message
+      } catch {
+        // A non-JSON body here means the endpoint is not the one we called; the status is the
+        // only useful information left, so keep it.
+      }
+      throw new ApiRequestError(message, res.status, null)
+    }
+
+    const disposition = res.headers.get("Content-Disposition") || ""
+    const match = disposition.match(/filename="?([^";]+)"?/)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = match?.[1] || fallbackName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
+
+  // ── Approval workflow ───────────────────────────────────────────────────────────────
+  //
+  // Issuance is gated on approvals, so these are what make a certificate reviewable at all.
+  // Before them there was no way to move a certificate past DRAFT except to issue it directly.
+
+  /** Moves a DRAFT certificate into review, recording the PREPARATION decision. */
+  submitForApproval: (certificateId: string) =>
+    request<CertificateResponse>(`/v1/certificates/${certificateId}/submit-for-approval`, {
+      method: "POST",
+    }),
+
+  /**
+   * Records an approve/reject decision for one stage.
+   *
+   * <p>A rejection requires a reason server-side; the UI enforces it too so the operator is not
+   * told "a reason is required" only after the fact.</p>
+   */
+  decideApproval: (
+    certificateId: string,
+    stage: CertificateApprovalStage,
+    approved: boolean,
+    reason?: string,
+  ) =>
+    request<CertificateResponse>(
+      `/v1/certificates/${certificateId}/approvals/${stage}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ approved, reason: reason ?? null }),
+      },
+    ),
+
+  /** Withdraws a previously granted approval, returning the certificate to review. */
+  withdrawApproval: (certificateId: string, stage: CertificateApprovalStage, reason: string) =>
+    request<CertificateResponse>(
+      `/v1/certificates/${certificateId}/approvals/${stage}/withdraw`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      },
+    ),
+
+  /** The full decision history for one certificate, including refused and withdrawn decisions. */
+  approvalHistory: (certificateId: string) =>
+    request<CertificateApprovalResponse[]>(`/v1/certificates/${certificateId}/approvals`),
+
+  /** Outstanding approval work for the caller's institution, oldest first. */
+  approvalQueue: () =>
+    request<CertificateApprovalResponse[]>("/v1/certificates/approval-queue"),
+
   get: (certificateId: string) =>
     request<CertificateResponse>(`/v1/certificates/${certificateId}`),
 
-  list: async (studentId?: string): Promise<CertificateResponse[]> => {
-    const params = studentId ? `?studentId=${studentId}` : ""
+  /**
+   * Certificates for one student, or (staff only) the whole institution.
+   *
+   * <p>A learner must name their own student id. Omitting it is an institution-wide view and is
+   * refused for learner roles server-side, because the unfiltered branch returns every certificate
+   * in the school.</p>
+   */
+  list: async (studentId?: string): Promise<CertificateResponse[]> => {    const params = studentId ? `?studentId=${studentId}` : ""
     const payload = await request<CertificateResponse[] | PageResponse<CertificateResponse>>(
       `/v1/certificates${params}`,
     )

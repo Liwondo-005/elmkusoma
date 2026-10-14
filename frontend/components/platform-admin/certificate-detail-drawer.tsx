@@ -312,6 +312,7 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
                 status: cert.status,
                 verificationCode: cert.verificationCode,
                 verificationUrl: cert.verificationUrl,
+                qrCodeUrl: cert.qrCodeUrl,
                 revokedReason: cert.revokedReason,
                 revokedAt: cert.revokedAt,
               }}

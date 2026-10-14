@@ -82,6 +82,26 @@ export default function CertificateVerifyPage() {
                     <p className="text-xs text-muted-foreground">{tc("verifyValidDesc")}</p>
                   </div>
                 </>
+              ) : result.status === "SUPERSEDED" ? (
+                <>
+                  <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/10">
+                    <AlertCircle className="size-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-amber-600">{tc("verifySupersededTitle")}</h2>
+                    <p className="text-xs text-muted-foreground">
+                      {result.message || tc("verifySupersededFallback")}
+                    </p>
+                    {result.supersededBySerialNumber && (
+                      <p className="mt-1 text-xs">
+                        <span className="text-muted-foreground">{tc("verifySupersededReplacement")}</span>{" "}
+                        <span className="font-mono font-semibold text-foreground">
+                          {result.supersededBySerialNumber}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="flex size-10 items-center justify-center rounded-full bg-red-500/10">
@@ -183,6 +203,7 @@ export default function CertificateVerifyPage() {
                     <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldStatus")}</p>
                     <p className={`mt-0.5 text-sm font-semibold ${
                       result.status === "ISSUED" ? "text-teal" :
+                      result.status === "SUPERSEDED" ? "text-amber-600" :
                       result.status === "REVOKED" ? "text-red-500" : "text-muted-foreground"
                     }`}>
                       {result.status}

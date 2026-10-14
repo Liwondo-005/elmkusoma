@@ -1,3 +1,9 @@
+-- RENUMBERED ON MERGE: this file is V162 on origin/main and V166 here.
+--
+-- The certificate branch independently claimed V161-V164, and a shared database has already
+-- applied those under our names and checksums, so the incoming side moved instead: ours keep
+-- the versions the database recorded, these apply fresh afterwards. V141 keeps its original
+-- number because spring.flyway.out-of-order is enabled and it is meant to sort below V156.
 -- V162: persist "a stop was requested for the current capture" on the class row.
 --
 -- Why a column: `live_classes.recording_url` holds the `egress:<id>` marker for BOTH states

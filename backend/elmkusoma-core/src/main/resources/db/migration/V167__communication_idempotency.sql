@@ -1,3 +1,9 @@
+-- RENUMBERED ON MERGE: this file is V163 on origin/main and V167 here.
+--
+-- The certificate branch independently claimed V161-V164, and a shared database has already
+-- applied those under our names and checksums, so the incoming side moved instead: ours keep
+-- the versions the database recorded, these apply fresh afterwards. V141 keeps its original
+-- number because spring.flyway.out-of-order is enabled and it is meant to sort below V156.
 -- Communication Centre idempotency: safe retry for conversation creation and message submission.
 --
 -- A double-click, a flaky mobile connection, or a client timeout used to create a second ticket

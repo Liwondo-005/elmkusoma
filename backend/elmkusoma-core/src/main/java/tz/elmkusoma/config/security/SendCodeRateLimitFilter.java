@@ -44,35 +44,14 @@ public class SendCodeRateLimitFilter extends OncePerRequestFilter implements Ord
 
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
 
-    private volatile java.util.List<String> trustedProxyPrefixes = java.util.List.of();
-
-    /**
-     * Audit B-26: networks whose X-Forwarded-For header may be trusted (reverse proxy / load
-     * balancer CIDRs). Empty by default, which means the header is ignored and the socket
-     * address is used.
-     */
-    @Value("${elmkusoma.security.trusted-proxies:}")
-    private String trustedProxies;
+    private final ClientIpResolver clientIpResolver;
 
     @Value("${elmkusoma.security.send-code-per-minute:20}")
     private long limitPerMinute;
 
-    public SendCodeRateLimitFilter(ObjectMapper objectMapper) {
+    public SendCodeRateLimitFilter(ObjectMapper objectMapper, ClientIpResolver clientIpResolver) {
         this.objectMapper = objectMapper;
-    }
-
-    /** Parses the configured trusted-proxy prefixes once the properties are bound. */
-    @PostConstruct
-    void initTrustedProxies() {
-        if (trustedProxies == null || trustedProxies.isBlank()) {
-            trustedProxyPrefixes = java.util.List.of();
-        } else {
-            trustedProxyPrefixes = java.util.Arrays.stream(trustedProxies.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .toList();
-        }
-        log.info("send-code rate limit trusts X-Forwarded-For only from: {}", trustedProxyPrefixes);
+        this.clientIpResolver = clientIpResolver;
     }
 
     @Override
@@ -120,37 +99,14 @@ public class SendCodeRateLimitFilter extends OncePerRequestFilter implements Ord
     /**
      * Audit B-26: {@code X-Forwarded-For} was trusted unconditionally, so any caller could vary
      * that header and defeat the per-IP limit -- which is what protects the mail endpoint from
-     * being used to bomb third-party addresses. The header is now honoured only when the direct
-     * peer is a configured trusted proxy; otherwise the socket address is used, which a client
-     * cannot forge.
+     * being used to bomb third-party addresses.
+     *
+     * <p>Now delegated to the shared {@link ClientIpResolver}, so every per-IP control in the
+     * system agrees on who the caller is and none of them can drift back to trusting a
+     * client-supplied header. This filter was the original that had the fix; the others did not.</p>
      */
     private String clientIp(HttpServletRequest request) {
-        String remote = request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
-        if (!isTrustedProxy(remote)) {
-            return remote;
-        }
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            // First hop is the original client; trim before any chain noise.
-            int comma = forwarded.indexOf(',');
-            String first = (comma > 0 ? forwarded.substring(0, comma) : forwarded).trim();
-            if (!first.isEmpty() && first.length() <= 45) {
-                return first;
-            }
-        }
-        return remote;
-    }
-
-    private boolean isTrustedProxy(String remoteAddr) {
-        if (remoteAddr == null || remoteAddr.isBlank()) {
-            return false;
-        }
-        for (String prefix : trustedProxyPrefixes) {
-            if (!prefix.isBlank() && remoteAddr.startsWith(prefix.trim())) {
-                return true;
-            }
-        }
-        return false;
+        return clientIpResolver.resolve(request);
     }
 
     // Visible for tests: reset the in-memory window state.

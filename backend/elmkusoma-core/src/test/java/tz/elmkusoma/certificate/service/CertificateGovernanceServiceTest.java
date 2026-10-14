@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.repository.AuditLogRepository;
@@ -38,6 +39,11 @@ class CertificateGovernanceServiceTest {
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private AuditService auditService;
     @Mock private CertificateMapper certificateMapper;
+    // The real sanitiser. createTemplate sanitises on the way in, and a stub in its place
+    // would let the test pass whether or not the call is wired correctly.
+    @Spy
+    private CertificateTemplateContentSanitizer templateContentSanitizer =
+            new CertificateTemplateContentSanitizer();
 
     @InjectMocks
     private CertificateGovernanceService service;

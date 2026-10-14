@@ -103,7 +103,30 @@ export function CertificateVerifier({ initialCode }: { initialCode?: string }) {
           </div>
         )}
 
-        {result && !result.valid && (
+        {/* Superseded is separated from the plain "not valid" panel on purpose. It is the one
+            invalid outcome where the visitor can still do something: they are holding a
+            withdrawn copy, and a valid replacement exists. Showing the same red cross as an
+            unknown code tells them to give up at exactly the moment they should ask for the
+            certificate that replaced this one. */}
+        {result && !result.valid && result.status === "SUPERSEDED" && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-6 py-10 text-center">
+            <AlertTriangle className="mx-auto size-8 text-amber-600" />
+            <p className="mt-3 text-sm font-medium text-amber-700">{tc("verifySupersededTitle")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {result.message || tc("verifySupersededFallback")}
+            </p>
+            {result.supersededBySerialNumber && (
+              <p className="mt-4 text-sm">
+                <span className="text-muted-foreground">{tc("verifySupersededReplacement")}</span>
+                <span className="ml-1 font-mono font-semibold text-foreground">
+                  {result.supersededBySerialNumber}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {result && !result.valid && result.status !== "SUPERSEDED" && (
           <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-16 text-center">
             <XCircle className="mx-auto size-8 text-destructive" />
             <p className="mt-3 text-sm font-medium text-destructive">{tc("verifyNotValidTitle")}</p>
