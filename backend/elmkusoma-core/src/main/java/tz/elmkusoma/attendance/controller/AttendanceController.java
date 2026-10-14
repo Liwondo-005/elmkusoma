@@ -62,9 +62,10 @@ public class AttendanceController {
     @Operation(summary = "Get attendance by class and date")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AttendanceRecordResponse>>> getAttendance(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam UUID classId,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<AttendanceRecordResponse> response = attendanceService.getByClassAndDate(classId, date);
+        List<AttendanceRecordResponse> response = attendanceService.getByClassAndDate(institutionId, classId, date);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -72,12 +73,13 @@ public class AttendanceController {
     @Operation(summary = "Get attendance by student and date range")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<AttendanceRecordResponse>>> getStudentAttendance(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID studentId,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest request) {
         verifyStudentAccess(studentId, request);
-        List<AttendanceRecordResponse> response = attendanceService.getByStudentAndDateRange(studentId, startDate, endDate);
+        List<AttendanceRecordResponse> response = attendanceService.getByStudentAndDateRange(institutionId, studentId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -85,11 +87,12 @@ public class AttendanceController {
     @Operation(summary = "Get attendance summary for a student")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> getAttendanceSummary(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam UUID studentId,
             @RequestParam UUID termId,
             HttpServletRequest request) {
         verifyStudentAccess(studentId, request);
-        AttendanceSummaryResponse response = attendanceService.getSummary(studentId, termId);
+        AttendanceSummaryResponse response = attendanceService.getSummary(institutionId, studentId, termId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -115,9 +118,10 @@ public class AttendanceController {
     @Operation(summary = "Get attendance summary for a class")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AttendanceSummaryResponse>>> getClassAttendanceSummary(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID classId,
             @RequestParam UUID termId) {
-        List<AttendanceSummaryResponse> response = attendanceService.getByClassAndTerm(classId, termId);
+        List<AttendanceSummaryResponse> response = attendanceService.getByClassAndTerm(institutionId, classId, termId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

@@ -70,7 +70,10 @@ public class TeacherLiveClassController {
             @RequestAttribute(value = "userRole", required = false) String userRole,
             @Valid @RequestBody CreateLiveClassRequest request) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
-        LiveClassResponse created = liveClassService.createLiveClass(teacher.getId(), institutionId, request);
+        // @PreAuthorize above guarantees TEACHER; the attribute is declared optional, so fall back
+        // to the role that has just been proven rather than dropping the assignment check.
+        LiveClassResponse created = liveClassService.createLiveClass(teacher.getId(), institutionId,
+                userId, userRole != null ? userRole : "TEACHER", request);
 
         String schedInfo = created.getScheduledAt() != null
                 ? " on " + created.getScheduledAt()
@@ -105,7 +108,8 @@ public class TeacherLiveClassController {
             @PathVariable UUID id,
             @Valid @RequestBody CreateLiveClassRequest request) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
-        LiveClassResponse updated = liveClassService.updateLiveClass(teacher.getId(), id, request);
+        LiveClassResponse updated = liveClassService.updateLiveClass(teacher.getId(), id,
+                userId, userRole != null ? userRole : "TEACHER", request);
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
         if (liveClass != null && request.getScheduledAt() != null) {

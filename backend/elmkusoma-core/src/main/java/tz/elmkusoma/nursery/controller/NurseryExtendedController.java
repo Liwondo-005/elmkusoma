@@ -38,28 +38,36 @@ public class NurseryExtendedController {
 
     @GetMapping("/stories")
     @Operation(summary = "Get stories by class")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getStoriesByClass(@RequestParam UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getStoriesByClass(classId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getStoriesByClass(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestParam UUID classId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getStoriesByClass(institutionId, classId)));
     }
 
     @GetMapping("/stories/{id}")
     @Operation(summary = "Get story by ID")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getStory(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(service.getStory(id)));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStory(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(service.getStory(institutionId, id)));
     }
 
     @PutMapping("/stories/{id}")
     @Operation(summary = "Update story")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateStory(@PathVariable UUID id, @RequestBody Map<String, Object> request) {
-        return ResponseEntity.ok(ApiResponse.success("Story updated", service.updateStory(id, request)));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateStory(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id, @RequestBody Map<String, Object> request) {
+        return ResponseEntity.ok(ApiResponse.success("Story updated", service.updateStory(institutionId, id, request)));
     }
 
     @DeleteMapping("/stories/{id}")
     @Operation(summary = "Delete story")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteStory(@PathVariable UUID id) {
-        service.deleteStory(id);
+    public ResponseEntity<ApiResponse<Void>> deleteStory(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        service.deleteStory(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Story deleted", null));
     }
 
@@ -78,34 +86,44 @@ public class NurseryExtendedController {
 
     @GetMapping("/daily-quests")
     @Operation(summary = "Get daily quests by class")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDailyQuestsByClass(@RequestParam UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getDailyQuestsByClass(classId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDailyQuestsByClass(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestParam UUID classId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getDailyQuestsByClass(institutionId, classId)));
     }
 
     @GetMapping("/daily-quests/student/{studentId}")
     @Operation(summary = "Get daily quests by student")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDailyQuestsByStudent(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getDailyQuestsByStudent(studentId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDailyQuestsByStudent(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID studentId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getDailyQuestsByStudent(institutionId, studentId)));
     }
 
     @GetMapping("/daily-quests/{id}")
     @Operation(summary = "Get daily quest by ID")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getDailyQuest(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(service.getDailyQuest(id)));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDailyQuest(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(service.getDailyQuest(institutionId, id)));
     }
 
     @PutMapping("/daily-quests/{id}")
     @Operation(summary = "Update daily quest")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER','STUDENT')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateDailyQuest(@PathVariable UUID id, @RequestBody Map<String, Object> request) {
-        return ResponseEntity.ok(ApiResponse.success("Daily quest updated", service.updateDailyQuest(id, request)));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateDailyQuest(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id, @RequestBody Map<String, Object> request) {
+        return ResponseEntity.ok(ApiResponse.success("Daily quest updated", service.updateDailyQuest(institutionId, id, request)));
     }
 
     @DeleteMapping("/daily-quests/{id}")
     @Operation(summary = "Delete daily quest")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteDailyQuest(@PathVariable UUID id) {
-        service.deleteDailyQuest(id);
+    public ResponseEntity<ApiResponse<Void>> deleteDailyQuest(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        service.deleteDailyQuest(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Daily quest deleted", null));
     }
 
@@ -123,15 +141,19 @@ public class NurseryExtendedController {
 
     @GetMapping("/feelings/student/{studentId}")
     @Operation(summary = "Get feelings by student")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getFeelingsByStudent(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getFeelingsCheckinsByStudent(studentId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getFeelingsByStudent(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID studentId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getFeelingsCheckinsByStudent(institutionId, studentId)));
     }
 
     @DeleteMapping("/feelings/{id}")
     @Operation(summary = "Delete feelings check-in")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteFeelingsCheckin(@PathVariable UUID id) {
-        service.deleteFeelingsCheckin(id);
+    public ResponseEntity<ApiResponse<Void>> deleteFeelingsCheckin(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        service.deleteFeelingsCheckin(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Feelings check-in deleted", null));
     }
 
@@ -150,27 +172,35 @@ public class NurseryExtendedController {
 
     @GetMapping("/missions")
     @Operation(summary = "Get missions by class")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMissionsByClass(@RequestParam UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getMissionsByClass(classId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMissionsByClass(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestParam UUID classId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getMissionsByClass(institutionId, classId)));
     }
 
     @GetMapping("/missions/student/{studentId}")
     @Operation(summary = "Get missions by student")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMissionsByStudent(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getMissionsByStudent(studentId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMissionsByStudent(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID studentId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getMissionsByStudent(institutionId, studentId)));
     }
 
     @PutMapping("/missions/{id}")
     @Operation(summary = "Update mission")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateMission(@PathVariable UUID id, @RequestBody Map<String, Object> request) {
-        return ResponseEntity.ok(ApiResponse.success("Mission updated", service.updateMission(id, request)));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateMission(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id, @RequestBody Map<String, Object> request) {
+        return ResponseEntity.ok(ApiResponse.success("Mission updated", service.updateMission(institutionId, id, request)));
     }
 
     @DeleteMapping("/missions/{id}")
     @Operation(summary = "Delete mission")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteMission(@PathVariable UUID id) {
-        service.deleteMission(id);
+    public ResponseEntity<ApiResponse<Void>> deleteMission(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        service.deleteMission(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Mission deleted", null));
     }
 
@@ -189,21 +219,27 @@ public class NurseryExtendedController {
 
     @GetMapping("/tanzania")
     @Operation(summary = "Get Tanzania topics by class")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTanzaniaByClass(@RequestParam UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getTanzaniaTopics(classId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTanzaniaByClass(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestParam UUID classId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getTanzaniaTopics(institutionId, classId)));
     }
 
     @GetMapping("/tanzania/category/{category}")
     @Operation(summary = "Get Tanzania topics by category")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTanzaniaByCategory(@PathVariable String category) {
-        return ResponseEntity.ok(ApiResponse.success(service.getTanzaniaByCategory(category)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTanzaniaByCategory(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable String category) {
+        return ResponseEntity.ok(ApiResponse.success(service.getTanzaniaByCategory(institutionId, category)));
     }
 
     @DeleteMapping("/tanzania/{id}")
     @Operation(summary = "Delete Tanzania topic")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteTanzania(@PathVariable UUID id) {
-        service.deleteTanzaniaTopic(id);
+    public ResponseEntity<ApiResponse<Void>> deleteTanzania(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        service.deleteTanzaniaTopic(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Tanzania topic deleted", null));
     }
 
@@ -221,21 +257,27 @@ public class NurseryExtendedController {
 
     @GetMapping("/parent-learning/student/{studentId}")
     @Operation(summary = "Get parent learning by student")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getParentLearningByStudent(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(service.getParentLearningByStudent(studentId)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getParentLearningByStudent(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID studentId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getParentLearningByStudent(institutionId, studentId)));
     }
 
     @PutMapping("/parent-learning/{id}")
     @Operation(summary = "Update parent learning")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateParentLearning(@PathVariable UUID id, @RequestBody Map<String, Object> request) {
-        return ResponseEntity.ok(ApiResponse.success("Parent learning updated", service.updateParentLearning(id, request)));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateParentLearning(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id, @RequestBody Map<String, Object> request) {
+        return ResponseEntity.ok(ApiResponse.success("Parent learning updated", service.updateParentLearning(institutionId, id, request)));
     }
 
     @DeleteMapping("/parent-learning/{id}")
     @Operation(summary = "Delete parent learning")
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteParentLearning(@PathVariable UUID id) {
-        service.deleteParentLearning(id);
+    public ResponseEntity<ApiResponse<Void>> deleteParentLearning(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+        service.deleteParentLearning(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Parent learning deleted", null));
     }
 }

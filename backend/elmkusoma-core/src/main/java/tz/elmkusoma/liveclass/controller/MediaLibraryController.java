@@ -33,6 +33,7 @@ public class MediaLibraryController {
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
     private final tz.elmkusoma.liveclass.service.LiveClassRecordingAccessService liveClassRecordingAccessService;
+    private final tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
 
     /** Server-written origin that marks an asset as a live-class recording. */
     private static final String SOURCE_LIVE_CLASS = "LIVE_CLASS";
@@ -344,6 +345,7 @@ public class MediaLibraryController {
     public ResponseEntity<ApiResponse<MediaAssetResponse>> createMedia(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
             @RequestBody MediaAssetRequest request) {
 
         // LIVE_CLASS is a reserved origin: it is written only by the recording hand-off
@@ -356,6 +358,13 @@ public class MediaLibraryController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error("sourceType LIVE_CLASS is set by the server, not the client"));
         }
+
+        // classGroupId and subjectId decide who may later see this asset in their library, so they
+        // are client claims that must be proven against the caller's institution. The role matters:
+        // a teacher must also be assigned to the class, while an institution admin may target any
+        // class in their own school.
+        audienceTargetGuard.validateTarget(institutionId, request.getClassGroupId(),
+                request.getSubjectId(), userId, userRole);
 
         MediaAsset asset = MediaAsset.builder()
                 .title(request.getTitle())

@@ -6,17 +6,21 @@ import tz.elmkusoma.nursery.dto.response.NurseryMilestoneResponse;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Reads and writes are tenant-scoped: every method takes the caller's
+ * institutionId (server-derived) and fails closed across tenants (403).
+ */
 public interface NurseryMilestoneService {
 
     NurseryMilestoneResponse create(UUID institutionId, CreateNurseryMilestoneRequest request);
 
-    List<NurseryMilestoneResponse> getByStudentId(UUID studentId);
+    List<NurseryMilestoneResponse> getByStudentId(UUID institutionId, UUID studentId);
 
-    List<NurseryMilestoneResponse> getByStudentAndCategory(UUID studentId, String category);
+    List<NurseryMilestoneResponse> getByStudentAndCategory(UUID institutionId, UUID studentId, String category);
 
-    NurseryMilestoneResponse getById(UUID id);
+    NurseryMilestoneResponse getById(UUID institutionId, UUID id);
 
-    NurseryMilestoneResponse update(UUID id, CreateNurseryMilestoneRequest request);
+    NurseryMilestoneResponse update(UUID institutionId, UUID id, CreateNurseryMilestoneRequest request);
 
-    void delete(UUID id);
+    void delete(UUID institutionId, UUID id);
 }

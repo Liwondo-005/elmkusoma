@@ -38,8 +38,9 @@ public class TeacherAnnouncementController {
     public ResponseEntity<ApiResponse<AnnouncementResponse>> createAnnouncement(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
             @RequestBody CreateAnnouncementRequest request) {
-        AnnouncementResponse created = announcementService.createAnnouncement(userId, institutionId, request);
+        AnnouncementResponse created = announcementService.createAnnouncement(userId, institutionId, userRole, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Announcement created successfully", created));
     }
@@ -49,9 +50,10 @@ public class TeacherAnnouncementController {
     public ResponseEntity<ApiResponse<AnnouncementResponse>> updateAnnouncement(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
             @PathVariable UUID id,
             @RequestBody CreateAnnouncementRequest request) {
-        AnnouncementResponse updated = announcementService.updateAnnouncement(userId, id, request);
+        AnnouncementResponse updated = announcementService.updateAnnouncement(userId, id, userRole, request);
         return ResponseEntity.ok(ApiResponse.success("Announcement updated successfully", updated));
     }
 

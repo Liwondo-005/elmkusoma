@@ -3,10 +3,15 @@ package tz.elmkusoma.nursery.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.academic.domain.ClassGroup;
+import tz.elmkusoma.academic.repository.ClassGroupRepository;
+import tz.elmkusoma.common.OwnershipGuard;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.nursery.domain.*;
 import tz.elmkusoma.nursery.repository.*;
 import tz.elmkusoma.nursery.service.NurseryExtendedService;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -23,6 +28,9 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
     private final NurseryMissionRepository missionRepo;
     private final NurseryTanzaniaDiscoveryRepository tanzaniaRepo;
     private final NurseryParentLearningRepository parentLearningRepo;
+    private final OwnershipGuard ownershipGuard;
+    private final ClassGroupRepository classGroupRepository;
+    private final StudentRepository studentRepository;
 
     // ==================== STORIES ====================
 
@@ -45,19 +53,23 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> getStory(UUID id) {
-        return toMap(findStory(id));
+    public Map<String, Object> getStory(UUID institutionId, UUID id) {
+        NurseryStory story = findStory(id);
+        verifyRowInScope(institutionId, story.getInstitutionId());
+        return toMap(story);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getStoriesByClass(UUID classId) {
+    public List<Map<String, Object>> getStoriesByClass(UUID institutionId, UUID classId) {
+        verifyClassGroupInScope(institutionId, classId);
         return storyRepo.findByClassGroupIdAndIsDeletedFalse(classId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
-    public Map<String, Object> updateStory(UUID id, Map<String, Object> req) {
+    public Map<String, Object> updateStory(UUID institutionId, UUID id, Map<String, Object> req) {
         NurseryStory s = findStory(id);
+        verifyRowInScope(institutionId, s.getInstitutionId());
         if (req.containsKey("title")) s.setTitle((String) req.get("title"));
         if (req.containsKey("content")) s.setContent((String) req.get("content"));
         if (req.containsKey("storyType")) s.setStoryType(NurseryStory.StoryType.valueOf((String) req.get("storyType")));
@@ -69,8 +81,9 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
     }
 
     @Override
-    public void deleteStory(UUID id) {
+    public void deleteStory(UUID institutionId, UUID id) {
         NurseryStory s = findStory(id);
+        verifyRowInScope(institutionId, s.getInstitutionId());
         s.setIsDeleted(true);
         storyRepo.save(s);
     }
@@ -99,25 +112,30 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> getDailyQuest(UUID id) {
-        return toMap(findDailyQuest(id));
+    public Map<String, Object> getDailyQuest(UUID institutionId, UUID id) {
+        NurseryDailyQuest quest = findDailyQuest(id);
+        verifyRowInScope(institutionId, quest.getInstitutionId());
+        return toMap(quest);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getDailyQuestsByClass(UUID classId) {
+    public List<Map<String, Object>> getDailyQuestsByClass(UUID institutionId, UUID classId) {
+        verifyClassGroupInScope(institutionId, classId);
         return dailyQuestRepo.findByClassGroupIdAndIsDeletedFalse(classId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getDailyQuestsByStudent(UUID studentId) {
+    public List<Map<String, Object>> getDailyQuestsByStudent(UUID institutionId, UUID studentId) {
+        verifyStudentInScope(institutionId, studentId);
         return dailyQuestRepo.findByStudentIdAndIsDeletedFalse(studentId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
-    public Map<String, Object> updateDailyQuest(UUID id, Map<String, Object> req) {
+    public Map<String, Object> updateDailyQuest(UUID institutionId, UUID id, Map<String, Object> req) {
         NurseryDailyQuest q = findDailyQuest(id);
+        verifyRowInScope(institutionId, q.getInstitutionId());
         if (req.containsKey("questTitle")) q.setQuestTitle((String) req.get("questTitle"));
         if (req.containsKey("questDescription")) q.setQuestDescription((String) req.get("questDescription"));
         if (req.containsKey("questType")) q.setQuestType(NurseryDailyQuest.QuestType.valueOf((String) req.get("questType")));
@@ -131,8 +149,9 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
     }
 
     @Override
-    public void deleteDailyQuest(UUID id) {
+    public void deleteDailyQuest(UUID institutionId, UUID id) {
         NurseryDailyQuest q = findDailyQuest(id);
+        verifyRowInScope(institutionId, q.getInstitutionId());
         q.setIsDeleted(true);
         dailyQuestRepo.save(q);
     }
@@ -159,19 +178,23 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> getFeelingsCheckin(UUID id) {
-        return toMap(findFeelings(id));
+    public Map<String, Object> getFeelingsCheckin(UUID institutionId, UUID id) {
+        NurseryFeelingsCheckin checkin = findFeelings(id);
+        verifyRowInScope(institutionId, checkin.getInstitutionId());
+        return toMap(checkin);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getFeelingsCheckinsByStudent(UUID studentId) {
+    public List<Map<String, Object>> getFeelingsCheckinsByStudent(UUID institutionId, UUID studentId) {
+        verifyStudentInScope(institutionId, studentId);
         return feelingsRepo.findByStudentIdAndIsDeletedFalse(studentId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
-    public void deleteFeelingsCheckin(UUID id) {
+    public void deleteFeelingsCheckin(UUID institutionId, UUID id) {
         NurseryFeelingsCheckin f = findFeelings(id);
+        verifyRowInScope(institutionId, f.getInstitutionId());
         f.setIsDeleted(true);
         feelingsRepo.save(f);
     }
@@ -200,25 +223,30 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> getMission(UUID id) {
-        return toMap(findMission(id));
+    public Map<String, Object> getMission(UUID institutionId, UUID id) {
+        NurseryMission mission = findMission(id);
+        verifyRowInScope(institutionId, mission.getInstitutionId());
+        return toMap(mission);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getMissionsByClass(UUID classId) {
+    public List<Map<String, Object>> getMissionsByClass(UUID institutionId, UUID classId) {
+        verifyClassGroupInScope(institutionId, classId);
         return missionRepo.findByClassGroupIdAndIsDeletedFalse(classId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getMissionsByStudent(UUID studentId) {
+    public List<Map<String, Object>> getMissionsByStudent(UUID institutionId, UUID studentId) {
+        verifyStudentInScope(institutionId, studentId);
         return missionRepo.findByStudentIdAndIsDeletedFalse(studentId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
-    public Map<String, Object> updateMission(UUID id, Map<String, Object> req) {
+    public Map<String, Object> updateMission(UUID institutionId, UUID id, Map<String, Object> req) {
         NurseryMission m = findMission(id);
+        verifyRowInScope(institutionId, m.getInstitutionId());
         if (req.containsKey("missionTitle")) m.setMissionTitle((String) req.get("missionTitle"));
         if (req.containsKey("missionDescription")) m.setMissionDescription((String) req.get("missionDescription"));
         if (req.containsKey("missionType")) m.setMissionType(NurseryMission.MissionType.valueOf((String) req.get("missionType")));
@@ -233,8 +261,9 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
     }
 
     @Override
-    public void deleteMission(UUID id) {
+    public void deleteMission(UUID institutionId, UUID id) {
         NurseryMission m = findMission(id);
+        verifyRowInScope(institutionId, m.getInstitutionId());
         m.setIsDeleted(true);
         missionRepo.save(m);
     }
@@ -263,25 +292,33 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> getTanzaniaTopic(UUID id) {
-        return toMap(findTanzania(id));
+    public Map<String, Object> getTanzaniaTopic(UUID institutionId, UUID id) {
+        NurseryTanzaniaDiscovery topic = findTanzania(id);
+        verifyRowInScope(institutionId, topic.getInstitutionId());
+        return toMap(topic);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getTanzaniaTopics(UUID classId) {
+    public List<Map<String, Object>> getTanzaniaTopics(UUID institutionId, UUID classId) {
+        verifyClassGroupInScope(institutionId, classId);
         return tanzaniaRepo.findByClassGroupIdAndIsDeletedFalse(classId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getTanzaniaByCategory(String category) {
-        return tanzaniaRepo.findByCategoryAndIsDeletedFalse(NurseryTanzaniaDiscovery.DiscoveryCategory.valueOf(category)).stream().map(this::toMap).collect(Collectors.toList());
+    public List<Map<String, Object>> getTanzaniaByCategory(UUID institutionId, String category) {
+        // Scoped by institution at the query level; the unscoped category finder
+        // would leak every tenant's topics to any caller.
+        return tanzaniaRepo.findByCategoryAndInstitutionIdAndIsDeletedFalse(
+                        NurseryTanzaniaDiscovery.DiscoveryCategory.valueOf(category), institutionId)
+                .stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
-    public void deleteTanzaniaTopic(UUID id) {
+    public void deleteTanzaniaTopic(UUID institutionId, UUID id) {
         NurseryTanzaniaDiscovery t = findTanzania(id);
+        verifyRowInScope(institutionId, t.getInstitutionId());
         t.setIsDeleted(true);
         tanzaniaRepo.save(t);
     }
@@ -310,19 +347,23 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Object> getParentLearning(UUID id) {
-        return toMap(findParentLearning(id));
+    public Map<String, Object> getParentLearning(UUID institutionId, UUID id) {
+        NurseryParentLearning activity = findParentLearning(id);
+        verifyRowInScope(institutionId, activity.getInstitutionId());
+        return toMap(activity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getParentLearningByStudent(UUID studentId) {
+    public List<Map<String, Object>> getParentLearningByStudent(UUID institutionId, UUID studentId) {
+        verifyStudentInScope(institutionId, studentId);
         return parentLearningRepo.findByStudentIdAndIsDeletedFalse(studentId).stream().map(this::toMap).collect(Collectors.toList());
     }
 
     @Override
-    public Map<String, Object> updateParentLearning(UUID id, Map<String, Object> req) {
+    public Map<String, Object> updateParentLearning(UUID institutionId, UUID id, Map<String, Object> req) {
         NurseryParentLearning p = findParentLearning(id);
+        verifyRowInScope(institutionId, p.getInstitutionId());
         if (req.containsKey("completionStatus")) {
             p.setCompletionStatus(NurseryParentLearning.CompletionStatus.valueOf((String) req.get("completionStatus")));
             if (p.getCompletionStatus() == NurseryParentLearning.CompletionStatus.COMPLETED) p.setCompletedDate(LocalDate.now());
@@ -332,14 +373,46 @@ public class NurseryExtendedServiceImpl implements NurseryExtendedService {
     }
 
     @Override
-    public void deleteParentLearning(UUID id) {
+    public void deleteParentLearning(UUID institutionId, UUID id) {
         NurseryParentLearning p = findParentLearning(id);
+        verifyRowInScope(institutionId, p.getInstitutionId());
         p.setIsDeleted(true);
         parentLearningRepo.save(p);
     }
 
     private NurseryParentLearning findParentLearning(UUID id) {
         return parentLearningRepo.findById(id).filter(e -> !e.getIsDeleted()).orElseThrow(() -> new ResourceNotFoundException("Parent learning not found"));
+    }
+
+    /**
+     * Tenant check for id-based access: the row's own {@code institution_id}
+     * column (server-set at creation via BaseEntity) defines the tenant
+     * boundary and fails closed when absent. Another tenant's row -&gt; 403.
+     */
+    private void verifyRowInScope(UUID institutionId, UUID rowInstitutionId) {
+        ownershipGuard.verifyInstitution(rowInstitutionId, institutionId);
+    }
+
+    /**
+     * Tenant check for class-keyed access: the class group owns the tenant
+     * boundary (its {@code institution_id} column is NOT NULL and server-set).
+     * Unknown class group -&gt; 404; another tenant's class group -&gt; 403.
+     */
+    private void verifyClassGroupInScope(UUID institutionId, UUID classGroupId) {
+        ClassGroup classGroup = classGroupRepository.findById(classGroupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Class group not found"));
+        ownershipGuard.verifyInstitution(classGroup.getInstitutionId(), institutionId);
+    }
+
+    /**
+     * Tenant check for student-keyed access: the student's institution defines the
+     * tenant boundary ({@code students.institution_id} is NOT NULL).
+     * Unknown student -&gt; 404; another tenant's student -&gt; 403.
+     */
+    private void verifyStudentInScope(UUID institutionId, UUID studentId) {
+        Student student = studentRepository.findByIdAndIsDeletedFalse(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        ownershipGuard.verifyInstitution(student.getInstitutionId(), institutionId);
     }
 
     // ==================== MAP HELPERS ====================

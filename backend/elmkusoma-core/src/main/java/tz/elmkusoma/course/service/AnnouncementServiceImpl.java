@@ -24,6 +24,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     private final AnnouncementRepository announcementRepository;
     private final UserRepository userRepository;
     private final SubjectRepository subjectRepository;
+    private final tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
 
     @Override
     @Transactional(readOnly = true)
@@ -34,7 +35,14 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     }
 
     @Override
-    public AnnouncementResponse createAnnouncement(UUID authorId, UUID institutionId, CreateAnnouncementRequest request) {
+    public AnnouncementResponse createAnnouncement(UUID authorId, UUID institutionId, String userRole,
+                                                   CreateAnnouncementRequest request) {
+        // The class and subject ids arrive from the client, so they are claims rather than proof.
+        // Validate before storing: a teacher must not be able to aim an announcement at another
+        // school's class, or at a class in their own school that they do not teach.
+        audienceTargetGuard.validateTarget(institutionId, request.getClassGroupId(),
+                request.getSubjectId(), authorId, userRole);
+
         Announcement announcement = Announcement.builder()
                 .authorId(authorId)
                 .title(request.getTitle())
@@ -50,13 +58,23 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     }
 
     @Override
-    public AnnouncementResponse updateAnnouncement(UUID authorId, UUID announcementId, CreateAnnouncementRequest request) {
+    public AnnouncementResponse updateAnnouncement(UUID authorId, UUID announcementId, String userRole,
+                                                   CreateAnnouncementRequest request) {
         Announcement announcement = announcementRepository.findById(announcementId)
                 .filter(a -> a.getAuthorId().equals(authorId) && !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Announcement", "id", announcementId));
 
         if (request.getTitle() != null) announcement.setTitle(request.getTitle());
         if (request.getContent() != null) announcement.setContent(request.getContent());
+
+        // Retargeting carries the same untrusted claim as creating, and is checked against the
+        // announcement's own institution rather than anything the caller sends. Only the fields
+        // actually being changed are validated, so a legacy target recorded before this rule
+        // existed can still be preserved.
+        if (request.getClassGroupId() != null || request.getSubjectId() != null) {
+            audienceTargetGuard.validateTarget(announcement.getInstitutionId(),
+                    request.getClassGroupId(), request.getSubjectId(), authorId, userRole);
+        }
         if (request.getClassGroupId() != null) announcement.setClassGroupId(request.getClassGroupId());
         if (request.getSubjectId() != null) announcement.setSubjectId(request.getSubjectId());
         if (request.getPriority() != null) announcement.setPriority(request.getPriority());

@@ -14,11 +14,14 @@ public interface GradingScaleService {
 
     List<GradingScaleResponse> getByInstitutionId(UUID institutionId);
 
-    GradingScaleResponse getById(UUID id);
+    /** Institution-scoped read; platform {@code ADMIN} bypasses the institution check. */
+    GradingScaleResponse getById(UUID id, UUID institutionId, String userRole);
 
-    GradingScaleResponse update(UUID id, CreateGradingScaleRequest request);
+    /** Institution-scoped update; platform {@code ADMIN} bypasses the institution check. */
+    GradingScaleResponse update(UUID id, UUID institutionId, String userRole, CreateGradingScaleRequest request);
 
-    void delete(UUID id);
+    /** Institution-scoped delete; platform {@code ADMIN} bypasses the institution check. */
+    void delete(UUID id, UUID institutionId, String userRole);
 
     List<GradeBoundaryResponse> getBoundaries(UUID scaleId);
 }

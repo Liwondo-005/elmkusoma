@@ -41,8 +41,9 @@ public class LearningController {
     public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
             @Valid @RequestBody LessonRequest request) {
-        LessonResponse response = learningService.createLesson(institutionId, request, userId);
+        LessonResponse response = learningService.createLesson(institutionId, request, userId, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Lesson created", response));
     }
@@ -128,9 +129,10 @@ public class LearningController {
     public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessons(
             @PathVariable UUID subjectId,
             @PathVariable UUID classGroupId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userRole") String userRole) {
         List<LessonResponse> response = learningService.getLessonsBySubjectAndClass(
-                subjectId, classGroupId, canSeeUnpublished(userRole));
+                subjectId, classGroupId, institutionId, canSeeUnpublished(userRole));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -139,9 +141,10 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessonsByClass(
             @PathVariable UUID classGroupId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userRole") String userRole) {
         List<LessonResponse> response = learningService.getLessonsByClass(
-                classGroupId, canSeeUnpublished(userRole));
+                classGroupId, institutionId, canSeeUnpublished(userRole));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -225,6 +228,7 @@ public class LearningController {
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole,
             @Valid @RequestBody AssignmentRequest request) {
+        learningService.assertAssignmentRetargetInScope(id, institutionId, request, userEmail, userRole);
         AssignmentResponse response = learningService.updateAssignment(id, request, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Assignment updated", response));
     }

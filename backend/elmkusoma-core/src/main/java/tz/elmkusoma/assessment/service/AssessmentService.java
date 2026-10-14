@@ -11,11 +11,35 @@ import java.util.UUID;
 
 public interface AssessmentService {
 
-    /** Create with actor context (audit + publish notifications). */
-    AssessmentResponse createAssessment(UUID institutionId, AssessmentRequest request, String userEmail, String userRole);
+    /**
+     * Create with actor context (audit + publish notifications). Delegates without
+     * a caller user id; a TEACHER caller therefore fails closed in the overload
+     * below (no resolvable teacher profile ⇒ no teaching assignment).
+     */
+    default AssessmentResponse createAssessment(UUID institutionId, AssessmentRequest request, String userEmail, String userRole) {
+        return createAssessment(institutionId, request, userEmail, userRole, null);
+    }
 
-    /** Update with institution enforcement; notifies learners when it becomes published. */
-    AssessmentResponse updateAssessment(UUID assessmentId, AssessmentRequest request, UUID institutionId, String userEmail, String userRole);
+    /**
+     * Create with actor context plus the caller's user id: the target class group
+     * and subject must exist inside the caller's institution, and a TEACHER caller
+     * must hold a teaching assignment for the target class.
+     */
+    AssessmentResponse createAssessment(UUID institutionId, AssessmentRequest request, String userEmail, String userRole, UUID callerUserId);
+
+    /**
+     * Update with institution enforcement; notifies learners when it becomes published.
+     * Delegates without a caller user id (see the overload below).
+     */
+    default AssessmentResponse updateAssessment(UUID assessmentId, AssessmentRequest request, UUID institutionId, String userEmail, String userRole) {
+        return updateAssessment(assessmentId, request, institutionId, userEmail, userRole, null);
+    }
+
+    /**
+     * Update with institution enforcement; when the request retargets the class
+     * group and/or subject, the new targets get the same validation as create.
+     */
+    AssessmentResponse updateAssessment(UUID assessmentId, AssessmentRequest request, UUID institutionId, String userEmail, String userRole, UUID callerUserId);
 
     /** Soft delete with institution enforcement + audit. */
     void deleteAssessment(UUID assessmentId, UUID institutionId, String userEmail, String userRole);

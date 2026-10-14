@@ -3,6 +3,10 @@ package tz.elmkusoma.assessment.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.academic.domain.ClassGroup;
+import tz.elmkusoma.academic.domain.Subject;
+import tz.elmkusoma.academic.repository.ClassGroupRepository;
+import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.assessment.domain.*;
 import tz.elmkusoma.assessment.dto.request.AssessmentRequest;
 import tz.elmkusoma.assessment.dto.request.QuestionRequest;
@@ -14,12 +18,16 @@ import tz.elmkusoma.assessment.service.AssessmentService;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.common.ClassAccessGuard;
+import tz.elmkusoma.common.OwnershipGuard;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.student.repository.StudentRepository;
+import tz.elmkusoma.teacher.domain.Teacher;
+import tz.elmkusoma.teacher.repository.TeacherAssignmentRepository;
+import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -49,12 +57,21 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final ClassAccessGuard classAccessGuard;
+    private final OwnershipGuard ownershipGuard;
+    private final tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
+    private final ClassGroupRepository classGroupRepository;
+    private final SubjectRepository subjectRepository;
+    private final TeacherRepository teacherRepository;
+    private final TeacherAssignmentRepository teacherAssignmentRepository;
 
     // ── Assessments ───────────────────────────────────────────────────────────
 
     @Override
     public AssessmentResponse createAssessment(UUID institutionId, AssessmentRequest request,
-                                               String userEmail, String userRole) {
+                                               String userEmail, String userRole, UUID callerUserId) {
+        // Client-supplied audience ids are never trusted (no FK on assessments).
+        validateTargetAudience(institutionId, request.getClassGroupId(), request.getSubjectId(),
+                callerUserId, userRole);
         boolean published = request.getIsPublished() != null && request.getIsPublished();
         Assessment assessment = Assessment.builder()
                 .institutionId(institutionId)
@@ -88,8 +105,19 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     @Override
     public AssessmentResponse updateAssessment(UUID assessmentId, AssessmentRequest request,
-                                               UUID institutionId, String userEmail, String userRole) {
+                                               UUID institutionId, String userEmail, String userRole,
+                                               UUID callerUserId) {
         Assessment assessment = loadScoped(assessmentId, institutionId);
+        // Retargeting gets the same audience validation as create; title/publish-only
+        // updates are untouched. Effective targets fall back to the stored values.
+        if (request.getClassGroupId() != null || request.getSubjectId() != null) {
+            UUID targetClassGroupId = request.getClassGroupId() != null
+                    ? request.getClassGroupId() : assessment.getClassGroupId();
+            UUID targetSubjectId = request.getSubjectId() != null
+                    ? request.getSubjectId() : assessment.getSubjectId();
+            validateTargetAudience(institutionId, targetClassGroupId, targetSubjectId,
+                    callerUserId, userRole);
+        }
         boolean wasPublished = Boolean.TRUE.equals(assessment.getIsPublished());
 
         Map<String, Object> oldValues = Map.of(
@@ -605,6 +633,25 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Create/retarget audience validation — client-supplied ids are never trusted
+     * (the {@code assessments} table has no FK on class_group_id/subject_id).
+     * The target class group and subject must exist (missing → 404) and belong to
+     * the caller's institution (foreign → {@link OwnershipGuard} 403). A TEACHER
+     * caller must additionally hold a non-deleted teaching assignment for the
+     * target class, resolved exactly like the read-side gates in
+     * {@code ResourceService#assertAssignmentAudience}; a missing caller user id
+     * or teacher profile fails closed. Admin callers satisfy institution
+     * containment only and are never forced to hold a teaching assignment.
+     */
+    private void validateTargetAudience(UUID institutionId, UUID classGroupId, UUID subjectId,
+                                        UUID callerUserId, String userRole) {
+        // Delegates so lessons, assessments, announcements, live sessions and media all enforce
+        // one audience rule rather than five that can drift apart. See AudienceTargetGuard.
+        audienceTargetGuard.validateTarget(institutionId, classGroupId, subjectId,
+                callerUserId, userRole);
+    }
 
     /** Institution-scoped load; a cross-institution id looks like "not found". */
     private Assessment loadScoped(UUID assessmentId, UUID institutionId) {

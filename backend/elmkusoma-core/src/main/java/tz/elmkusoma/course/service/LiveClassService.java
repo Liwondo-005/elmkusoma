@@ -10,9 +10,11 @@ public interface LiveClassService {
 
     List<LiveClassResponse> getTeacherLiveClasses(UUID teacherId);
 
-    LiveClassResponse createLiveClass(UUID teacherId, UUID institutionId, CreateLiveClassRequest request);
+    LiveClassResponse createLiveClass(UUID teacherId, UUID institutionId, UUID callerUserId,
+                                      String userRole, CreateLiveClassRequest request);
 
-    LiveClassResponse updateLiveClass(UUID teacherId, UUID liveClassId, CreateLiveClassRequest request);
+    LiveClassResponse updateLiveClass(UUID teacherId, UUID liveClassId, UUID callerUserId,
+                                      String userRole, CreateLiveClassRequest request);
 
     void cancelLiveClass(UUID teacherId, UUID liveClassId);
 

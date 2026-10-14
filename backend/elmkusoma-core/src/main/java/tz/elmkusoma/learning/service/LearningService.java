@@ -15,6 +15,15 @@ public interface LearningService {
 
     LessonResponse createLesson(UUID institutionId, LessonRequest request, UUID publisherId);
 
+    /**
+     * Create with actor context (publisher-scoped notifications) plus audience
+     * validation: the target class group and subject must exist and belong to the
+     * caller's institution, and a TEACHER caller must hold an active teaching
+     * assignment for the target class. Admin roles satisfy institution
+     * containment only.
+     */
+    LessonResponse createLesson(UUID institutionId, LessonRequest request, UUID publisherId, String userRole);
+
     LessonResponse updateLesson(UUID lessonId, LessonRequest request, UUID institutionId, String userEmail, String userRole);
 
     LessonResponse updateLesson(UUID lessonId, LessonRequest request, UUID institutionId, String userEmail, String userRole, UUID publisherId);
@@ -26,6 +35,17 @@ public interface LearningService {
     List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId, boolean includeUnpublished);
 
     List<LessonResponse> getLessonsByClass(UUID classGroupId, boolean includeUnpublished);
+
+    /**
+     * Institution-scoped read used by the controller: the class group must exist
+     * (404) and belong to the caller's institution (403). Prevents cross-tenant
+     * lesson reads by supplying a foreign class UUID.
+     */
+    List<LessonResponse> getLessonsByClass(UUID classGroupId, UUID institutionId, boolean includeUnpublished);
+
+    /** Institution-scoped read used by the controller; same guard as {@link #getLessonsByClass(UUID, UUID, boolean)}. */
+    List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId, UUID institutionId,
+                                                     boolean includeUnpublished);
 
     ProgressResponse updateProgress(UUID institutionId, UUID studentId, ProgressRequest request);
 
@@ -40,6 +60,17 @@ public interface LearningService {
 
     /** Update with institution + ownership enforcement (creator or admin only). */
     AssignmentResponse updateAssignment(UUID assignmentId, AssignmentRequest request, UUID institutionId, String userEmail, String userRole);
+
+    /**
+     * Pre-flight guard for {@link #updateAssignment}, invoked by the controller
+     * before the update: when the request retargets the assignment (a different
+     * class group or subject than the stored row), the new target must exist and
+     * belong to the caller's institution (404 / 403), and a TEACHER caller must
+     * hold an active teaching assignment for the new class. Unchanged targets and
+     * admin roles keep their existing behavior.
+     */
+    void assertAssignmentRetargetInScope(UUID assignmentId, UUID institutionId, AssignmentRequest request,
+                                         String userEmail, String userRole);
 
     /** Delete with institution + ownership enforcement (creator or admin only). */
     void deleteAssignment(UUID assignmentId, UUID institutionId, String userEmail, String userRole);
