@@ -44,13 +44,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <ul>
  *   <li>Unlinked parent → 403; parent linked to the child → 200 with the
  *       child's certificates.</li>
- *   <li>Cross-institution teacher → 403; own-institution teacher → 200 with
- *       unchanged payload; platform ADMIN → 200 (implicit bypass, same idiom
- *       as the transcripts sibling).</li>
+ *   <li>Cross-institution reads are refused by a tenant-scoped query rather
+ *       than a controller pre-check, so the caller receives 200 with an
+ *       <b>empty page</b>. The assertion is on the empty payload: no
+ *       cross-tenant row is ever read. Own-institution teacher → 200 with
+ *       unchanged payload.</li>
+ *   <li>The by-student query is institution-scoped for <b>every</b> role,
+ *       platform ADMIN included — there is no global bypass on this path.</li>
  *   <li>Student reading another student's certificates → 403; own → 200
  *       (the users.id → students.id normalization fixes the old false-deny).</li>
- *   <li>The {@code studentId == null} institution branch keeps returning only
- *       the caller's institution.</li>
+ *   <li>Learners and parents must name a student; omitting {@code studentId}
+ *       used to hand back every certificate in the school, so it now answers
+ *       403. Staff calling without a studentId get their own institution.</li>
  * </ul>
  */
 @SpringBootTest
@@ -243,7 +248,7 @@ class CertificateListHttpSecurityTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error")
-                        .value("Access denied: cannot view certificates of students not linked to you"));
+                        .value("Access denied: not linked to this student"));
     }
 
     @Test
@@ -259,14 +264,18 @@ class CertificateListHttpSecurityTest {
     }
 
     @Test
-    void teacher_crossInstitution_403() throws Exception {
+    void teacher_crossInstitution_getsAnEmptyPage() throws Exception {
+        // The tenancy rule lives in the query itself (findByStudentIdAndInstitutionIdAndIsDeletedFalse),
+        // so a student of another institution simply matches no rows. That is why this asserts an
+        // empty payload rather than a 403: the property under test is that no cross-tenant row is
+        // returned, and the reply must not distinguish "exists in another school" from "does not
+        // exist" or it becomes an existence oracle.
         mockMvc.perform(get("/v1/certificates")
                         .param("studentId", studentB.getId().toString())
                         .header("Authorization", "Bearer " + token(teacherA)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error")
-                        .value("Access denied: student belongs to another institution"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content", hasSize(0)));
     }
 
     @Test
@@ -282,13 +291,17 @@ class CertificateListHttpSecurityTest {
     }
 
     @Test
-    void admin_globalBypass_200() throws Exception {
+    void admin_isInstitutionScoped_notAGlobalBypass() throws Exception {
+        // ADMIN is deliberately not a global read on this path. The by-student query is scoped to
+        // the caller's institution for every role, so an admin homed in A cannot pull B's
+        // certificates. This is stricter than a role bypass and keeps the tenant boundary closed
+        // even for privileged callers.
         mockMvc.perform(get("/v1/certificates")
                         .param("studentId", studentB.getId().toString())
                         .header("Authorization", "Bearer " + token(platformAdmin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.content", hasSize(1)));
+                .andExpect(jsonPath("$.data.content", hasSize(0)));
     }
 
     @Test
@@ -300,5 +313,30 @@ class CertificateListHttpSecurityTest {
                 .andExpect(jsonPath("$.data.content", hasSize(1)))
                 .andExpect(jsonPath("$.data.content[0].studentId")
                         .value(studentA.getId().toString()));
+    }
+
+    // ── whole-institution enumeration ──
+
+    @Test
+    void student_omittingStudentId_cannotListTheWholeInstitution_403() throws Exception {
+        // The no-studentId branch is an institutional view. It once returned every certificate in
+        // the school to any authenticated learner - names, serials, grades, completion dates -
+        // because the ownership checks only ever ran on the studentId branch.
+        mockMvc.perform(get("/v1/certificates")
+                        .header("Authorization", "Bearer " + token(studentUserA)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error")
+                        .value("Access denied: name the student whose certificates you are requesting"));
+    }
+
+    @Test
+    void parent_omittingStudentId_cannotListTheWholeInstitution_403() throws Exception {
+        mockMvc.perform(get("/v1/certificates")
+                        .header("Authorization", "Bearer " + token(parentLinked)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error")
+                        .value("Access denied: name the student whose certificates you are requesting"));
     }
 }
