@@ -74,6 +74,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
     private final SubjectRepository subjectRepository;
+    private final tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
     private final LiveClassParticipantRepository participantRepository;
     private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
@@ -142,12 +143,20 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     @Override
-    public LiveClassResponse createLiveClass(UUID teacherId, UUID institutionId, CreateLiveClassRequest request) {
+    public LiveClassResponse createLiveClass(UUID teacherId, UUID institutionId, UUID callerUserId,
+                                              String userRole, CreateLiveClassRequest request) {
         if (platformPolicyService != null && !platformPolicyService.liveCreateEnabled()) {
             throw new IllegalStateException("Platform policy forbids creating live sessions");
         }
         Teacher teacher = teacherRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
+
+        // subjectId and classGroupId arrive from the client and decide who will be able to join
+        // and who the recording is later released to, so they are claims rather than proof.
+        // Prove they belong to this institution - and that this teacher is assigned to the class -
+        // before any scheduling work happens.
+        audienceTargetGuard.validateTarget(institutionId, request.getClassGroupId(),
+                request.getSubjectId(), callerUserId, userRole);
 
         LocalDateTime scheduledAt = parseDateTime(request.getScheduledAt());
         if (scheduledAt == null) {
@@ -212,10 +221,19 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     @Override
-    public LiveClassResponse updateLiveClass(UUID teacherId, UUID liveClassId, CreateLiveClassRequest request) {
+    public LiveClassResponse updateLiveClass(UUID teacherId, UUID liveClassId, UUID callerUserId,
+                                              String userRole, CreateLiveClassRequest request) {
         LiveClass liveClass = liveClassRepository.findById(liveClassId)
                 .filter(lc -> lc.getTeacherId().equals(teacherId) && !lc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
+
+        // Retargeting a live class changes its audience and who later receives the recording.
+        // Checked against the class's own institution, so a foreign id can never be adopted even
+        // though the caller legitimately owns this live class.
+        if (request.getClassGroupId() != null || request.getSubjectId() != null) {
+            audienceTargetGuard.validateTarget(liveClass.getInstitutionId(),
+                    request.getClassGroupId(), request.getSubjectId(), callerUserId, userRole);
+        }
 
         String currentStatus = liveClass.getStatus();
         if (LiveClassStatus.IN_PROGRESS.name().equals(currentStatus)

@@ -89,6 +89,15 @@ class LessonAudienceInjectionSecurityTest {
         teacherUserId = UUID.randomUUID();
         teacherId = UUID.randomUUID();
         assignmentId = UUID.randomUUID();
+
+        // The audience rule now lives in AudienceTargetGuard rather than as private helpers on the
+        // service. Hand the service a real guard wired to the same collaborators - the spy
+        // OwnershipGuard and these repository mocks - so these tests still execute the genuine
+        // validation path and still assert ForbiddenException / SecurityException rather than
+        // asserting against a stubbed-out no-op.
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "audienceTargetGuard",
+                new tz.elmkusoma.common.AudienceTargetGuard(ownershipGuard, classGroupRepository,
+                        subjectRepository, teacherRepository, teacherAssignmentRepository));
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

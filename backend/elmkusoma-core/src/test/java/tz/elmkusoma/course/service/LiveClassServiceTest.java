@@ -70,6 +70,10 @@ class LiveClassServiceTest {
     @Mock private tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
     @Mock private ReplayRepository replayRepository;
     @Mock private tz.elmkusoma.liveclass.service.LiveKitService liveKitService;
+    // Stubbed because these tests target scheduling and broadcast behaviour, not audience policy:
+    // AudienceTargetGuard has its own tests. An absent mock would leave the dependency null and
+    // every create would NPE rather than exercise the code under test.
+    @Mock private tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
 
     @InjectMocks
     private LiveClassServiceImpl liveClassService;
@@ -77,12 +81,15 @@ class LiveClassServiceTest {
     private UUID teacherId;
     private UUID institutionId;
     private UUID liveClassId;
+    /** The authenticated caller. Kept distinct from teacherId: users.id and teachers.id differ. */
+    private UUID userId;
 
     @BeforeEach
     void setUp() {
         teacherId = UUID.randomUUID();
         institutionId = UUID.randomUUID();
         liveClassId = UUID.randomUUID();
+        userId = UUID.randomUUID();
         // The recording publish is delegated to the publisher, which owns the insert in its own
         // REQUIRES_NEW transaction and tolerates a lost race against V150's unique origin key.
         // Give the service a real one over these mocks so the end-to-end field population these
@@ -287,7 +294,7 @@ class LiveClassServiceTest {
             return saved;
         });
 
-        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, request);
+        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, userId, "TEACHER", request);
 
         assertNotNull(response);
         assertEquals("Physics 101", response.getTitle());
@@ -313,7 +320,7 @@ class LiveClassServiceTest {
             return saved;
         });
 
-        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, request);
+        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, userId, "TEACHER", request);
 
         // Older clients that never send broadcastSource keep the exact pre-existing
         // behaviour: a browser/laptop-camera sourced session.
@@ -339,7 +346,7 @@ class LiveClassServiceTest {
             return saved;
         });
 
-        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, request);
+        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, userId, "TEACHER", request);
 
         assertEquals("USB_CAMERA", response.getBroadcastSource());
     }
@@ -357,7 +364,7 @@ class LiveClassServiceTest {
         request.setBroadcastSource("TOASTER");
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> liveClassService.createLiveClass(teacherId, institutionId, request));
+                () -> liveClassService.createLiveClass(teacherId, institutionId, userId, "TEACHER", request));
         assertTrue(ex.getMessage().contains("USB_CAMERA"));
         verify(liveClassRepository, never()).save(any(LiveClass.class));
     }
@@ -374,7 +381,7 @@ class LiveClassServiceTest {
         CreateLiveClassRequest request = new CreateLiveClassRequest();
         request.setBroadcastSource("OBS");
 
-        LiveClassResponse response = liveClassService.updateLiveClass(teacherId, liveClassId, request);
+        LiveClassResponse response = liveClassService.updateLiveClass(teacherId, liveClassId, userId, "TEACHER", request);
 
         assertEquals("OBS", response.getBroadcastSource());
     }
@@ -389,7 +396,7 @@ class LiveClassServiceTest {
         request.setBroadcastSource("STUDIO");
 
         assertThrows(IllegalArgumentException.class,
-                () -> liveClassService.updateLiveClass(teacherId, liveClassId, request));
+                () -> liveClassService.updateLiveClass(teacherId, liveClassId, userId, "TEACHER", request));
     }
 
     @Test
@@ -402,7 +409,7 @@ class LiveClassServiceTest {
         request.setDurationMinutes(60);
 
         assertThrows(ResourceNotFoundException.class,
-                () -> liveClassService.createLiveClass(teacherId, institutionId, request));
+                () -> liveClassService.createLiveClass(teacherId, institutionId, userId, "TEACHER", request));
     }
 
     @Test
@@ -665,7 +672,7 @@ class LiveClassServiceTest {
         request.setLessonId(foreign.getId());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> liveClassService.createLiveClass(teacherId, institutionId, request));
+                () -> liveClassService.createLiveClass(teacherId, institutionId, userId, "TEACHER", request));
         assertTrue(ex.getMessage().contains("different institution"));
         verify(liveClassRepository, never()).save(any(LiveClass.class));
     }

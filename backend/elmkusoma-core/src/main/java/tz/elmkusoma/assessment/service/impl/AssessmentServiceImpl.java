@@ -58,6 +58,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final AuditService auditService;
     private final ClassAccessGuard classAccessGuard;
     private final OwnershipGuard ownershipGuard;
+    private final tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
     private final ClassGroupRepository classGroupRepository;
     private final SubjectRepository subjectRepository;
     private final TeacherRepository teacherRepository;
@@ -646,28 +647,10 @@ public class AssessmentServiceImpl implements AssessmentService {
      */
     private void validateTargetAudience(UUID institutionId, UUID classGroupId, UUID subjectId,
                                         UUID callerUserId, String userRole) {
-        if (classGroupId != null) {
-            ClassGroup classGroup = classGroupRepository.findById(classGroupId)
-                    .filter(cg -> !Boolean.TRUE.equals(cg.getIsDeleted()))
-                    .orElseThrow(() -> new ResourceNotFoundException("Class group", "id", classGroupId));
-            ownershipGuard.verifyInstitution(classGroup.getInstitutionId(), institutionId);
-        }
-        if (subjectId != null) {
-            Subject subject = subjectRepository.findById(subjectId)
-                    .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
-                    .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", subjectId));
-            ownershipGuard.verifyInstitution(subject.getInstitutionId(), institutionId);
-        }
-        if (classGroupId != null && "TEACHER".equals(userRole)) {
-            UUID teacherId = callerUserId == null ? null
-                    : teacherRepository.findByUserIdAndInstitutionId(callerUserId, institutionId)
-                            .map(Teacher::getId)
-                            .orElse(null);
-            if (teacherId == null || !teacherAssignmentRepository
-                    .existsByTeacherIdAndClassGroupIdAndIsDeletedFalse(teacherId, classGroupId)) {
-                throw new SecurityException("You are not assigned to this class");
-            }
-        }
+        // Delegates so lessons, assessments, announcements, live sessions and media all enforce
+        // one audience rule rather than five that can drift apart. See AudienceTargetGuard.
+        audienceTargetGuard.validateTarget(institutionId, classGroupId, subjectId,
+                callerUserId, userRole);
     }
 
     /** Institution-scoped load; a cross-institution id looks like "not found". */

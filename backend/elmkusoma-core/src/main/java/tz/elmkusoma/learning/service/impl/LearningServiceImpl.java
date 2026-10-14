@@ -58,6 +58,7 @@ public class LearningServiceImpl implements LearningService {
     private final AuditService auditService;
     private final ClassAccessGuard classAccessGuard;
     private final OwnershipGuard ownershipGuard;
+    private final tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
     private final ClassGroupRepository classGroupRepository;
     private final SubjectRepository subjectRepository;
     private final TeacherRepository teacherRepository;
@@ -291,43 +292,19 @@ public class LearningServiceImpl implements LearningService {
      */
     private void validateAudience(UUID institutionId, UUID classGroupId, UUID subjectId,
                                   UUID userId, String userRole) {
-        verifyClassGroupBelongsToInstitution(classGroupId, institutionId);
-        verifySubjectBelongsToInstitution(institutionId, subjectId);
-        if (classGroupId == null || !"TEACHER".equals(userRole)) {
-            return;
-        }
-        UUID teacherId = teacherRepository
-                .findByUserIdAndInstitutionId(userId, institutionId)
-                .map(Teacher::getId)
-                .orElse(null);
-        boolean assigned = teacherId != null
-                && teacherAssignmentRepository.existsByTeacherIdAndClassGroupIdAndIsDeletedFalse(
-                        teacherId, classGroupId);
-        if (!assigned) {
-            throw new SecurityException("You are not assigned to this class");
-        }
+        // Delegates so the audience rule cannot drift between lessons, assessments, announcements,
+        // live sessions and media. See AudienceTargetGuard for the two halves of the rule.
+        audienceTargetGuard.validateTarget(institutionId, classGroupId, subjectId, userId, userRole);
     }
 
     /** Cross-tenant guard for a class-group target: 404 when missing, 403 when foreign. */
     private void verifyClassGroupBelongsToInstitution(UUID classGroupId, UUID institutionId) {
-        if (classGroupId == null) {
-            return;
-        }
-        ClassGroup classGroup = classGroupRepository.findById(classGroupId)
-                .filter(cg -> !Boolean.TRUE.equals(cg.getIsDeleted()))
-                .orElseThrow(() -> new ResourceNotFoundException("ClassGroup", "id", classGroupId));
-        ownershipGuard.verifyInstitution(classGroup.getInstitutionId(), institutionId);
+        audienceTargetGuard.verifyClassGroupBelongsToInstitution(classGroupId, institutionId);
     }
 
     /** Cross-tenant guard for a subject target: 404 when missing, 403 when foreign. */
     private void verifySubjectBelongsToInstitution(UUID institutionId, UUID subjectId) {
-        if (subjectId == null) {
-            return;
-        }
-        Subject subject = subjectRepository.findById(subjectId)
-                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
-                .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", subjectId));
-        ownershipGuard.verifyInstitution(subject.getInstitutionId(), institutionId);
+        audienceTargetGuard.verifySubjectBelongsToInstitution(institutionId, subjectId);
     }
 
     /** Institution + ownership enforcement: creator or admin only. */

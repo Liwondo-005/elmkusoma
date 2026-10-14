@@ -80,6 +80,14 @@ class AssessmentCreateTargetSecurityTest {
         classGroupId = UUID.randomUUID();
         subjectId = UUID.randomUUID();
         assessmentId = UUID.randomUUID();
+
+        // The audience rule moved out of this service into AudienceTargetGuard. Give the service a
+        // real guard over the same collaborators so the doThrow stub above still fires through it
+        // and the verify(ownershipGuard) assertions below still hold - this keeps the test proving
+        // the real validation path instead of a stubbed no-op.
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "audienceTargetGuard",
+                new tz.elmkusoma.common.AudienceTargetGuard(ownershipGuard, classGroupRepository,
+                        subjectRepository, teacherRepository, teacherAssignmentRepository));
     }
 
     private AssessmentRequest request() {
