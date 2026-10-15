@@ -673,7 +673,13 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventRegistrationResponse registerForEvent(UUID eventId, UUID userId) {
-        Event event = requireEvent(eventId);
+        // Locked read. Seat capacity is a count-then-insert, so without serialising here two
+        // people can both observe the last seat as free and both be registered, overselling the
+        // event. The lock is released on commit, so the loser of the race reads the winner's
+        // count and is refused by assertCapacityAvailable instead.
+        Event event = eventRepository.findByIdForUpdate(eventId)
+                .filter(e -> !Boolean.TRUE.equals(e.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Event", "id", eventId));
 
         EventStatus status = currentStatus(event);
         if (REGISTRATION_BLOCKED_STATUSES.contains(status)) {

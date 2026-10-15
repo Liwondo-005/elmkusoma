@@ -5845,12 +5845,29 @@
       "loading": "Inapakia kumbukumbu za fedha",
       "loadFailed": "Hatukuweza kupakia kumbukumbu za fedha. Angalia muunganisho wako na jaribu tena.",
       "retry": "Jaribu tena",
-      "tabs": {
-        "payments": "Malipo",
-        "entitlements": "Ufikiaji uliotolewa",
-        "exceptions": "Makosa",
-        "catalogue": "Bei za huduma"
-      },
+"tabs": {
+      "payments": "Malipo",
+      "transactions": "Miamala",
+      "entitlements": "Ufikiaji uliotolewa",
+      "exceptions": "Makosa",
+      "catalogue": "Bei za huduma"
+    },
+    "transactions": {
+      "reference": "Namba ya staketi, kumbukumbu ya mfumo wa malipo, au ID ya malipo",
+      "searchPlaceholder": "mfano: RCPT-2026-ABC123 au kumbukumbu ya Stakaba",
+      "export": "Hamisha CSV",
+      "receipt": "Staketi",
+      "service": "Huduma",
+      "status": "Hali",
+      "amount": "Kiasi",
+      "refunded": "Imerejeshwa",
+      "commission": "Kampuni",
+      "paidAt": "Imelipwa",
+      "empty": "Hakuna miamala iliyolingana na vichujio hivi.",
+      "caption": "Matokeo ya utafutaji wa miamala kwa mfano wote",
+      "loadFailed": "Hatukuweza kupakia miamala. Angalia muunganisho wako na jaribu tena.",
+      "noApprovedRate": "Hakuna kiwango kilichoidhinishwa"
+    },
       "counts": {
         "payments": "Kumbukumbu za malipo",
         "entitlements": "Ufikiaji uliotolewa",

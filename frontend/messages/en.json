@@ -5845,12 +5845,29 @@
       "loading": "Loading financial records",
       "loadFailed": "We could not load the financial records. Check your connection and try again.",
       "retry": "Try again",
-      "tabs": {
-        "payments": "Payments",
-        "entitlements": "Access grants",
-        "exceptions": "Exceptions",
-        "catalogue": "Service pricing"
-      },
+"tabs": {
+      "payments": "Payments",
+      "transactions": "Transactions",
+      "entitlements": "Access grants",
+      "exceptions": "Exceptions",
+      "catalogue": "Service pricing"
+    },
+    "transactions": {
+      "reference": "Receipt number, gateway reference or payment ID",
+      "searchPlaceholder": "e.g. RCPT-2026-ABC123 or a Stakaba reference",
+      "export": "Export CSV",
+      "receipt": "Receipt",
+      "service": "Service",
+      "status": "Status",
+      "amount": "Amount",
+      "refunded": "Refunded",
+      "commission": "Commission",
+      "paidAt": "Paid",
+      "empty": "No transactions matched these filters.",
+      "caption": "Platform-wide transaction search results",
+      "loadFailed": "We could not load the transactions. Check your connection and try again.",
+      "noApprovedRate": "No approved rate"
+    },
       "counts": {
         "payments": "Payment records",
         "entitlements": "Access grants",

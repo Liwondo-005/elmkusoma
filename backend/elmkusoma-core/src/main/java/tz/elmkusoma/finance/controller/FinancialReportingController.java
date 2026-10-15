@@ -4,6 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +16,7 @@ import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.finance.domain.ReconciliationException;
 import tz.elmkusoma.finance.service.FinancialReportingService;
 import tz.elmkusoma.finance.service.ReconciliationService;
+import tz.elmkusoma.finance.service.TransactionSearchService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,6 +40,7 @@ public class FinancialReportingController {
 
     private final FinancialReportingService financialReportingService;
     private final ReconciliationService reconciliationService;
+    private final TransactionSearchService transactionSearchService;
 
     @GetMapping("/summary")
     @Operation(summary = "Financial summary over a period. Unavailable metrics explain why.")
@@ -54,6 +60,92 @@ public class FinancialReportingController {
             range = FinancialReportingService.UUIDRange.lastNDays(30);
         }
         return ResponseEntity.ok(ApiResponse.success(financialReportingService.summaryFor(range)));
+    }
+
+    // ------------------------------------------------------------------
+    // Transactions
+    // ------------------------------------------------------------------
+
+    @GetMapping("/transactions")
+    @Operation(summary = "Search transactions. Every filter is optional; the result is paged.")
+    public ResponseEntity<ApiResponse<Page<TransactionSearchService.TransactionRow>>> transactions(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String serviceType,
+            @RequestParam(required = false) String provider,
+            @RequestParam(required = false) UUID institutionId,
+            @RequestParam(required = false) UUID parentId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false, defaultValue = "asc") String sortDir) {
+
+        Pageable pageable = resolvePageable(sortBy, sortDir, page, size);
+        return ResponseEntity.ok(ApiResponse.success(
+                transactionSearchService.search(criteria(query, status, serviceType, provider,
+                        institutionId, parentId, from, to), pageable)));
+    }
+
+    @GetMapping("/transactions/export")
+    @Operation(summary = "Export the same transaction search as CSV. Bounded and audited.")
+    public ResponseEntity<byte[]> exportTransactions(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String serviceType,
+            @RequestParam(required = false) String provider,
+            @RequestParam(required = false) UUID institutionId,
+            @RequestParam(required = false) UUID parentId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to) {
+
+        byte[] csv = transactionSearchService.exportCsv(
+                criteria(query, status, serviceType, provider, institutionId, parentId, from, to));
+        String stamp = java.time.LocalDate.now().toString();
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv")
+                .header("Content-Disposition",
+                        "attachment; filename=transactions_" + stamp + ".csv")
+                .body(csv);
+    }
+
+    private TransactionSearchService.SearchCriteria criteria(
+            String query, String status, String serviceType, String provider,
+            UUID institutionId, UUID parentId, LocalDateTime from, LocalDateTime to) {
+        return new TransactionSearchService.SearchCriteria(
+                blankToNull(query), blankToNull(status), blankToNull(serviceType), blankToNull(provider),
+                institutionId, parentId, from, to);
+    }
+
+    /**
+     * Sorting is restricted to a known column and the page size is capped, because both arrive
+     * from the caller: an arbitrary sort property would let a request name a column Hibernate does
+     * not expose, and an unbounded page size would be a denial-of-service lever on a table that
+     * only grows.
+     */
+    private Pageable resolvePageable(String sortBy, String sortDir, int page, int size) {
+        List<String> allowed = List.of("paidAt", "createdAt", "amount", "status", "serviceType");
+        String property = (sortBy == null || !allowed.contains(sortBy)) ? "paidAt" : sortBy;
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir)
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        int safeSize = Math.min(Math.max(size, 1), 200);
+        int safePage = Math.max(page, 0);
+        Sort sort = Sort.by(direction, property);
+        if ("paidAt".equals(property)) {
+            // No NULLS LAST here: Hibernate's Criteria API cannot render it, and a payment that
+            // has never been paid has no paidAt to sort on. createdAt is always present.
+            sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        }
+        return PageRequest.of(safePage, safeSize, sort);
+    }
+
+    private static String blankToNull(String v) {
+        return (v == null || v.isBlank()) ? null : v.trim();
     }
 
     // ------------------------------------------------------------------

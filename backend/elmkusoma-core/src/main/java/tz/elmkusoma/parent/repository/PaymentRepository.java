@@ -4,6 +4,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,7 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface PaymentRepository extends JpaRepository<Payment, UUID> {
+public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpecificationExecutor<Payment> {
     List<Payment> findByParentIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID parentId);
     List<Payment> findByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID studentId);
     List<Payment> findByParentIdAndStatusAndIsDeletedFalse(UUID parentId, String status);
@@ -35,6 +36,16 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     Optional<Payment> findByIdempotencyKeyAndIsDeletedFalse(String idempotencyKey);
 
     List<Payment> findByStatusInAndIsDeletedFalse(List<String> statuses);
+
+    // ------------------------------------------------------------------
+    // Transaction search for the financial command centre.
+    //
+    // Deliberately a Specification rather than two @Query methods. Every filter here is
+    // optional, and an optional filter in JPQL has to be written "(:p IS NULL OR col = :p)";
+    // PostgreSQL then cannot infer the type of a parameter that appears in more than one
+    // position, and fails at execution with "could not determine data type of parameter $n".
+    // A CriteriaBuilder query binds each value once, with its type, and has no such ambiguity.
+    // ------------------------------------------------------------------
 
     List<Payment> findByPaidAtBetweenAndIsDeletedFalseOrderByPaidAtDesc(LocalDateTime from, LocalDateTime to);
 

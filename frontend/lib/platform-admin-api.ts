@@ -552,6 +552,51 @@ export interface PageResponse<T> {
   last: boolean
 }
 
+/**
+ * One transaction, as returned by the financial command centre search.
+ *
+ * <p>Every figure is reproduced from the backend exactly as stored. In particular
+ * `commissionAmount` is null when no approved rate existed at confirmation time: the UI must show
+ * that as "no approved rate", never as 0, because a zero commission and an undecided one are
+ * different facts and a report that merges them misstates revenue.
+ */
+export interface FinancialTransaction {
+  paymentId: string
+  receiptNumber: string | null
+  providerReference: string | null
+  provider: string | null
+  serviceType: string
+  status: string
+  amount: number
+  currency: string
+  refundedAmount: number
+  refundableAmount: number
+  commissionAmount: number | null
+  commissionStatus: string | null
+  commissionPolicyKey: string | null
+  commissionPolicyVersion: number | null
+  paidAt: string | null
+  parentId: string | null
+  studentId: string | null
+  institutionId: string | null
+}
+
+/** Filters the backend accepts. Everything is optional; an empty object lists the newest. */
+export interface TransactionSearchFilters {
+  query?: string
+  status?: string
+  serviceType?: string
+  provider?: string
+  institutionId?: string
+  parentId?: string
+  from?: string
+  to?: string
+  page?: number
+  size?: number
+  sortBy?: string
+  sortDir?: "asc" | "desc"
+}
+
 export interface EventFormPayload {
   title: string
   description?: string
@@ -1403,4 +1448,39 @@ revertLegalDocument: (id: string, version: number) =>
     platformFetch<{ id: string; status: string; serialNumber: string; reason: string | null }>(
       `/v1/platform-admin/certificates/${certificateId}/revoke`,
       { method: "POST", body: JSON.stringify({ reason }) }),
+
+  // ------------------------------------------------------------------
+  // Financial command centre - transactions
+  //
+  // The search and the export take the same filters on purpose: what an operator can see on
+  // screen is exactly what they can take away in the file, so a report and its export can never
+  // quietly disagree.
+  // ------------------------------------------------------------------
+
+  searchFinancialTransactions: (filters: TransactionSearchFilters = {}) => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && `${value}` !== "") {
+        params.set(key, `${value}`)
+      }
+    }
+    const query = params.toString()
+    return platformFetch<PageResponse<FinancialTransaction>>(
+      `/v1/platform-admin/financial/transactions${query ? `?${query}` : ""}`,
+    )
+  },
+
+  /** Returns a path, not bytes: the browser should download it, not parse it in JS. */
+  financialTransactionsExportUrl: (filters: TransactionSearchFilters = {}) => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) {
+      // Paging is meaningless for a file; the backend bounds the export itself.
+      if (key === "page" || key === "size" || key === "sortBy" || key === "sortDir") continue
+      if (value !== undefined && value !== null && `${value}` !== "") {
+        params.set(key, `${value}`)
+      }
+    }
+    const query = params.toString()
+    return `${API_BASE}/v1/platform-admin/financial/transactions/export${query ? `?${query}` : ""}`
+  },
 }
