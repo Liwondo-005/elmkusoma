@@ -2,10 +2,27 @@
 
 import { type ReactNode } from "react"
 import { useTranslations } from "next-intl"
-import { Loader2 } from "lucide-react"
+import { Loader2, School } from "lucide-react"
 
-export function LearnerHeader({ firstName, level, subtitle }: { firstName: string; level?: string; subtitle?: string }) {
+export function LearnerHeader({
+  firstName,
+  level,
+  subtitle,
+  schoolName,
+}: {
+  firstName: string
+  level?: string
+  subtitle?: string
+  /**
+   * School name from the authorized backend API for this user's persisted
+   * affiliation. `undefined` hides the row (still loading / not applicable);
+   * `null` renders an explicit "no school assigned" state. Never pass a
+   * hardcoded or request-derived name.
+   */
+  schoolName?: string | null
+}) {
   const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const hour = new Date().getHours()
   const greeting = hour < 12 ? t("greeting.morning") : hour < 18 ? t("greeting.afternoon") : t("greeting.evening")
 
@@ -17,6 +34,12 @@ export function LearnerHeader({ firstName, level, subtitle }: { firstName: strin
       <p className="mt-1 text-sm text-muted-foreground">
         {subtitle || t("greeting.journeySubtitle")}
       </p>
+      {schoolName !== undefined && (
+        <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+          <School className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+          <span>{schoolName ?? tc("noSchool")}</span>
+        </p>
+      )}
     </header>
   )
 }

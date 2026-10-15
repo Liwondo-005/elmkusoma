@@ -138,6 +138,8 @@ export interface UserInfo {
   phone?: string
   role: string
   institutionId: string
+  /** School name resolved server-side from the persisted institution; null when unassigned. */
+  institutionName?: string | null
   classGroupId: string | null
   learningLevel?: string | null
   secondaryStage?: string | null
@@ -2071,6 +2073,9 @@ export interface TeacherProfile {
   specialization: string
   hireDate: string
   bio: string
+  /** School affiliation resolved server-side from the persisted relationship. */
+  institutionId?: string
+  institutionName?: string | null
   createdAt: string
 }
 
@@ -2117,6 +2122,9 @@ export interface TeacherDashboard {
     description: string
     timestamp: string
   }>
+  /** School identity resolved server-side from the teacher's persisted affiliation. */
+  institutionId?: string
+  institutionName?: string | null
 }
 
 export interface LiveClass {
@@ -2363,6 +2371,9 @@ export interface DashboardSummary {
   studentId: string
   admissionNumber: string
   status: string
+  /** School identity resolved server-side from the student's persisted assignment. */
+  institutionId?: string
+  institutionName?: string | null
   totalEnrollments: number
   activeEnrollments: number
   totalReportCards: number

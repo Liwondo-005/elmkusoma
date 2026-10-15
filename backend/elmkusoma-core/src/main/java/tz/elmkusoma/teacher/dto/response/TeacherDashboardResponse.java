@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -22,6 +23,14 @@ public class TeacherDashboardResponse {
     private long pendingGrading;
     private List<TeacherClassSummary> classes;
     private List<RecentActivity> recentActivity;
+    /**
+     * Institution the dashboard is scoped to: the teacher's persisted
+     * affiliation (teachers.institution_id), falling back to the
+     * membership-validated request scope. Name is resolved server-side from
+     * the institution record — never client-supplied.
+     */
+    private UUID institutionId;
+    private String institutionName;
 
     @Data
     @Builder

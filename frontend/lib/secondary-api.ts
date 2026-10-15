@@ -34,6 +34,9 @@ export interface SecondaryDashboardSummary {
   studentId: string
   admissionNumber: string
   status: string
+  /** School identity resolved server-side from the student's persisted assignment. */
+  institutionId?: string
+  institutionName?: string | null
   totalEnrollments: number
   activeEnrollments: number
   totalReportCards: number

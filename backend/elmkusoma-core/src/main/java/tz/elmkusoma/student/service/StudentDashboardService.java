@@ -40,6 +40,7 @@ public class StudentDashboardService {
     private final LessonProgressRepository lessonProgressRepository;
     private final LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.liveclass.service.LiveClassRecordingAccessService recordingAccess;
+    private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
 
     public Student getStudentByUserId(UUID userId) {
         return studentRepository.findByUserIdAndIsDeletedFalse(userId)
@@ -53,6 +54,19 @@ public class StudentDashboardService {
         summary.put("studentId", student.getId());
         summary.put("admissionNumber", student.getAdmissionNumber());
         summary.put("status", student.getStatus());
+
+        // School identity: the student's own persisted assignment
+        // (students.institution_id). Resolved server-side from the row loaded
+        // via the JWT principal's users.id, so a caller can neither read another
+        // student's school nor inject one. Null (not fabricated) when the
+        // profile has no institution yet — the UI shows an explicit
+        // "no school" state instead of a misleading name.
+        UUID institutionId = student.getInstitutionId();
+        summary.put("institutionId", institutionId);
+        summary.put("institutionName", institutionId == null ? null
+                : institutionRepository.findByIdAndIsDeletedFalse(institutionId)
+                        .map(tz.elmkusoma.shared.domain.Institution::getName)
+                        .orElse(null));
 
         List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndIsDeletedFalse(student.getId());
         long activeEnrollments = enrollments.stream()

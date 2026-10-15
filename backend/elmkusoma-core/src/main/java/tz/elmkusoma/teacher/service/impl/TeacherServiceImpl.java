@@ -61,6 +61,7 @@ public class TeacherServiceImpl implements TeacherService {
     private final tz.elmkusoma.academic.repository.ClassGroupRepository classGroupRepository;
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final tz.elmkusoma.academic.repository.GradeRepository gradeRepository;
+    private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
 
     @Override
     public TeacherResponse createTeacher(UUID institutionId, TeacherRequest request) {
@@ -474,6 +475,13 @@ public class TeacherServiceImpl implements TeacherService {
             }
         }
 
+        // School identity: the teacher's persisted affiliation (teachers.institution_id)
+        // first, falling back to the membership-validated request scope. The name is
+        // resolved server-side from the institution record — never client-supplied —
+        // and stays null (no fabricated label) when neither source resolves.
+        UUID displayInstitutionId = teacher.getInstitutionId() != null
+                ? teacher.getInstitutionId()
+                : institutionId;
         return TeacherDashboardResponse.builder()
                 .totalStudents(totalStudents)
                 .totalClasses(classGroupIds.size())
@@ -483,10 +491,29 @@ public class TeacherServiceImpl implements TeacherService {
                 .pendingGrading(pendingGrading)
                 .classes(classSummaries)
                 .recentActivity(activities.stream().limit(10).toList())
+                .institutionId(displayInstitutionId)
+                .institutionName(institutionDisplayName(displayInstitutionId))
                 .build();
     }
 
+    /**
+     * Resolves a school's display name from the persisted institution row only.
+     * Returns null (never a fabricated or request-supplied label) when the id is
+     * unknown, deleted, or inactive-association data is missing entirely.
+     */
+    private String institutionDisplayName(UUID institutionId) {
+        if (institutionId == null) {
+            return null;
+        }
+        return institutionRepository.findByIdAndIsDeletedFalse(institutionId)
+                .map(tz.elmkusoma.shared.domain.Institution::getName)
+                .orElse(null);
+    }
+
     private TeacherResponse mapToResponse(Teacher teacher, User user) {
+        UUID displayInstitutionId = teacher.getInstitutionId() != null
+                ? teacher.getInstitutionId()
+                : (user != null ? user.getInstitutionId() : null);
         return TeacherResponse.builder()
                 .id(teacher.getId())
                 .userId(teacher.getUserId())
@@ -498,6 +525,8 @@ public class TeacherServiceImpl implements TeacherService {
                 .specialization(teacher.getSpecialization())
                 .hireDate(teacher.getHireDate())
                 .bio(teacher.getBio())
+                .institutionId(displayInstitutionId)
+                .institutionName(institutionDisplayName(displayInstitutionId))
                 .createdAt(teacher.getCreatedAt())
                 .build();
     }

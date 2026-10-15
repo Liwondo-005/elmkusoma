@@ -50,6 +50,9 @@ export interface MeTeacherProfile {
   userId: string
   fullName: string | null
   email: string | null
+  /** School affiliation resolved server-side from the persisted relationship. */
+  institutionId?: string | null
+  institutionName?: string | null
 }
 
 export interface TeacherAssignment {

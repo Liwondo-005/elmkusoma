@@ -76,6 +76,8 @@ class TeacherServiceTest {
     private SubjectRepository subjectRepository;
     @Mock
     private tz.elmkusoma.academic.repository.GradeRepository gradeRepository;
+    @Mock
+    private tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
 
     @InjectMocks
     private TeacherServiceImpl teacherService;

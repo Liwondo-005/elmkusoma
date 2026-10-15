@@ -13,6 +13,8 @@ export interface AuthUser {
   lastName?: string
   phone?: string
   institutionId?: string
+  /** School name from the authenticated backend payload; null when unassigned. */
+  institutionName?: string | null
   classGroupId?: string
   learningLevel?: string | null
   secondaryStage?: string | null
@@ -122,6 +124,7 @@ function mapUserInfo(info: UserInfo): AuthUser {
     lastName: info.lastName,
     phone: info.phone,
     institutionId: info.institutionId,
+    institutionName: info.institutionName ?? null,
     classGroupId: info.classGroupId || undefined,
     learningLevel: info.learningLevel || null,
     secondaryStage: info.secondaryStage || null,

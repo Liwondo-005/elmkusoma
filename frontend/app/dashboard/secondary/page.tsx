@@ -22,7 +22,7 @@ import { LoadingState } from "@/components/learner/shared"
 import {
   BookOpen, Clock, ArrowRight, Calendar, FileText, Award,
   Video, TrendingUp, Target, CheckCircle, AlertCircle, Sun,
-  Moon, CloudSun, ChevronRight, Zap, Brain, Star, Users
+  Moon, CloudSun, ChevronRight, Zap, Brain, Star, Users, School
 } from "lucide-react"
 
 function getGreeting() {
@@ -52,6 +52,10 @@ export default function SecondaryHomePage() {
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // School name from the dashboard summary (server-resolved from the student's
+  // persisted assignment). undefined = not loaded yet; null = the profile has
+  // no school, rendered as the explicit no-school state. Never client-supplied.
+  const [schoolName, setSchoolName] = useState<string | null | undefined>(undefined)
   const firstName = user?.name?.split(" ")[0] || "Student"
   const greeting = getGreeting()
   const GreetingIcon = greeting.icon
@@ -76,6 +80,7 @@ export default function SecondaryHomePage() {
         setContinueItems(continueData)
         setAttendance(attendData)
         setLiveClasses(liveData)
+        setSchoolName(summary ? (summary.institutionName ?? null) : undefined)
 
         if (classGroupId) {
           const [subjectData, assignmentData, assessmentData] = await Promise.all([
@@ -199,6 +204,12 @@ export default function SecondaryHomePage() {
             <p className="mt-0.5 text-sm text-white/70">
               {stageLabel ? `${stageLabel} · ${t("readyToContinue")}` : t("readyToContinue")}
             </p>
+            {schoolName !== undefined && (
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-white/85">
+                <School className="size-3.5 shrink-0" aria-hidden="true" />
+                <span>{schoolName ?? tc("noSchool")}</span>
+              </p>
+            )}
           </div>
         </div>
         <Link
