@@ -173,7 +173,7 @@ export interface CourseLessonDetail {
   totalLessons: number
   currentIndex: number
   materials?: LessonMaterial[]
-  /** Lesson ↔ Live Class: real live session linked to this lesson (null when none). */
+  /** Lesson â†” Live Class: real live session linked to this lesson (null when none). */
   liveClass?: LiveLessonSummary | null
 }
 
@@ -358,6 +358,40 @@ export interface Announcement {
   createdAt: string
 }
 
+/**
+ * One of the learner's own payments, as the backend stores it.
+ *
+ * <p>`status` is the backend's verdict, never the page's. A PENDING payment must render as
+ * pending: the learner sees exactly what the server believes, and this page cannot turn a queued
+ * prompt into a receipt.</p>
+ */
+export interface MyPayment {
+  paymentId: string
+  receiptNumber: string | null
+  serviceType: string
+  status: string
+  amount: number
+  currency: string
+  refundedAmount: number
+  provider: string | null
+  paidAt: string | null
+  createdAt: string | null
+}
+
+/**
+ * One of the learner's own access grants.
+ *
+ * <p>`currentlyValid` is computed backend-side from status and expiry, so the page cannot show
+ * access that has lapsed just because a local clock was wrong.</p>
+ */
+export interface MyAccess {
+  entitlementId: string
+  serviceType: string
+  status: string
+  startsAt: string | null
+  expiresAt: string | null
+  currentlyValid: boolean
+}
 export interface Certificate {
   id: string
   title: string
@@ -721,6 +755,24 @@ export const learnerApi = {
   markAllRead: () =>
     learnerFetch<void>("/v1/learner/me/notifications/read-all", { method: "PUT" }),
   getCertificates: () => learnerFetch<Certificate[]>("/v1/learner/me/certificates"),
+
+  /**
+   * The learner's own payment history.
+   *
+   * <p>Figures come from the backend exactly as stored. A PENDING payment is rendered as pending
+   * and is never presented as paid, and the amount shown is the charged amount - the UI never
+   * derives a "paid" total of its own, because a payment only becomes paid when the backend says
+   * so.</p>
+   */
+  getMyPayments: () => learnerFetch<MyPayment[]>("/v1/my/purchases"),
+
+  /**
+   * The learner's own access, with its live status.
+   *
+   * <p>Derived from the entitlement rather than from the payment: access is what the entitlement
+   * says it is, including when it has expired. A completed payment alone grants nothing.</p>
+   */
+  getMyAccess: () => learnerFetch<MyAccess[]>("/v1/my/purchases/access"),
   search: async (q: string, type?: string, filters?: SearchFilters, page?: number, size?: number): Promise<SearchResult> => {
     const searchParams = new URLSearchParams()
     searchParams.set("q", q)
@@ -818,7 +870,7 @@ export const learnerApi = {
   getRelatedResources: (resourceId: string) =>
     learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
 
-  // ── Authorized content access ──────────────────────────────────────────
+  // â”€â”€ Authorized content access â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   /** Backend-authorized, short-lived URL for viewing the real content. */
   getResourceContentUrl: (resourceId: string) =>
     learnerFetch<string>(`/v1/resources/${resourceId}/content-url`),
@@ -827,7 +879,7 @@ export const learnerApi = {
     learnerFetch<boolean>(`/v1/resources/${resourceId}/analytics/view`, { method: "POST" }),
   /**
    * Backend-authorized download: bytes are fetched with credentials and saved
-   * through a temporary object URL — the storage URL is never handed out.
+   * through a temporary object URL â€” the storage URL is never handed out.
    */
   downloadResource: async (resourceId: string, fallbackName: string) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
