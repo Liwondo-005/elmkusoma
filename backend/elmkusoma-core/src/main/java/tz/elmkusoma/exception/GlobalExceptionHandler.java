@@ -75,6 +75,30 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    /**
+     * Outbound payment-gateway failures. Every message carried by
+     * {@link PaymentGatewayException} is already a safe, user-presentable
+     * string (never a raw provider body or credential), so it is surfaced
+     * verbatim; the coarse code picks the HTTP status so the checkout UI can
+     * distinguish "fix your input" from "provider down" from the deliberately
+     * ambiguous timeout that must not be blindly retried.
+     */
+    @ExceptionHandler(tz.elmkusoma.payments.gateway.PaymentGatewayException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePaymentGateway(
+            tz.elmkusoma.payments.gateway.PaymentGatewayException ex) {
+        log.warn("Payment gateway error: {}", ex.getCode());
+        HttpStatus status = switch (ex.getCode()) {
+            case AUTHENTICATION -> HttpStatus.SERVICE_UNAVAILABLE;
+            case VALIDATION -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case PROVIDER, NETWORK, MALFORMED_RESPONSE -> HttpStatus.BAD_GATEWAY;
+            case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
+            case TIMEOUT_AMBIGUOUS -> HttpStatus.GATEWAY_TIMEOUT;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case MISMATCH -> HttpStatus.CONFLICT;
+        };
+        return ResponseEntity.status(status).body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());

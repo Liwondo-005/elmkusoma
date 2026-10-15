@@ -23,4 +23,24 @@ public class InitiatePaymentRequest {
 
     private UUID serviceId;
     private String description;
+
+    /**
+     * Client-generated idempotency key. A retry after a lost response replays the payment
+     * already created instead of charging twice. Optional, but a checkout that can be retried
+     * should always send one.
+     */
+    @jakarta.validation.constraints.Size(max = 128, message = "An idempotency key must be at most 128 characters")
+    private String idempotencyKey;
+
+    /**
+     * Payer mobile number. Required only when the outbound mobile-money
+     * gateway is enabled; normalised server-side to 255XXXXXXXXX.
+     */
+    private String mobileNumber;
+
+    /**
+     * Mobile money network (Mpesa, AirtelMoney, TigoPesa, HaloPesa). Required
+     * only when the outbound mobile-money gateway is enabled.
+     */
+    private String network;
 }

@@ -100,17 +100,6 @@ const th = useTranslations("highered")
     )
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const dash = dashboard!
-
-  const learningContextLabel = (() => {
-    const context = (dash.academicContext || "").toUpperCase()
-    if (context === "VETA") return th("tvet")
-    if (context === "COLLEGE") return th("college")
-    if (context === "UNIVERSITY") return th("university")
-    return dash.academicContext || ""
-  })()
-
   if (!isHE) {
     return (
       <div className="mx-auto max-w-7xl space-y-6" role="main" aria-label={t("myLearningWorld")}>
@@ -205,6 +194,20 @@ const th = useTranslations("highered")
       </div>
     )
   }
+
+  // Only reached for a higher-education learner with a loaded dashboard: the !isHE
+  // branch above returns first, and the isHE && !dashboard branch returns the error
+  // UI, so dashboard is non-null here.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const dash = dashboard!
+
+  const learningContextLabel = (() => {
+    const context = (dash.academicContext || "").toUpperCase()
+    if (context === "VETA") return th("tvet")
+    if (context === "COLLEGE") return th("college")
+    if (context === "UNIVERSITY") return th("university")
+    return dash.academicContext || ""
+  })()
 
   return (
     <div className="mx-auto max-w-7xl space-y-6" role="main" aria-label={t("myLearningWorld")}>

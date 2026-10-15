@@ -109,6 +109,10 @@ public class ParentSelfController {
     private final LearnerNotificationRepository learnerNotificationRepository;
     private final StudentClassAssignmentRepository studentClassAssignmentRepository;
     private final ClassAccessGuard classAccessGuard;
+    private final tz.elmkusoma.parent.service.PaymentGatewayService paymentGatewayService;
+    private final tz.elmkusoma.payments.gateway.StakabaProperties stakabaProperties;
+    private final tz.elmkusoma.pricing.service.PricingService pricingService;
+    private final tz.elmkusoma.pricing.service.DiscountService discountService;
 
     private UUID getCurrentUserId(HttpServletRequest request) {
         Object userIdAttr = request.getAttribute("userId");
@@ -280,13 +284,106 @@ public class ParentSelfController {
         requireChildAccess(userId, req.getStudentId());
 
         var payment = paymentService.initiatePayment(userId, req.getStudentId(), institutionId,
-                req.getAmount(), req.getServiceType(), req.getServiceId(), req.getDescription());
+                req.getAmount(), req.getServiceType(), req.getServiceId(), req.getDescription(),
+                req.getIdempotencyKey());
 
-        return ResponseEntity.ok(ApiResponse.success(Map.of(
-                "paymentId", payment.getId().toString(),
-                "status", payment.getStatus(),
-                "amount", payment.getAmount()
-        )));
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("paymentId", payment.getId().toString());
+        body.put("status", payment.getStatus());
+        body.put("amount", payment.getAmount());
+        body.put("currency", payment.getCurrency() == null ? "TZS" : payment.getCurrency());
+        body.put("policyKey", payment.getPolicyKey() == null ? "" : payment.getPolicyKey());
+        body.put("policyVersion", payment.getPolicyVersion() == null ? 0 : payment.getPolicyVersion());
+
+        // When the outbound gateway is enabled, the pending record created above
+        // immediately becomes the anchor for a mobile-money collection. The
+        // collection response never marks it COMPLETED - only the verified
+        // status lookup or the verified webhook can do that.
+        if (stakabaProperties.isEnabled()) {
+            payment = paymentGatewayService.initiateCollection(payment,
+                    req.getMobileNumber(), req.getNetwork());
+            body.put("status", payment.getStatus());
+            body.put("provider", payment.getProvider() == null ? "" : payment.getProvider());
+            body.put("providerReference",
+                    payment.getProviderReference() == null ? "" : payment.getProviderReference());
+            body.put("instructions",
+                    "Approve the USSD prompt on the payer's phone to complete this payment.");
+        }
+        return ResponseEntity.ok(ApiResponse.success(body));
+    }
+
+    @PostMapping("/payments/{paymentId}/mobile-money")
+    @Operation(summary = "Start a mobile-money collection for one of your pending payments")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> payWithMobileMoney(
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody tz.elmkusoma.parent.dto.request.MobileMoneyInitiateRequest req,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        var payment = paymentGatewayService.initiateCollectionForOwnedPayment(
+                paymentId, userId, req.getMobileNumber(), req.getNetwork());
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("paymentId", payment.getId().toString());
+        body.put("status", payment.getStatus());
+        body.put("amount", payment.getAmount());
+        body.put("currency", payment.getCurrency() == null ? "TZS" : payment.getCurrency());
+        body.put("provider", payment.getProvider() == null ? "" : payment.getProvider());
+        body.put("providerReference",
+                payment.getProviderReference() == null ? "" : payment.getProviderReference());
+        body.put("instructions",
+                "Approve the USSD prompt on the payer's phone to complete this payment.");
+        return ResponseEntity.ok(ApiResponse.success(body));
+    }
+
+    @PostMapping("/payments/{paymentId}/status")
+    @Operation(summary = "Re-check a mobile-money payment against the gateway (idempotent)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkPaymentStatus(
+            @PathVariable UUID paymentId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        tz.elmkusoma.parent.domain.Payment payment;
+        try {
+            payment = paymentGatewayService.verifyPaymentWithGateway(paymentId, userId);
+        } catch (tz.elmkusoma.payments.gateway.PaymentGatewayException ex) {
+            // The gateway could not be reached right now. A status poll should
+            // report the last known state rather than fail; the next poll or
+            // the provider's own webhook will settle the payment.
+            payment = paymentGatewayService.getOwnedPayment(paymentId, userId);
+        }
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("paymentId", payment.getId().toString());
+        body.put("status", payment.getStatus());
+        body.put("amount", payment.getAmount());
+        body.put("currency", payment.getCurrency() == null ? "TZS" : payment.getCurrency());
+        body.put("paidAt", payment.getPaidAt() == null ? "" : payment.getPaidAt().toString());
+        body.put("providerReference",
+                payment.getProviderReference() == null ? "" : payment.getProviderReference());
+        body.put("receiptNumber",
+                payment.getReceiptNumber() == null ? "" : payment.getReceiptNumber());
+        return ResponseEntity.ok(ApiResponse.success(body));
+    }
+
+    @GetMapping("/pricing/quote")
+    @Operation(summary = "Authoritative price for a service type (server-priced; display only)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getPricingQuote(
+            @RequestParam String serviceType,
+            HttpServletRequest request) {
+        getCurrentUserId(request);
+        var resolved = pricingService.resolvePrice(serviceType, null);
+        var discount = discountService.resolve(serviceType, resolved.amount());
+        java.math.BigDecimal net = resolved.amount().subtract(discount.amount());
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("serviceType", serviceType.trim().toUpperCase(java.util.Locale.ROOT));
+        // The amount the client must echo back on initiate is the gross
+        // catalogue price - the server compares against it and refuses a
+        // disagreement; the discounted net is what the gateway will collect.
+        body.put("amount", resolved.amount());
+        body.put("discountAmount", discount.amount());
+        body.put("netAmount", net);
+        body.put("currency", resolved.currency() == null ? "TZS" : resolved.currency());
+        body.put("accessDays", resolved.accessDays() == null ? 0 : resolved.accessDays());
+        body.put("policyKey", resolved.policyKey() == null ? "" : resolved.policyKey());
+        body.put("policyVersion", resolved.policyVersion() == null ? 0 : resolved.policyVersion());
+        return ResponseEntity.ok(ApiResponse.success(body));
     }
 
     // NOTE: Payment verification is admin-only. Use POST /v1/parents/payments/{paymentId}/verify
