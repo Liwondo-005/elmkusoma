@@ -456,6 +456,7 @@
     "overview": "Muhtasari",
     "packages": "Vifurushi",
     "passport": "Pasipoti",
+    "finance": "Fedha",
     "payments": "Malipo",
     "people": "Watu",
     "performance": "Utendaji",
@@ -5547,7 +5548,65 @@
       "statusFailed": "Imeshindwa",
       "statusPaid": "Imelipwa",
       "statusProcessing": "Inachakatwa",
-      "subtitle": "Simamia malipo na tazama historia ya miamala"
+      "subtitle": "Simamia malipo na tazama historia ya miamala",
+      "loading": "Inapakia malipo yako",
+      "loadFailed": "Hatukuweza kupakia malipo yako. Angalia muunganisho wako na jaribu tena.",
+      "retry": "Jaribu tena",
+      "cancelAction": "Ghairi",
+      "cancelConfirm": "Ghairi ombi hili la malipo? Usitiramishe kuendelea. Unaweza kuomba tena baadaye.",
+      "cancelFailed": "Hatukuweza kughairi malipo hayo. Huenda yamekubaliwa tayari - orodha hapa chini ni ya halisi zaidi.",
+      "awaitingPayment": "Inasubiri malipo",
+      "awaitingPaymentHint": "Kiasi zilizoombwa ambazo bado hazijathibitishwa.",
+      "paidHint": "Malipo ambayo jengo limeyathibitisha kuwapokea.",
+      "pendingHint": "Bado hayajalipwa. Haya hayataruhusu ufikiaji.",
+      "emptyTitle": "Hakuna malipo bado",
+      "emptyBody": "Malipo yakiombwa kwa watoto wako yataonekana hapa pamoja na hali yake.",
+      "reference": "Kumbukumbu",
+      "noDescription": "Malipo",
+      "statusUnknown": "Hali isiyojulikana",
+      "childrenFailed": "Hatukuweza kupakia watoto wako, hivyo mwonesho kwa mtoto haupatikani. Historia ya malipo hapa juu haibadilishwi.",
+      "childFailed": "Hatukuweza kupakia maelezo ya mtoto huyu.",
+      "filterFrom": "Kutoka",
+      "filterTo": "Kwa",
+      "filterClear": "Futa tarehe",
+      "filterScopeNote": "Tarehe zinachuja malipo yaliyoorodheshwa kwenye ukurasa huu.",
+      "exportAction": "Hamisha CSV",
+      "noMatchTitle": "Hakuna malipo katika kipindi hiki",
+      "noMatchBody": "Hakuna kilichomo kwenye ukurasa huu kati ya tarehe hizo. Futa kichujio ili kuona kila kitu tena.",
+      "accessTitle": "Ufikiaji na malipo kwa kila mtoto",
+      "accessSubtitle": "Wewe ndiye aliyelipa. Mtoto aliyechaguliwa ndiye anayepewa ufikiaji.",
+      "selectChild": "Mtoto",
+      "accessLoading": "Inapakia maelezo ya mtoto",
+      "accessGrantsHeading": "Ufikiaji uliotolewa",
+      "accessEmpty": "Mtoto huyu bado hana ufikiaji wowote.",
+      "childPaymentsHeading": "Malipo ya mtoto huyu",
+      "childPaymentsEmpty": "Hakuna malipo yaliyorekodiwa kwa mtoto huyu.",
+      "columns": {
+        "reference": "Kumbukumbu",
+        "date": "Tarehe",
+        "description": "Maelezo",
+        "serviceType": "Huduma",
+        "amount": "Kiasi",
+        "currency": "Sifa",
+        "status": "Hali",
+        "providerReference": "Kumbukumbu ya malipo"
+      },
+      "access": {
+        "title": "Ufikiaji na malipo kwa kila mtoto",
+        "subtitle": "Wewe ndiye aliyelipa. Mtoto aliyechaguliwa ndiye anayepewa ufikiaji.",
+        "selectChild": "Mtoto",
+        "accessLoading": "Inapakia maelezo ya mtoto",
+        "accessGrantsHeading": "Ufikiaji uliotolewa",
+        "accessEmpty": "Mtoto huyu bado hana ufikiaji wowote.",
+        "childPaymentsHeading": "Malipo ya mtoto huyu",
+        "childPaymentsEmpty": "Hakuna malipo yaliyorekodiwa kwa mtoto huyu.",
+        "starts": "Ilitolewa",
+        "noExpiry": "Haina tarehe ya mwisho",
+        "expiresOn": "Inaendelea hadi {date}",
+        "expiresSoonDays": "Inaisha baada ya siku {days}",
+        "expiredOn": "Ilizidiwa {date}",
+        "statusUnknown": "Hali isiyojulikana"
+      }
     },
     "reports": {
       "acrossSubjects": "Kwenye masomo yote",
@@ -5754,6 +5813,86 @@
     }
   },
   "platformAdmin": {
+    "finance": {
+      "title": "Kituo cha Fedha",
+      "subtitle": "Kumbukumbu za malipo za mfumo mzima, ufikiaji uliotolewa na makosa ya kurekebisha.",
+      "loading": "Inapakia kumbukumbu za fedha",
+      "loadFailed": "Hatukuweza kupakia kumbukumbu za fedha. Angalia muunganisho wako na jaribu tena.",
+      "retry": "Jaribu tena",
+      "tabs": {
+        "payments": "Malipo",
+        "entitlements": "Ufikiaji uliotolewa",
+        "exceptions": "Makosa",
+        "catalogue": "Bei za huduma"
+      },
+      "counts": {
+        "payments": "Kumbukumbu za malipo",
+        "entitlements": "Ufikiaji uliotolewa",
+        "exceptions": "Makosa ya kurekebisha"
+      },
+      "filters": {
+        "status": "Hali",
+        "allStatuses": "Hali zote",
+        "search": "Tafuta",
+        "searchPlaceholder": "Kumbukumbu au huduma",
+        "from": "Kutoka",
+        "to": "Kwa",
+        "clear": "Futa vichujio",
+        "pageScope": "Utafutaji na tarehe zinagenegea safu zilizo kwenye ukurasa huu pekee. Kumbukumbu imegawanywa kwenye kurasa na bado haina utafutaji au kichujio cha tarehe kwenye seva.",
+        "exportAction": "Hamisha ukurasa huu"
+      },
+      "columns": {
+        "reference": "Kumbukumbu",
+        "service": "Huduma",
+        "category": "Kategoria",
+        "status": "Hali",
+        "amount": "Kiasi",
+        "created": "Aliyoombwa",
+        "user": "Mtumiaji",
+        "starts": "Inaanza",
+        "expires": "Inaisha",
+        "seats": "Viti",
+        "price": "Bei",
+        "currency": "Sifa"
+      },
+      "empty": {
+        "payments": "Hakuna malipo yanayolingana na kichujio hiki.",
+        "paymentsNoMatch": "Hakuna malipo kwenye ukurasa huu yanayolingana na utafutaji au tarehe za sasa. Kumbukumbu imegawanywa kwenye kurasa, hivyo safu kwenye kurasa wengine hazikutafutiwa. Futa vichujio ili kuona ukurasa huu tena.",
+        "entitlements": "Hakuna ufikiaji uliotolewa unaolingana na kichujio hiki.",
+        "exceptions": "Hakuna makosa ya malipo yaliyosimama. Kila arifa ya malipo aliyopokea mfumo imechakatwa vizuri.",
+        "catalogue": "Hakuna huduma zilizochapishwa bado."
+      },
+      "exceptions": {
+        "scope": "Arifa za malipo zilizopokea lakini hazikuchakatwa vizuri. Huu ni ukaguzi wa matukio, si ughatanisho wa makato.",
+        "received": "Ilipokelewa",
+        "retries": "Majaribio"
+      },
+      "catalogue": {
+        "active": "Imechapishwa",
+        "inactive": "Haijachapishwa",
+        "unlimited": "Bila kikomo",
+        "unpriced": "Hakuna bei"
+      },
+      "pager": {
+        "previous": "Iliyotangulia",
+        "next": "Ifuatayo",
+        "page": "Ukurasa {current} kati ya {total}",
+        "total": "Kumbukumbu {count}"
+      },
+      "unavailable": {
+        "title": "Bado hawezi kuhesabiwa",
+        "body": "Takwimu hizi hazionyeshwa kwa sababu mfumo bado hauwezi kuzihesabu. Zipo hazipo, si sifuri - Tafadhali usisome nafasi hii kama salio la zero.",
+        "items": {
+          "commission": "Ada ya jengo",
+          "providerShare": "Sehemu ya watoa huduma / walimu",
+          "earnings": "Mapato ya watoa huduma",
+          "netCollections": "Makato yaliyobaki",
+          "profit": "Faida na hasara",
+          "discounts": " punguzo na kadi",
+          "subscriptions": "Usajili na uendelevu"
+        }
+      }
+    },
     "admins": {
       "failedToLoadAdmins": "Imeshindwa kupakia wasimamizi",
       "failedToUpdatePermissions": "Imeshindwa kusasisha ruhusa",
@@ -9697,40 +9836,16 @@
   },
   "subscription": {
     "title": "Usajili",
-    "subtitle": "Chagua mpango unaokufaa kujifunza.",
-    "recommendedBadge": "INAPENDEKEZWA",
-    "currentPlanButton": "Mpango wa Sasa",
-    "upgradeButton": "Boresha",
-    "customPrice": "Maalum",
-    "plans": {
-      "free": {
-        "name": "Bure",
-        "period": "milele",
-        "f1": "Kupata kozi za bure",
-        "f2": "Madarasa ya moja kwa moja ya msingi",
-        "f3": "Maktaba ya kidijitali (ndogo)",
-        "f4": "Msaada wa jamii"
-      },
-      "premium": {
-        "name": "Premium",
-        "period": "/mwezi",
-        "f1": "Vipengele vyote vya bure",
-        "f2": "Madarasa ya moja kwa moja bila kikomo",
-        "f3": "Maktaba kamili ya kidijitali",
-        "f4": "Nyenzo zinazopakuliwa",
-        "f5": "Msaada wa kipaumbele",
-        "f6": "Vyeti"
-      },
-      "institution": {
-        "name": "Taasisi",
-        "f1": "Vipengele vyote vya Premium",
-        "f2": "Uandikishaji wa pamoja",
-        "f3": "Dashibodi ya msimamizi",
-        "f4": "Chapa maalum",
-        "f5": "Msaada maalum",
-        "f6": "Upatikanaji wa API"
-      }
-    }
+    "subtitle": "Mipango na bei za akaunti yako.",
+    "unavailableTitle": "Hakuna mipango iliyochapishwa bado",
+    "unavailableBody": "ELMKUSOMA kwa sasa haina orodha ya mipango inayoweza kununuliwa. Hakuna kitu kinachotozwa hapa na hakuna mpango unaweza kuchagua, kwa sababu bei zilizoidhinishwa bado hazijachapishwa. Mipango itakapochapishwa na msimamizi itaonekana kwenye ukurasa huu.",
+    "whatWorksTodayTitle": "Kinachofanya kazi sasa",
+    "whatWorksToday": {
+      "paymentHistory": "Historia ya malipo, pamoja na hali ya kila malipo",
+      "pendingStatus": "Malipo yaliyosubiri, yaliyotengwa wazi kutoka yaliyokamilika",
+      "accessGrants": "Ufikiaji uliotolewa malipo yakitibitishwa"
+    },
+    "viewPayments": "Ona historia ya malipo"
   },
   "liveOps": {
     "forceEnd": "Maliza kwa nguvu",
