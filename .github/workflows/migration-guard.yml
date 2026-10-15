@@ -1,0 +1,45 @@
+name: Migration Guard
+
+# Prevents the Oct-2026 class of outage: a merge renamed/edited Flyway
+# migrations that databases had already applied, so every `mvn spring-boot:run`
+# failed at flywayInitializer with checksum/description mismatch (V161-V163).
+# Applied migrations are immutable — collisions must be resolved by renumbering
+# the file that is NOT yet on main, never the one already in flyway_schema_history.
+#
+# The checks live in scripts/check-migrations.mjs so every developer can run the
+# same guard locally before pushing:
+#   node scripts/check-migrations.mjs --base origin/main
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**/src/main/resources/db/migration/**'
+      - 'scripts/check-migrations.mjs'
+      - '.github/workflows/migration-guard.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**/src/main/resources/db/migration/**'
+      - 'scripts/check-migrations.mjs'
+      - '.github/workflows/migration-guard.yml'
+
+jobs:
+  migration-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history — guard diffs against the base commit)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check migration immutability and version collisions
+        env:
+          # PR: base branch tip; push: previous tip (all-zeros on branch creation,
+          # which the script falls back to origin/main for).
+          MIGRATION_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/check-migrations.mjs
