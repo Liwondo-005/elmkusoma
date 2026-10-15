@@ -81,6 +81,9 @@ public class LearnerController {
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final LearnerGoalRepository learningGoalRepository;
     private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
+    // The placement rule every other class-scoped read path already uses
+    // (student_class_assignments ∪ ENROLLED enrollments) - reused instead of a fourth copy.
+    private final tz.elmkusoma.common.ClassAccessGuard classAccessGuard;
     /**
      * Builds the application-owned playback URL that client-facing responses expose in place
      * of the private object-storage location.
@@ -657,9 +660,53 @@ public class LearnerController {
             }
         }
 
+        // Class targeting is only worth validating on write if the read path honours it. The query
+        // above is scoped by institution and publication state but never by class, so an
+        // announcement aimed at one class was served to every learner in the school. Rows that
+        // name no class keep the existing institution-wide policy and stay visible to everyone.
+        retainOnlyClassReachable(announcements, user);
+
         announcements.sort(Comparator.comparing(
                 Announcement::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
         return ResponseEntity.ok(ApiResponse.success(announcements));
+    }
+
+    /**
+     * Drops class-scoped announcements the learner could not join. Resolves each distinct target
+     * once rather than once per row, and fails closed when no identity is available.
+     */
+    private void retainOnlyClassReachable(List<Announcement> announcements, User user) {
+        Set<UUID> targeted = announcements.stream()
+                .map(Announcement::getClassGroupId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (targeted.isEmpty()) {
+            return;
+        }
+        String email = user != null ? user.getEmail() : null;
+        Map<UUID, Boolean> reachable = new HashMap<>();
+        for (UUID classGroupId : targeted) {
+            reachable.put(classGroupId, classAccessGuard.isLearnerInClass(email, classGroupId));
+        }
+        announcements.removeIf(a -> a.getClassGroupId() != null
+                && !Boolean.TRUE.equals(reachable.get(a.getClassGroupId())));
+    }
+
+    /**
+     * Announcement search hits are passed through the same class filter as the announcement feed.
+     * Without it, search would have been a way straight around the audience rule the feed applies,
+     * and a direct request would bypass the listing authorization. The filter runs before
+     * pagination so a page can never be composed of notices the learner could not open.
+     */
+    private List<AnnouncementSearchResult> searchAnnouncements(UUID institutionId, UUID userId,
+            String query, int page, int size) {
+        List<Announcement> matches = new ArrayList<>(
+                announcementRepository.searchByInstitutionIdAndQuery(institutionId, query));
+        retainOnlyClassReachable(matches, userRepository.findById(userId).orElse(null));
+        return matches.stream()
+                .limit(size).skip((long) page * size)
+                .map(this::toAnnouncementSearchResult)
+                .collect(Collectors.toList());
     }
 
     private boolean announcementVisibleToLearner(Announcement announcement, User user, UUID institutionId) {
@@ -1233,8 +1280,7 @@ public class LearnerController {
                         .courses(Collections.emptyList())
                         .resources(Collections.emptyList())
                         .liveClasses(Collections.emptyList())
-                        .announcements(announcementRepository.searchByInstitutionIdAndQuery(institutionId, query)
-                                .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
+                        .announcements(searchAnnouncements(institutionId, userId, query, page, size))
                         .build();
             } else {
                 List<Course> filteredCourses = courseRepository.searchPublishedByInstitutionWithAllFilters(institutionId, query, level, category, fromDate, toDate)
@@ -1245,8 +1291,7 @@ public class LearnerController {
                                 .stream().filter(visibleToCaller).skip((long) page * size).limit(size).map(this::toResourceSearchResult).collect(Collectors.toList()))
                         .liveClasses(liveClassRepository.searchByInstitutionIdAndQuery(institutionId, query)
                                 .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
-                        .announcements(announcementRepository.searchByInstitutionIdAndQuery(institutionId, query)
-                                .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
+                        .announcements(searchAnnouncements(institutionId, userId, query, page, size))
                         .build();
             }
 

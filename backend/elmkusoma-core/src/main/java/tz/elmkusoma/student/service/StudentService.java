@@ -98,11 +98,16 @@ public class StudentService {
     @Transactional(readOnly = true)
     public List<StudentResponse> getStudents(UUID institutionId, UUID classId) {
         if (classId != null) {
+            // classId arrives from the client and proves nothing about the caller's tenant. The
+            // branch previously ignored institutionId outright, so ?classId= of another school
+            // returned that school's full roster. Same institution predicate ResourceService
+            // applies to its own client-supplied lesson/module/course branches.
             List<StudentClassAssignment> assignments =
                     assignmentRepository.findByClassGroupIdAndIsDeletedFalse(classId);
             return assignments.stream()
                     .map(a -> studentRepository.findById(a.getStudentId()).orElse(null))
                     .filter(s -> s != null && !s.getIsDeleted())
+                    .filter(s -> institutionId != null && institutionId.equals(s.getInstitutionId()))
                     .map(this::toResponse)
                     .toList();
         }

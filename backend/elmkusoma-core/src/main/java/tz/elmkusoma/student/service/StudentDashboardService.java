@@ -39,6 +39,7 @@ public class StudentDashboardService {
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final LessonProgressRepository lessonProgressRepository;
     private final LiveClassRepository liveClassRepository;
+    private final tz.elmkusoma.liveclass.service.LiveClassRecordingAccessService recordingAccess;
 
     public Student getStudentByUserId(UUID userId) {
         return studentRepository.findByUserIdAndIsDeletedFalse(userId)
@@ -231,7 +232,7 @@ public class StudentDashboardService {
         return summary;
     }
 
-    public List<Map<String, Object>> getUpcomingLiveClasses(UUID userId) {
+    public List<Map<String, Object>> getUpcomingLiveClasses(UUID userId, String userRole) {
         Student student = getStudentByUserId(userId);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime weekFromNow = now.plusDays(7);
@@ -239,7 +240,12 @@ public class StudentDashboardService {
         List<LiveClass> upcoming = liveClassRepository.findByInstitutionIdAndScheduledAtBetween(
                 student.getInstitutionId(), now, weekFromNow);
 
-        return upcoming.stream().map(lc -> {
+        // This is the learner's own dashboard, so it must not become a way to enumerate every
+        // class-specific session in the school. Institution is a tenant boundary, not an audience;
+        // the session's own audience decides, using the same rule that gates joining it.
+        return upcoming.stream()
+                .filter(lc -> recordingAccess.isAllowed(lc, userId, student.getInstitutionId(), userRole))
+                .map(lc -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", lc.getId());
             item.put("title", lc.getTitle());

@@ -241,7 +241,12 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<TeacherAssignmentResponse> getAssignments(UUID institutionId, UUID teacherId) {
+        // institutionId was declared on this signature but never read, so any teacherId a caller
+        // named returned that teacher's assignments across every tenant. The repository query has
+        // no tenant column to constrain, so the predicate is applied here - fail closed rather than
+        // fail open when the tenant is unresolved.
         return assignmentRepository.findAllByTeacherId(teacherId).stream()
+                .filter(a -> institutionId != null && institutionId.equals(a.getInstitutionId()))
                 .map(this::mapToAssignmentResponse)
                 .toList();
     }

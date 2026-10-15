@@ -10,6 +10,7 @@ import tz.elmkusoma.assessment.domain.AssessmentResult;
 import tz.elmkusoma.assessment.repository.AssessmentRepository;
 import tz.elmkusoma.assessment.repository.AssessmentResultRepository;
 import tz.elmkusoma.common.ClassAccessGuard;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.grading.dto.response.GradebookResponse;
 import tz.elmkusoma.grading.service.GradebookService;
 import tz.elmkusoma.learning.domain.Assignment;
@@ -48,10 +49,19 @@ public class GradebookServiceImpl implements GradebookService {
 
     @Override
     public GradebookResponse getGradebook(UUID classGroupId, UUID institutionId) {
+        // classGroupId arrives from the client. The assignments and assessments further down were
+        // already tenant-filtered, but the class lookup and the roster it resolves were not - a
+        // foreign class id returned that school's class name and its student ids. The class is the
+        // root of every branch in this response, so refusing a foreign one here closes them all.
+        ClassGroup classGroup = classGroupRepository.findById(classGroupId).orElse(null);
+        if (classGroup != null && institutionId != null
+                && !institutionId.equals(classGroup.getInstitutionId())) {
+            throw new ForbiddenException("You do not have access to this resource");
+        }
+
         List<UUID> studentIds = classAccessGuard.resolveClassStudentIds(classGroupId);
 
         String className = null;
-        ClassGroup classGroup = classGroupRepository.findById(classGroupId).orElse(null);
         if (classGroup != null) {
             className = classGroup.getName();
         }

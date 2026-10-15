@@ -33,7 +33,13 @@ private final ParentStudentLinkRepository parentStudentLinkRepository;
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<StudentResponse>> createStudent(
+            @RequestAttribute("institutionId") UUID institutionId,
             @Valid @RequestBody StudentRequest request) {
+        // The tenant comes from the caller's resolved membership, never from the body. The field is
+        // @NotNull because the DTO validates it, but a client-chosen value would let a teacher or
+        // an institution admin write a student straight into another school. This is the same
+        // server-side re-stamp the higher-education controllers already apply on their create paths.
+        request.setInstitutionId(institutionId);
         StudentResponse student = studentService.createStudent(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Student created", student));
