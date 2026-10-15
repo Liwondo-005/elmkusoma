@@ -246,6 +246,15 @@ export const MOBILE_MONEY_NETWORKS: { value: MobileMoneyNetwork; label: string }
 ]
 
 /**
+ * Stakaba's documented sandbox failure number. Sandbox collections sent to it
+ * are simulated as declined, which is the only way to exercise the failure
+ * path end to end. The server accepts it only when the gateway is running on a
+ * sandbox key; this is just a UX pre-check, so it can be offered here without
+ * weakening anything.
+ */
+export const SANDBOX_FAILURE_NUMBER = "255000000001"
+
+/**
  * Normalises a Tanzanian number to the MSISDN form the gateway requires
  * (255XXXXXXXXX). Mirrors the server-side rule so the user gets an immediate
  * error instead of a round-trip; the server normalises again regardless.
@@ -253,6 +262,7 @@ export const MOBILE_MONEY_NETWORKS: { value: MobileMoneyNetwork; label: string }
 export function normaliseMsisdn(raw: string): string | null {
   let v = (raw || "").trim().replace(/[\s()-]/g, "")
   if (v.startsWith("+")) v = v.slice(1)
+  if (v === SANDBOX_FAILURE_NUMBER) return v
   if (v.startsWith("0")) v = `255${v.slice(1)}`
   else if (!v.startsWith("255") && v.length === 9) v = `255${v}`
   return /^255[67]\d{8}$/.test(v) ? v : null

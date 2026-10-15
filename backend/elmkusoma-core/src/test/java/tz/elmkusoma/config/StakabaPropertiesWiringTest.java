@@ -23,7 +23,8 @@ class StakabaPropertiesWiringTest {
 
     private static final String[] KEYS = {
             "STAKABA_ENABLED", "STAKABA_BASE_URL", "STAKABA_API_KEY",
-            "STAKABA_CONNECT_TIMEOUT_MS", "STAKABA_READ_TIMEOUT_MS", "STAKABA_ALLOW_LIVE"
+            "STAKABA_CONNECT_TIMEOUT_MS", "STAKABA_READ_TIMEOUT_MS", "STAKABA_ALLOW_LIVE",
+            "STAKABA_SEND_BEARER_FALLBACK"
     };
     private final String[] previous = new String[KEYS.length];
 
@@ -75,6 +76,8 @@ class StakabaPropertiesWiringTest {
                 "no key may be baked into the config");
         assertEquals("false", env.getProperty("payment.stakaba.allow-live"),
                 "the live-key interlock must default to false");
+        assertEquals("true", env.getProperty("payment.stakaba.send-bearer-fallback"),
+                "the documented dual-auth hedge defaults on for the status lookup");
         assertEquals("none", env.getProperty("payment.provider"),
                 "no outbound provider is selected by default");
     }

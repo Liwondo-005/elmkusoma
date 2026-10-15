@@ -208,6 +208,11 @@ payment:
     connect-timeout-ms: ${STAKABA_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${STAKABA_READ_TIMEOUT_MS:15000}
     allow-live: ${STAKABA_ALLOW_LIVE:false}
+    # The status lookup sends BOTH x-api-key and Authorization: Bearer, because
+    # Stakaba's OpenAPI spec declares HTTPBearer for that endpoint while its
+    # prose guides (and the collection endpoint in the same spec) use x-api-key.
+    # Set to false to send only x-api-key once Stakaba confirms which applies.
+    send-bearer-fallback: ${STAKABA_SEND_BEARER_FALLBACK:true}
 
 services:
   media:
