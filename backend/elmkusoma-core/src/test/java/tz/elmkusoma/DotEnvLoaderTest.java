@@ -222,6 +222,76 @@ class DotEnvLoaderTest {
                 "the load result must expose key names only, never values");
     }
 
+    // --------------------------------------------------- surrounding quotes
+
+    /**
+     * A value wrapped in matching quotes is unquoted, because a shell user writes
+     * {@code KEY="value"} and expects {@code value}.
+     *
+     * <p>This is not cosmetic. The gateway key is validated by prefix
+     * ({@code sk_test_} / {@code sk_live_}), so a quoted key arrives as
+     * {@code "sk_test_abc"} - the prefix no longer matches at position zero and the
+     * deployment is rejected as "not a Stakaba key" even though the operator did
+     * nothing wrong. The same class of problem applies to any value that is compared
+     * or matched rather than merely read.</p>
+     */
+    @Test
+    void load_stripsMatchingSurroundingQuotes(@TempDir File dir) throws IOException {
+        File env = file(dir, "SENTINEL=\"double quoted\"\n");
+        Map<String, String> props = new HashMap<>();
+
+        ElmkusomaCoreApplication.load(env, k -> null, props::get, props::put);
+
+        assertEquals("double quoted", props.get("SENTINEL"),
+                "a quoted value must reach the application unquoted");
+    }
+
+    @Test
+    void load_stripsMatchingSurroundingSingleQuotes(@TempDir File dir) throws IOException {
+        File env = file(dir, "SENTINEL='single quoted'\n");
+        Map<String, String> props = new HashMap<>();
+
+        ElmkusomaCoreApplication.load(env, k -> null, props::get, props::put);
+
+        assertEquals("single quoted", props.get("SENTINEL"));
+    }
+
+    @Test
+    void load_keepsQuotesThatArePartOfTheValueNotWrappingIt(@TempDir File dir) throws IOException {
+        File env = file(dir, "MESSAGE=say \"hello\" now\nPLAIN=he said \"hi\"\n");
+        Map<String, String> props = new HashMap<>();
+
+        ElmkusomaCoreApplication.load(env, k -> null, props::get, props::put);
+
+        // Only a quote that wraps the ENTIRE value is structural. One inside the value is data.
+        assertEquals("say \"hello\" now", props.get("MESSAGE"));
+        assertEquals("he said \"hi\"", props.get("PLAIN"));
+    }
+
+    @Test
+    void load_keepsUnbalancedQuotesIntact(@TempDir File dir) throws IOException {
+        File env = file(dir, "A=\"unclosed\nB=closed\"trailing\n");
+        Map<String, String> props = new HashMap<>();
+
+        ElmkusomaCoreApplication.load(env, k -> null, props::get, props::put);
+
+        // A half-written quote is more likely a typo than an intent to quote, so the value is
+        // kept verbatim rather than silently losing its first character.
+        assertEquals("\"unclosed", props.get("A"));
+        assertEquals("closed\"trailing", props.get("B"));
+    }
+
+    @Test
+    void load_anEmptyValueStaysEmptyRatherThanBecomingQuoted(@TempDir File dir) throws IOException {
+        File env = file(dir, "EMPTY=\nALSO_EMPTY=\"\"\n");
+        Map<String, String> props = new HashMap<>();
+
+        ElmkusomaCoreApplication.load(env, k -> null, props::get, props::put);
+
+        assertEquals("", props.get("EMPTY"));
+        assertEquals("", props.get("ALSO_EMPTY"), "an explicitly empty quoted value is still empty");
+    }
+
     @Test
     void theMarkerThatIdentifiesTheBackendRoot() {
         assertEquals(".env.example", ElmkusomaCoreApplication.BACKEND_ROOT_MARKER);
