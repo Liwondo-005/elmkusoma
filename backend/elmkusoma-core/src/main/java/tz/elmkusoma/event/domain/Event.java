@@ -60,7 +60,27 @@ public class Event extends BaseEntity {
     @Column(name = "tags", length = 500)
     private String tags;
 
-    @Column(name = "is_free", nullable = false)
+    /**
+     * Price of one seat for a paid event, in {@code ticketCurrency}.
+     *
+     * <p>Null means this event charges nothing and {@link #isFree} governs it. A value is the
+     * price charged for each confirmed seat, snapshotted onto the registration when the seat is
+     * confirmed so a later price change cannot restate what an attendee already paid.
+     *
+     * <p>Never derived from a client and never recomputed at registration: the stored price is the
+     * one taken, and the one that later appears on the receipt.</p>
+     */
+    @Column(name = "ticket_price", precision = 12, scale = 2)
+    private java.math.BigDecimal ticketPrice;
+
+    @Column(name = "ticket_currency", length = 10)
+    private String ticketCurrency;
+
+    /** True only when this event actually asks for money. */
+    public boolean isPaid() {
+        return !Boolean.TRUE.equals(isFree)
+                && ticketPrice != null && ticketPrice.signum() > 0;
+    }    @Column(name = "is_free", nullable = false)
     @Builder.Default
     private Boolean isFree = true;
 
