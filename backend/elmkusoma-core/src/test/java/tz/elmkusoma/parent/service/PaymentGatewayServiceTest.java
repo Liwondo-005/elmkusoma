@@ -183,6 +183,29 @@ class PaymentGatewayServiceTest {
         verify(gatewayClient, never()).initiateCollection(any(), any(), any(), any(), any());
     }
 
+    @Test
+    void initiate_documentedSandboxFailureNumber_allowedOnlyOnASandboxKey() {
+        Payment payment = pendingPayment();
+        when(paymentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gatewayClient.initiateCollection(any(), any(), any(), any(), any()))
+                .thenReturn(new StakabaGatewayClient.CollectionInitiated("M_FAILSIM"));
+
+        // Sandbox: accepted, so the documented failure path is testable.
+        properties.setApiKey("sk_test_unit");
+        service.initiateCollection(payment, "255000000001", "Mpesa");
+        verify(gatewayClient).initiateCollection(any(), any(),
+                eq("255000000001"), eq("Mpesa"), any());
+        assertEquals("PENDING", payment.getStatus());
+    }
+
+    @Test
+    void initiate_documentedSandboxFailureNumber_refusedWhenNotSandbox() {
+        properties.setApiKey("sk_live_unit");
+        assertThrows(IllegalArgumentException.class,
+                () -> service.initiateCollection(pendingPayment(), "255000000001", "Mpesa"));
+        verify(gatewayClient, never()).initiateCollection(any(), any(), any(), any(), any());
+    }
+
     // ── Verification ───────────────────────────────────────────────────
 
     @Test

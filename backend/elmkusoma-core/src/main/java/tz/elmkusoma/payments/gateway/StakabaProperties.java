@@ -40,6 +40,22 @@ public class StakabaProperties {
      */
     private boolean allowLive = false;
 
+    /**
+     * Send {@code Authorization: Bearer <api-key>} alongside {@code x-api-key}
+     * on the transaction-status lookup, because Stakaba's own published
+     * contract disagrees with itself about that endpoint: the OpenAPI spec
+     * declares {@code security: [HTTPBearer]} and exposes no {@code x-api-key}
+     * parameter for it, while the Authentication, Environments and Mobile
+     * Money Collections guides all show {@code x-api-key}, and the spec itself
+     * uses {@code x-api-key} (and no bearer) for the collection endpoint.
+     *
+     * <p>Both headers are therefore sent on that one read-only call so the
+     * lookup succeeds whichever scheme the endpoint actually enforces. Nothing
+     * is invented: both are documented by Stakaba. Set this to {@code false}
+     * (STAKABA_SEND_BEARER_FALLBACK=false) to send only {@code x-api-key}.</p>
+     */
+    private boolean sendBearerFallback = true;
+
     public boolean hasApiKey() {
         return apiKey != null && !apiKey.isBlank();
     }

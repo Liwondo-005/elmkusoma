@@ -57,6 +57,7 @@ public class CoreScheduler {
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
     private final tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
     private final tz.elmkusoma.shared.service.CommunicationIdempotencyService communicationIdempotencyService;
+    private final tz.elmkusoma.finance.service.ReconciliationService reconciliationService;
 
     /**
      * Authoritative live-class expiry. A started session ends when its ACTUAL start
@@ -186,6 +187,39 @@ public class CoreScheduler {
             log.info("Daily PLATFORM_ANALYTICS snapshot created");
         } catch (Exception e) {
             log.error("Daily analytics snapshot failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Hourly financial reconciliation sweep.
+     *
+     * <p>{@link tz.elmkusoma.finance.service.ReconciliationService#scan()} was fully
+     * implemented and unit-tested but nothing ever called it, so the five
+     * integrity checks - stale PENDING, COMPLETED-without-entitlement, amount
+     * inconsistencies, refund inconsistencies and duplicate provider
+     * references - only ran if an operator triggered them by hand. Outbound
+     * mobile-money collection makes that matter more: a collection that is
+     * queued, or whose prompt is never approved, leaves a payment PENDING with
+     * a gateway reference, and without a sweep nothing surfaces it.
+     *
+     * <p>Hourly rather than per-minute because the checks read whole payment
+     * tables and the staleness threshold is 24 hours, so a faster cadence adds
+     * load without finding anything sooner. The scan is a pure read that only
+     * ever raises reconciliation exceptions - it never moves money, never
+     * grants or revokes access, and never changes a payment status - and a
+     * failure is logged rather than propagated, exactly like the sweeps above.</p>
+     */
+    @Scheduled(fixedRate = 3600000, initialDelay = 300000)
+    public void hourlyReconciliationScan() {
+        try {
+            tz.elmkusoma.finance.service.ReconciliationService.ScanResult result =
+                    reconciliationService.scan();
+            if (!result.newlyRaised().isEmpty()) {
+                log.warn("Hourly reconciliation raised {} new exception(s); {} open",
+                        result.newlyRaised().size(), result.openExceptions());
+            }
+        } catch (Exception e) {
+            log.error("Hourly reconciliation scan failed: {}", e.getMessage());
         }
     }
 

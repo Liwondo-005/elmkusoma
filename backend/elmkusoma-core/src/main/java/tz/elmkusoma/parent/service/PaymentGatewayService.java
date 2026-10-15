@@ -131,7 +131,7 @@ public class PaymentGatewayService {
             throw new IllegalStateException(
                     "Mobile money requires a whole TZS amount (this payment is " + amount + ")");
         }
-        String msisdn = MsisdnNormalizer.normalize(rawMobileNumber);
+        String msisdn = resolvePayerNumber(payment, rawMobileNumber);
         String network = MobileMoneyNetwork.from(rawNetwork).apiValue();
 
         Map<String, String> metadata = Map.of(
@@ -376,6 +376,30 @@ public class PaymentGatewayService {
                 true,
                 "COMPLETED".equals(verified.getStatus()),
                 null);
+    }
+
+    /**
+     * The number actually sent to the gateway.
+     *
+     * <p>Strict MSISDN validation applies to every payer number, with one
+     * narrowly-scoped exception: Stakaba documents {@code 255000000001} as the
+     * sandbox number that simulates a FAILED payment, and a tester cannot
+     * exercise the failure path without it. It is accepted only when the
+     * configured key is a sandbox key, and it is logged as a simulation - so a
+     * live deployment can never collect against it, and a real payer can never
+     * be charged by it.</p>
+     */
+    private String resolvePayerNumber(Payment payment, String rawMobileNumber) {
+        if (MsisdnNormalizer.isDocumentedSandboxFailureNumber(rawMobileNumber)) {
+            if (!properties.isSandboxKey()) {
+                throw new IllegalArgumentException(
+                        "Invalid mobile number. Use format 255XXXXXXXXX (e.g. 255742000331)");
+            }
+            log.warn("Using the documented Stakaba SANDBOX failure test number for payment {} "
+                    + "- this simulates a declined payment, no money moves", payment.getId());
+            return MsisdnNormalizer.SANDBOX_FAILURE_NUMBER;
+        }
+        return MsisdnNormalizer.normalize(rawMobileNumber);
     }
 
     /** True when a collection attempt may or may not have reached Stakaba. */

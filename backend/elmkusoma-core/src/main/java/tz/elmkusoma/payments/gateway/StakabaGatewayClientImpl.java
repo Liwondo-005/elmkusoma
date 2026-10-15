@@ -145,7 +145,16 @@ public class StakabaGatewayClientImpl implements StakabaGatewayClient {
             try {
                 Map<String, Object> response = restClient.get()
                         .uri(TRANSACTION_PATH, internalReference)
-                        .header("x-api-key", properties.getApiKey())
+                        .headers(headers -> {
+                            headers.set("x-api-key", properties.getApiKey());
+                            if (properties.isSendBearerFallback()) {
+                                // Stakaba's spec declares HTTPBearer for this endpoint while
+                                // its prose guides use x-api-key; send both documented schemes
+                                // (see StakabaProperties#sendBearerFallback). Read-only call.
+                                headers.set(HttpHeaders.AUTHORIZATION,
+                                        "Bearer " + properties.getApiKey());
+                            }
+                        })
                         .retrieve()
                         .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
                         });
@@ -172,30 +181,63 @@ public class StakabaGatewayClientImpl implements StakabaGatewayClient {
         throw last;
     }
 
+    /**
+     * Parses the transaction-status response.
+     *
+     * <p>Stakaba publishes this endpoint's response as an untyped
+     * {@code map<string, any>} in its OpenAPI spec, so no field list can be
+     * trusted and none is invented here. The parser therefore: (a) accepts the
+     * flat object the webhook documentation shows, and tolerates the same
+     * object wrapped in {@code data}/{@code transaction}; (b) reads the
+     * amount from {@code grossAmount} and tolerates {@code amount}; and
+     * (c) leaves a missing amount as {@code null} rather than guessing zero -
+     * the caller refuses to fulfil a claimed success that carries no amount.</p>
+     */
     private GatewayTransaction parseTransaction(String internalReference, Map<String, Object> body) {
         if (body == null) {
             throw new PaymentGatewayException(PaymentGatewayException.Code.MALFORMED_RESPONSE,
                     "The payment provider returned an unexpected response.");
         }
-        Object status = body.get("status");
+        Map<String, Object> fields = unwrap(body);
+        Object status = fields.get("status");
         BigDecimal amount = null;
-        Object rawAmount = body.get("grossAmount");
+        Object rawAmount = fields.get("grossAmount") != null ? fields.get("grossAmount") : fields.get("amount");
         if (rawAmount instanceof Number number) {
             amount = new BigDecimal(number.toString());
+        } else if (rawAmount instanceof String text && !text.isBlank()) {
+            try {
+                amount = new BigDecimal(text.trim());
+            } catch (NumberFormatException ignored) {
+                // Unparseable amount stays null: fulfilment will be refused.
+            }
         }
-        String providerReference = body.get("providerReference") == null
-                ? null : body.get("providerReference").toString();
+        String providerReference = fields.get("providerReference") == null
+                ? null : fields.get("providerReference").toString();
         @SuppressWarnings("unchecked")
-        Map<String, Object> metadata = body.get("metadata") instanceof Map
-                ? (Map<String, Object>) body.get("metadata") : Map.of();
-        Object ref = body.getOrDefault("internalReference", internalReference);
+        Map<String, Object> metadata = fields.get("metadata") instanceof Map
+                ? (Map<String, Object>) fields.get("metadata") : Map.of();
+        Object ref = fields.getOrDefault("internalReference", internalReference);
         return new GatewayTransaction(
                 ref == null ? internalReference : ref.toString(),
                 status == null ? null : status.toString().toUpperCase(Locale.ROOT),
                 amount,
-                body.get("currency") == null ? null : body.get("currency").toString(),
+                fields.get("currency") == null ? null : fields.get("currency").toString(),
                 providerReference,
                 metadata);
+    }
+
+    /** Flattens a {@code data}/{@code transaction} envelope when one is present. */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> unwrap(Map<String, Object> body) {
+        if (body.containsKey("status")) {
+            return body;
+        }
+        for (String envelope : new String[]{"data", "transaction"}) {
+            if (body.get(envelope) instanceof Map<?, ?> inner) {
+                return (Map<String, Object>) inner;
+            }
+        }
+        return body;
     }
 
     private PaymentGatewayException mapHttpError(HttpStatusCode status, String body, String operation) {

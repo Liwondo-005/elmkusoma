@@ -17,6 +17,17 @@ public final class MsisdnNormalizer {
     /** 255 + mobile prefix (6x/7x) + 8 digits, per the documented format. */
     private static final Pattern MSISDN = Pattern.compile("^255[67]\\d{8}$");
 
+    /**
+     * The one number Stakaba documents for exercising its own sandbox:
+     * "Use the number {@code 255000000001} to simulate a failed payment"
+     * ({@code /get-started/sandbox-and-live-mode}). It is deliberately not a
+     * real mobile prefix, so it fails the strict MSISDN rule above - which is
+     * correct, and is exactly why it is accepted only on an explicit,
+     * narrowly-scoped path (see {@code PaymentGatewayService}) and only when
+     * the configured key is a sandbox key.
+     */
+    public static final String SANDBOX_FAILURE_NUMBER = "255000000001";
+
     private MsisdnNormalizer() {
     }
 
@@ -61,5 +72,23 @@ public final class MsisdnNormalizer {
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    /**
+     * True when {@code raw} is Stakaba's documented sandbox failure test
+     * number, in any of the tolerated input forms. Callers must additionally
+     * confirm the gateway is running on a sandbox key before acting on this -
+     * identifying the number is deliberately separated from permitting it.
+     */
+    public static boolean isDocumentedSandboxFailureNumber(String raw) {
+        if (raw == null) {
+            return false;
+        }
+        String cleaned = raw.trim().replace(" ", "").replace("-", "")
+                .replace("(", "").replace(")", "");
+        if (cleaned.startsWith("+")) {
+            cleaned = cleaned.substring(1);
+        }
+        return SANDBOX_FAILURE_NUMBER.equals(cleaned);
     }
 }

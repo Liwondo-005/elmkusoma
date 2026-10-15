@@ -55,4 +55,19 @@ class MsisdnNormalizerTest {
         assertTrue(MsisdnNormalizer.isValid("0742000331"));
         assertFalse(MsisdnNormalizer.isValid("not-a-number"));
     }
+
+    @Test
+    void documentedSandboxFailureNumber_isIdentifiedButNotAValidMsisdn() {
+        // It is a test affordance, not a real number: identifying it must stay
+        // separate from accepting it (only PaymentGatewayService may accept
+        // it, and only on a sandbox key).
+        assertTrue(MsisdnNormalizer.isDocumentedSandboxFailureNumber("255000000001"));
+        assertTrue(MsisdnNormalizer.isDocumentedSandboxFailureNumber("+255000000001"));
+        assertFalse(MsisdnNormalizer.isDocumentedSandboxFailureNumber("255742000331"));
+        assertFalse(MsisdnNormalizer.isDocumentedSandboxFailureNumber(null));
+
+        // And the strict rule still rejects it.
+        assertFalse(MsisdnNormalizer.isValid("255000000001"));
+        assertThrows(IllegalArgumentException.class, () -> MsisdnNormalizer.normalize("255000000001"));
+    }
 }

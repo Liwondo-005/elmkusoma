@@ -13,9 +13,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -157,6 +159,58 @@ class StakabaGatewayClientImplTest {
         assertEquals("MPESA12345", tx.providerReference());
     }
 
+    // --- Auth contract on the status endpoint -----------------------------
+    // Stakaba's spec declares HTTPBearer here while its prose guides use
+    // x-api-key, so both documented headers are sent unless disabled.
+
+    @Test
+    void getTransaction_sendsBothDocumentedAuthSchemesByDefault() {
+        server.expect(requestTo(BASE + "/api/v1/transactions/M_AUTH"))
+                .andExpect(header("x-api-key", KEY))
+                .andExpect(header("Authorization", "Bearer " + KEY))
+                .andRespond(withSuccess(
+                        "{\"internalReference\":\"M_AUTH\",\"status\":\"SUCCESS\","
+                                + "\"grossAmount\":1000,\"currency\":\"TZS\"}",
+                        MediaType.APPLICATION_JSON));
+
+        assertTrue(client.getTransaction("M_AUTH").isSuccess());
+        server.verify();
+    }
+
+    @Test
+    void getTransaction_bearerFallbackCanBeDisabled() {
+        properties.setSendBearerFallback(false);
+        RestClient.Builder builder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(builder).build();
+        client = new StakabaGatewayClientImpl(properties, builder.baseUrl(BASE).build(), objectMapper);
+
+        server.expect(requestTo(BASE + "/api/v1/transactions/M_AUTH2"))
+                .andExpect(header("x-api-key", KEY))
+                .andExpect(headerDoesNotExist("Authorization"))
+                .andRespond(withSuccess(
+                        "{\"internalReference\":\"M_AUTH2\",\"status\":\"PENDING\"}",
+                        MediaType.APPLICATION_JSON));
+
+        assertFalse(client.getTransaction("M_AUTH2").isSuccess());
+        server.verify();
+    }
+
+    @Test
+    void initiateCollection_usesOnlyTheDocumentedApiKeyHeader() {
+        // The collection endpoint's spec exposes x-api-key and no bearer, so the
+        // fallback must not leak onto it.
+        server.expect(requestTo(BASE + "/api/v1/payments/collection"))
+                .andExpect(header("x-api-key", KEY))
+                .andExpect(headerDoesNotExist("Authorization"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"internalReference\":\"M_NO_BEARER\"}"));
+
+        assertEquals("M_NO_BEARER",
+                client.initiateCollection(new BigDecimal("5000"), "TZS",
+                        "255742000331", "Mpesa", Map.of()).internalReference());
+    }
+
     @Test
     void getTransaction_notFoundMapsToNotFoundCode() {
         server.expect(requestTo(BASE + "/api/v1/transactions/M_MISSING"))
@@ -206,5 +260,59 @@ class StakabaGatewayClientImplTest {
                 () -> client.getTransaction("M_DOWN"));
         assertEquals(PaymentGatewayException.Code.PROVIDER, ex.getCode());
         server.verify();
+    }
+
+    // --- Defensive parsing of an undocumented response schema --------------
+    // Stakaba publishes this endpoint's body as an untyped map<string, any>,
+    // so these pin the tolerance that stands in for a schema we cannot verify.
+
+    @Test
+    void getTransaction_unwrapsAnEnvelopedPayload() {
+        server.expect(requestTo(BASE + "/api/v1/transactions/M_ENV"))
+                .andRespond(withSuccess(
+                        "{\"data\":{\"internalReference\":\"M_ENV\",\"status\":\"SUCCESS\","
+                                + "\"grossAmount\":2500,\"currency\":\"TZS\"}}",
+                        MediaType.APPLICATION_JSON));
+
+        StakabaGatewayClient.GatewayTransaction tx = client.getTransaction("M_ENV");
+        assertTrue(tx.isSuccess());
+        assertEquals(0, new BigDecimal("2500").compareTo(tx.grossAmount()));
+        assertEquals("TZS", tx.currency());
+    }
+
+    @Test
+    void getTransaction_acceptsAmountAliasAndNumericString() {
+        server.expect(requestTo(BASE + "/api/v1/transactions/M_ALIAS"))
+                .andRespond(withSuccess(
+                        "{\"internalReference\":\"M_ALIAS\",\"status\":\"SUCCESS\","
+                                + "\"amount\":\"7500\",\"currency\":\"TZS\"}",
+                        MediaType.APPLICATION_JSON));
+
+        StakabaGatewayClient.GatewayTransaction tx = client.getTransaction("M_ALIAS");
+        assertEquals(0, new BigDecimal("7500").compareTo(tx.grossAmount()));
+    }
+
+    @Test
+    void getTransaction_successWithoutAnAmount_leavesItNullSoFulfilmentIsRefused() {
+        server.expect(requestTo(BASE + "/api/v1/transactions/M_NOAMOUNT"))
+                .andRespond(withSuccess(
+                        "{\"internalReference\":\"M_NOAMOUNT\",\"status\":\"SUCCESS\"}",
+                        MediaType.APPLICATION_JSON));
+
+        StakabaGatewayClient.GatewayTransaction tx = client.getTransaction("M_NOAMOUNT");
+        assertTrue(tx.isSuccess());
+        // Never guessed as zero: PaymentGatewayService requires this to be
+        // present before it will complete a payment.
+        assertNull(tx.grossAmount());
+    }
+
+    @Test
+    void getTransaction_nullBodyIsMalformedNotSilentlyAccepted() {
+        server.expect(requestTo(BASE + "/api/v1/transactions/M_NULL"))
+                .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
+
+        PaymentGatewayException ex = assertThrows(PaymentGatewayException.class,
+                () -> client.getTransaction("M_NULL"));
+        assertEquals(PaymentGatewayException.Code.MALFORMED_RESPONSE, ex.getCode());
     }
 }
