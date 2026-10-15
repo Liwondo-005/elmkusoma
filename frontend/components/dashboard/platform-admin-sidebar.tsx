@@ -8,7 +8,7 @@ import {
   AlertTriangle, BarChart3, Database, Globe, Zap, Package, Radio,
   MessageSquare, ShieldCheck, Key, BookOpen, Calendar, Image as ImageIcon,
   Library, SearchCode, LifeBuoy, Plug, HardDrive, FileSearch, Layers,
-  Building2, GraduationCap, Mic2, Newspaper
+  Building2, GraduationCap, Mic2, Newspaper, Wallet
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
@@ -50,6 +50,7 @@ const NAV_SECTIONS: NavSection[] = [
     { label: "Resources", labelKey: "resources", href: "/dashboard/platform-admin/resources", icon: Library },
   ]},
   { title: "COMMERCE", titleKey: "groupCommerce", items: [
+    { label: "Finance", labelKey: "finance", href: "/dashboard/platform-admin/finance", icon: Wallet },
     { label: "Payments", labelKey: "payments", href: "/dashboard/platform-admin/payments", icon: CreditCard },
     { label: "Packages", labelKey: "packages", href: "/dashboard/platform-admin/packages", icon: Package },
   ]},

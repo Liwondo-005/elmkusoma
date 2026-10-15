@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -42,6 +43,12 @@ public class VideoTutorialService {
     private final MediaProxyService mediaProxyService;
     private final MediaAssetRepository mediaAssetRepository;
     private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
+    // CLASS_ONLY targeting is derived, not duplicated: the tutorial already names a lesson and
+    // Lesson carries the classGroupId, while LiveClassRecordingAccessService holds the single
+    // authoritative "is this learner in this class audience" decision that the Media Library and
+    // replay paths already use. Reusing it means a video and a recording can never disagree.
+    private final tz.elmkusoma.learning.repository.LessonRepository lessonRepository;
+    private final tz.elmkusoma.liveclass.service.LiveClassRecordingAccessService recordingAccess;
 
     private static final List<String> STUDENT_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION");
     private static final List<String> TEACHER_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
@@ -153,29 +160,30 @@ public class VideoTutorialService {
                                                           int page, int size) {
         List<String> allowedVisibilities = getAllowedVisibilities(userRole);
 
+        List<VideoTutorial> videos;
         if (lessonId != null) {
-            return videoTutorialRepository.findVisibleByLessonId(lessonId, allowedVisibilities)
-                    .stream()
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
+            videos = videoTutorialRepository.findVisibleByLessonId(lessonId, allowedVisibilities);
+        } else if (moduleId != null) {
+            videos = videoTutorialRepository.findVisibleByModuleId(moduleId, allowedVisibilities);
+        } else if (courseId != null) {
+            videos = videoTutorialRepository.findVisibleByCourseId(courseId, allowedVisibilities);
+        } else {
+            videos = videoTutorialRepository.findByInstitutionIdAndVisibilities(institutionId, allowedVisibilities);
         }
 
-        if (moduleId != null) {
-            return videoTutorialRepository.findVisibleByModuleId(moduleId, allowedVisibilities)
-                    .stream()
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
-        }
-
-        if (courseId != null) {
-            return videoTutorialRepository.findVisibleByCourseId(courseId, allowedVisibilities)
-                    .stream()
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
-        }
-
-        List<VideoTutorial> videos = videoTutorialRepository.findByInstitutionIdAndVisibilities(institutionId, allowedVisibilities);
+        // Two filters the old code skipped, both matching what ResourceService already does for
+        // its equivalent branches:
+        //  1. the lesson/module/course ids are client-supplied and those repository queries carry
+        //     no tenant predicate, so a foreign id would list another school's videos;
+        //  2. a CLASS_ONLY tutorial must not advertise its metadata to a learner outside the class
+        //     it names - otherwise the listing reveals what the detail endpoint would refuse.
+        // PRIVATE/DRAFT keep being governed by allowedVisibilities per role, so a teacher's view of
+        // their own and their colleagues' draft material is untouched.
         return videos.stream()
+                .filter(v -> institutionId != null && institutionId.equals(v.getInstitutionId()))
+                .filter(v -> v.getVisibility() != VideoTutorial.ResourceVisibility.CLASS_ONLY
+                        || !isLearnerScoped(userRole)
+                        || withinDeclaredClass(v, userId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -351,12 +359,69 @@ public VideoTutorialResponse updateVideoTutorial(UUID videoTutorialId, VideoTuto
         if (visibility == VideoTutorial.ResourceVisibility.PUBLIC
                 || visibility == VideoTutorial.ResourceVisibility.INSTITUTION
                 || visibility == VideoTutorial.ResourceVisibility.SCHOOL
-                || visibility == VideoTutorial.ResourceVisibility.CLASS_ONLY
                 || visibility == VideoTutorial.ResourceVisibility.COURSE_ONLY) {
             return true;
         }
+        if (visibility == VideoTutorial.ResourceVisibility.CLASS_ONLY) {
+            // The class restriction binds learners. Staff keep the reach they already had within
+            // their own institution - the institution predicate is applied by every caller - so
+            // this narrows a learner-only hole rather than revoking a teacher's view.
+            if (!isLearnerScoped(userRole)) {
+                return true;
+            }
+            return withinDeclaredClass(video, userId);
+        }
         // PRIVATE / DRAFT: creator or admin only
         return isCreator(video, userId);
+    }
+
+    /**
+     * Whether the caller is one of the roles the CLASS_ONLY audience rule is written for.
+     * Anything that is not admin or teacher - including an unresolvable role - is treated as a
+     * learner, so a missing role cannot widen the audience.
+     */
+    private static boolean isLearnerScoped(String userRole) {
+        return !isAdminRole(userRole) && !"TEACHER".equals(userRole);
+    }
+
+    /**
+     * Resolves the audience a {@code CLASS_ONLY} tutorial was written for.
+     *
+     * <p>The label previously short-circuited to "visible", which made it an institution-wide
+     * switch wearing a class-scoped name: any learner in the school could read it. The class is
+     * not stored on the tutorial, but it does not have to be - the tutorial already names its
+     * lesson and {@code Lesson.classGroupId} is the targeting field the rest of the system uses,
+     * so the scope is derived instead of introducing a second targeting model.</p>
+     *
+     * <p>Deliberately degrades to institution-wide when no class can be derived (no lesson, or a
+     * lesson that names no class). That keeps every existing record behaving exactly as it did
+     * and keeps genuinely school-wide material reachable, while making a tutorial that <em>does</em>
+     * name a class visible only to that class. The membership decision itself is delegated to
+     * {@code LiveClassRecordingAccessService} so this path and the recording paths agree.</p>
+     */
+    private boolean withinDeclaredClass(VideoTutorial video, String userId) {
+        if (video.getLessonId() == null) {
+            return true;
+        }
+        UUID classGroupId = lessonRepository.findById(video.getLessonId())
+                .map(tz.elmkusoma.learning.domain.Lesson::getClassGroupId)
+                .orElse(null);
+        if (classGroupId == null) {
+            return true;
+        }
+        // Fail closed: an unresolvable caller cannot satisfy a class-scoped check.
+        return recordingAccess.isLearnerInClassAudience(parseUuid(userId), video.getInstitutionId(), classGroupId);
+    }
+
+    private static UUID parseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     /**

@@ -557,6 +557,21 @@ parentFetch<LiveClassData>(`/v1/my/children/${id}/live-classes`),
   getPayments: () => parentFetch<ParentPayments>("/v1/my/payments"),
   getChildPayments: (id: string) => parentFetch<PaymentItem[]>(`/v1/my/children/${id}/payments`),
 
+  /**
+   * Cancels a payment attempt that has not settled.
+   *
+   * Only offered for PENDING/PROCESSING - a settled payment is reversed through the refund
+   * path, which is an administrator action and is deliberately not reachable from here.
+   *
+   * The backend answers 409 when the payment has already moved on, which arrives as a plain
+   * Error without a status code, so the caller treats any failure as "ask the user to refresh"
+   * rather than as a definitive rejection.
+   */
+  cancelPayment: (paymentId: string) =>
+    parentFetch<{ paymentId: string; status: string }>(`/v1/my/payments/${paymentId}/cancel`, {
+      method: "POST",
+    }),
+
   // Authoritative price for a service type. The server owns pricing, so the
   // checkout shows this figure and echoes it back on initiate; the backend
   // refuses any amount that disagrees with the ACTIVE pricing policy.

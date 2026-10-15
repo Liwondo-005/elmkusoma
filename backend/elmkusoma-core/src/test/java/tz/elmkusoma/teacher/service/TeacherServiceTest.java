@@ -333,6 +333,9 @@ class TeacherServiceTest {
                 .academicYear("2025/2026")
                 .build();
         assignment.setId(UUID.randomUUID());
+        // Persisted rows always carry a tenant from BaseEntity; the fixture must model that or the
+        // service's cross-tenant filter has nothing matching to return.
+        assignment.setInstitutionId(institutionId);
 
         when(assignmentRepository.findAllByTeacherId(teacherId)).thenReturn(List.of(assignment));
 
@@ -341,6 +344,25 @@ class TeacherServiceTest {
         assertNotNull(responses);
         assertEquals(1, responses.size());
         assertEquals(teacherId, responses.get(0).getTeacherId());
+    }
+
+    @Test
+    void getAssignments_neverReturnsAnotherTenantsAssignments() {
+        TeacherAssignment foreign = TeacherAssignment.builder()
+                .teacherId(teacherId)
+                .classGroupId(UUID.randomUUID())
+                .subjectId(UUID.randomUUID())
+                .academicYear("2025/2026")
+                .build();
+        foreign.setId(UUID.randomUUID());
+        // Belongs to a different institution than the caller the method was given.
+        foreign.setInstitutionId(UUID.randomUUID());
+
+        when(assignmentRepository.findAllByTeacherId(teacherId)).thenReturn(List.of(foreign));
+
+        assertTrue(teacherService.getAssignments(institutionId, teacherId).isEmpty(),
+                "institutionId was declared on the signature but never read, so any teacherId a "
+                        + "caller named returned that teacher's assignments across every school");
     }
 
     @Test

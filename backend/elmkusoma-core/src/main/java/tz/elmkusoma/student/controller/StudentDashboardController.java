@@ -66,8 +66,9 @@ public class StudentDashboardController {
     @GetMapping("/live-classes")
     @Operation(summary = "Get upcoming live classes")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUpcomingLiveClasses(
-            @RequestAttribute("userId") UUID userId) {
-        List<Map<String, Object>> classes = studentDashboardService.getUpcomingLiveClasses(userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        List<Map<String, Object>> classes = studentDashboardService.getUpcomingLiveClasses(userId, userRole);
         return ResponseEntity.ok(ApiResponse.success(classes));
     }
 }

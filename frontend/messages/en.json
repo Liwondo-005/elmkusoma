@@ -457,6 +457,7 @@
     "overview": "Overview",
     "packages": "Packages",
     "passport": "Passport",
+    "finance": "Finance",
     "payments": "Payments",
     "people": "People",
     "performance": "Performance",
@@ -5549,6 +5550,63 @@
       "statusPaid": "Paid",
       "statusProcessing": "Processing",
       "subtitle": "Manage payments and view transaction history",
+      "loading": "Loading your payments",
+      "loadFailed": "We could not load your payments. Check your connection and try again.",
+      "retry": "Try again",
+      "cancelAction": "Cancel",
+      "cancelConfirm": "Cancel this payment request? It will stop being processed. You can ask for it again later.",
+      "cancelFailed": "We could not cancel that payment. It may already have been confirmed - the list below is up to date.",
+      "awaitingPayment": "Awaiting payment",
+      "awaitingPaymentHint": "Amounts that have been requested but not yet confirmed.",
+      "paidHint": "Payments the platform has confirmed as received.",
+      "pendingHint": "Not yet paid. These do not include any access.",
+      "emptyTitle": "No payments yet",
+      "emptyBody": "When a payment is requested for your children it will appear here with its current status.",
+      "reference": "Reference",
+      "noDescription": "Payment",
+      "statusUnknown": "Unknown status",
+      "childrenFailed": "We could not load your children, so the per-child view is unavailable. Your payment history above is unaffected.",
+      "childFailed": "We could not load this child's details.",
+      "filterFrom": "From",
+      "filterTo": "To",
+      "filterClear": "Clear dates",
+      "filterScopeNote": "Dates filter the payments listed on this page.",
+      "exportAction": "Export CSV",
+      "noMatchTitle": "No payments in this date range",
+      "noMatchBody": "Nothing on this page falls between those dates. Clear the filter to see everything again.",
+      "accessTitle": "Access and payments by child",
+      "accessSubtitle": "You are the payer. The selected child is who the access is for.",
+      "accessLoading": "Loading child details",
+      "accessGrantsHeading": "Access grants",
+      "accessEmpty": "This child has no access grants yet.",
+      "childPaymentsHeading": "Payments for this child",
+      "childPaymentsEmpty": "No payments are recorded against this child.",
+      "columns": {
+        "reference": "Reference",
+        "date": "Date",
+        "description": "Description",
+        "serviceType": "Service",
+        "amount": "Amount",
+        "currency": "Currency",
+        "status": "Status",
+        "providerReference": "Payment reference"
+      },
+      "access": {
+        "title": "Access and payments by child",
+        "subtitle": "You are the payer. The selected child is who the access is for.",
+        "selectChild": "Child",
+        "accessLoading": "Loading child details",
+        "accessGrantsHeading": "Access grants",
+        "accessEmpty": "This child has no access grants yet.",
+        "childPaymentsHeading": "Payments for this child",
+        "childPaymentsEmpty": "No payments are recorded against this child.",
+        "starts": "Granted",
+        "noExpiry": "No end date",
+        "expiresOn": "Until {date}",
+        "expiresSoonDays": "Ends in {days} day(s)",
+        "expiredOn": "Ended {date}",
+        "statusUnknown": "Unknown status"
+      },
       "payNow": "Pay now",
       "checkoutTitle": "Pay with mobile money",
       "newPayment": "New payment",
@@ -5781,6 +5839,86 @@
     }
   },
   "platformAdmin": {
+    "finance": {
+      "title": "Financial Command Center",
+      "subtitle": "Platform-wide payment records, access grants and reconciliation exceptions.",
+      "loading": "Loading financial records",
+      "loadFailed": "We could not load the financial records. Check your connection and try again.",
+      "retry": "Try again",
+      "tabs": {
+        "payments": "Payments",
+        "entitlements": "Access grants",
+        "exceptions": "Exceptions",
+        "catalogue": "Service pricing"
+      },
+      "counts": {
+        "payments": "Payment records",
+        "entitlements": "Access grants",
+        "exceptions": "Reconciliation exceptions"
+      },
+      "filters": {
+        "status": "Status",
+        "allStatuses": "All statuses",
+        "search": "Search",
+        "searchPlaceholder": "Transaction reference or service",
+        "from": "From",
+        "to": "To",
+        "clear": "Clear filters",
+        "pageScope": "Search and dates apply to the rows on this page only. The ledger is paginated and has no server-side search or date filter yet.",
+        "exportAction": "Export this page"
+      },
+      "columns": {
+        "reference": "Reference",
+        "service": "Service",
+        "category": "Category",
+        "status": "Status",
+        "amount": "Amount",
+        "created": "Requested",
+        "user": "User",
+        "starts": "Starts",
+        "expires": "Expires",
+        "seats": "Seats",
+        "price": "Price",
+        "currency": "Currency"
+      },
+      "empty": {
+        "payments": "No payments match this filter.",
+        "paymentsNoMatch": "No payment on this page matches the current search or dates. The ledger is paginated, so rows on other pages are not searched. Clear the filters to see this page again.",
+        "entitlements": "No access grants match this filter.",
+        "exceptions": "No unresolved payment exceptions. Every payment notification the platform received has been processed cleanly.",
+        "catalogue": "No services are published yet."
+      },
+      "exceptions": {
+        "scope": "Payment notifications that arrived but did not process cleanly. This is event-level checking, not a settlement reconciliation.",
+        "received": "Received",
+        "retries": "Retries"
+      },
+      "catalogue": {
+        "active": "Published",
+        "inactive": "Unpublished",
+        "unlimited": "Unlimited",
+        "unpriced": "No price set"
+      },
+      "pager": {
+        "previous": "Previous",
+        "next": "Next",
+        "page": "Page {current} of {total}",
+        "total": "{count} records"
+      },
+      "unavailable": {
+        "title": "Not yet calculable",
+        "body": "These figures are not shown because the platform cannot compute them yet. They are absent, not zero - please do not read a blank here as a nil balance.",
+        "items": {
+          "commission": "Platform commission",
+          "providerShare": "Provider / teacher shares",
+          "earnings": "Provider earnings",
+          "netCollections": "Net collections",
+          "profit": "Profit and loss",
+          "discounts": "Discounts and coupons",
+          "subscriptions": "Subscriptions and renewals"
+        }
+      }
+    },
     "admins": {
       "failedToLoadAdmins": "Failed to load admins",
       "failedToUpdatePermissions": "Failed to update permissions",
@@ -9724,40 +9862,16 @@
   },
   "subscription": {
     "title": "Subscription",
-    "subtitle": "Choose the plan that fits your learning needs.",
-    "recommendedBadge": "RECOMMENDED",
-    "currentPlanButton": "Current Plan",
-    "upgradeButton": "Upgrade",
-    "customPrice": "Custom",
-    "plans": {
-      "free": {
-        "name": "Free",
-        "period": "forever",
-        "f1": "Access to free courses",
-        "f2": "Basic live classes",
-        "f3": "Digital library (limited)",
-        "f4": "Community support"
-      },
-      "premium": {
-        "name": "Premium",
-        "period": "/month",
-        "f1": "All free features",
-        "f2": "Unlimited live classes",
-        "f3": "Full digital library",
-        "f4": "Downloadable materials",
-        "f5": "Priority support",
-        "f6": "Certificates"
-      },
-      "institution": {
-        "name": "Institution",
-        "f1": "All premium features",
-        "f2": "Bulk enrollment",
-        "f3": "Admin dashboard",
-        "f4": "Custom branding",
-        "f5": "Dedicated support",
-        "f6": "API access"
-      }
-    }
+    "subtitle": "Plans and pricing for your account.",
+    "unavailableTitle": "No plans are published yet",
+    "unavailableBody": "ELMKUSOMA does not have a purchasable plan catalogue at the moment. Nothing here is charged and no plan can be selected, because no approved prices have been published. When plans are published by an administrator they will appear on this page.",
+    "whatWorksTodayTitle": "What works today",
+    "whatWorksToday": {
+      "paymentHistory": "Payment history, with the status of every payment",
+      "pendingStatus": "Pending payments, kept clearly separate from settled ones",
+      "accessGrants": "Access grants issued when a payment is confirmed"
+    },
+    "viewPayments": "View payment history"
   },
   "liveOps": {
     "forceEnd": "Force end",
