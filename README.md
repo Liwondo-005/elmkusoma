@@ -543,7 +543,7 @@ Create (DRAFT) → publish → registration opens → learner registers → mate
 |---|---|
 | Password authentication failed | Wrong `DB_PASSWORD` in `backend/.env` |
 | Database does not exist | Run `backend/setup-db.sql` |
-| Flyway validation failed | Compare `flyway_schema_history` to V01–V81 files; never edit applied migrations |
+| Flyway validation failed (checksum/description mismatch) | A migration file was renamed/edited after a DB applied it — never edit or renumber applied migrations; renumber the *new* file instead. CI runs `node scripts/check-migrations.mjs` to block this. To repair an already-desynced dev DB: update the `flyway_schema_history` rows to the file's current version, then run `Flyway.repair()` (align checksums), then boot |
 | Connection refused (:5432/:6379/:5672) | Start backing services (`docker compose up -d`) |
 | Backend exits during startup | Read the log — invalid derived-query methods fail context init (see Known Issues) |
 | 401 on API calls | Missing/expired JWT — log in again; check `JWT_SECRET` consistency |
@@ -564,6 +564,8 @@ Create (DRAFT) → publish → registration opens → learner registers → mate
 ## 50. Development Workflow
 
 Branch `main` (remote `https://github.com/Liwondo-005/elmkusoma.git`); pull before push (parallel developers); additive Flyway migrations only (`V<next>__*.sql`); raw-UUID relations (no FK safety net — keep application checks consistent); institution-scope every new query; run `mvn compile` + `npm run build` before committing (TypeScript-checked build enforced).
+
+Flyway migrations are **immutable once committed**: never edit, rename or delete a migration that exists on `main` — a shared DB may have already applied it, and the resulting checksum mismatch fails every developer's boot. When two branches claim the same version number, renumber the file that is *not* on `main` yet (version gaps are fine; `out-of-order: true` is enabled). Run `node scripts/check-migrations.mjs` before pushing migration files — the same checks run in CI (`.github/workflows/migration-guard.yml`) and fail the build on modify/rename/delete or a cross-branch version collision.
 
 ---
 
