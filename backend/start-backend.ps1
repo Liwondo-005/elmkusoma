@@ -12,7 +12,8 @@
 
 param(
     [switch]$CoreOnly,
-    [switch]$NoWindow
+    [switch]$NoWindow,
+    [switch]$VerifyConfig
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,10 +21,25 @@ $backendDir = $PSScriptRoot
 
 # --- configuration: backend/.env is the single source of truth ---------------
 $envFile = Join-Path $backendDir ".env"
+
+# Strips one layer of matching surrounding quotes, mirroring the application
+# loader in ElmkusomaCoreApplication.unquote. The payment gateway key is matched
+# by its sk_test_/sk_live_ prefix, so a quoted value would stop matching and the
+# sandbox would be rejected as "not a Stakaba key".
+function ConvertFrom-DotenvValue {
+    param([string]$Value)
+    if ($null -eq $Value) { return $Value }
+    $v = $Value.Trim()
+    if ($v.Length -ge 2 -and ($v[0] -eq '"' -or $v[0] -eq "'") -and $v[$v.Length - 1] -eq $v[0]) {
+        return $v.Substring(1, $v.Length - 2)
+    }
+    return $v
+}
+
 if (Test-Path $envFile) {
-    Get-Content $envFile | Where-Object { $_ -match '^[A-Za-z_][A-Za-z0-9_]*=' } | ForEach-Object {
+    Get-Content $envFile | Where-Object { $_ -match '^\s*[A-Za-z_][A-Za-z0-9_]*\s*=' } | ForEach-Object {
         $key, $value = $_ -split '=', 2
-        Set-Item -Path "env:$key" -Value $value
+        Set-Item -Path "env:$($key.Trim())" -Value (ConvertFrom-DotenvValue $value)
     }
 } else {
     Write-Host "WARNING: backend/.env not found - falling back to service defaults." -ForegroundColor Yellow
@@ -32,6 +48,48 @@ if (Test-Path $envFile) {
 # The media service talks to MinIO in production. Local dev has no MinIO, so it
 # uses the filesystem store (application.yml documents MEDIA_STORAGE=local).
 if (-not $env:MEDIA_STORAGE) { $env:MEDIA_STORAGE = "local" }
+
+# --- -VerifyConfig: report what the application WILL see, print no secrets ----
+if ($VerifyConfig) {
+    # Never prints a value. Reports only whether a variable is set, plus the key's
+    # mode derived from its prefix - the same classification StakabaProperties uses,
+    # so "SANDBOX" here genuinely means the app will classify it as a sandbox key.
+    function Get-RedactedState {
+        param([string]$Name)
+        $raw = [Environment]::GetEnvironmentVariable($Name, "Process")
+        if ([string]::IsNullOrWhiteSpace($raw)) { return "not set" }
+        $v = $raw.Trim()
+        if ($v.StartsWith("sk_test_")) { return "set (sandbox key sk_test_*)" }
+        if ($v.StartsWith("sk_live_")) { return "set (LIVE key sk_live_*)" }
+        if ($Name -eq "STAKABA_API_KEY") { return "set (does not match sk_test_*/sk_live_*)" }
+        return "set"
+    }
+
+    Write-Host ""
+    Write-Host "  ELMKUSOMA configuration check (no values printed)" -ForegroundColor Cyan
+    Write-Host "  -----------------------------------------------" -ForegroundColor Cyan
+    Write-Host ("  .env in use          : {0}" -f $(if (Test-Path $envFile) { $envFile } else { "NOT FOUND - backend/.env" }))
+    Write-Host ("  DB_PASSWORD          : {0}" -f (Get-RedactedState "DB_PASSWORD"))
+    Write-Host ("  JWT_SECRET           : {0}" -f (Get-RedactedState "JWT_SECRET"))
+    Write-Host ("  provider             : {0}" -f $(if ($env:ELMKUSOMA_PAYMENT_PROVIDER) { $env:ELMKUSOMA_PAYMENT_PROVIDER } else { "not set (legacy manual verification)" }))
+    Write-Host ("  STAKABA_ENABLED      : {0}" -f $(if ($env:STAKABA_ENABLED) { $env:STAKABA_ENABLED } else { "not set" }))
+    Write-Host ("  STAKABA_BASE_URL     : {0}" -f $(if ($env:STAKABA_BASE_URL) { $env:STAKABA_BASE_URL } else { "not set" }))
+    Write-Host ("  STAKABA_API_KEY      : {0}" -f (Get-RedactedState "STAKABA_API_KEY"))
+    Write-Host ("  STAKABA_ALLOW_LIVE   : {0}" -f $(if ($env:STAKABA_ALLOW_LIVE) { $env:STAKABA_ALLOW_LIVE } else { "not set (defaults false)" }))
+    Write-Host ""
+
+    if (-not (Test-Path $envFile)) {
+        Write-Host "  Next: Copy-Item .env.example .env, then fill in your values." -ForegroundColor Yellow
+        exit 1
+    }
+    if ($env:STAKABA_ENABLED -eq "true" -and -not $env:STAKABA_API_KEY) {
+        Write-Host "  BLOCKED: STAKABA_ENABLED=true but STAKABA_API_KEY is empty." -ForegroundColor Red
+        Write-Host "  The application will refuse to start. Add your sandbox key." -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "  Configuration parsed. Start the app with .\start-backend.ps1" -ForegroundColor Green
+    exit 0
+}
 
 # --- locate java -------------------------------------------------------------
 if ($env:JAVA_HOME -and (Test-Path "$env:JAVA_HOME\bin\java.exe")) {

@@ -6,6 +6,177 @@ automated coverage is mocked. See "What has NOT been verified" at the end.
 
 ---
 
+## 0. Quick start — first sandbox test (Windows, PowerShell)
+
+> **Read §0.1 first.** Two prerequisites will stop you before you reach a payment
+> prompt. Both are known and neither is a gateway fault.
+
+### 0.0 What is already true
+
+| Item | State |
+|---|---|
+| `.env` location | `backend\.env` (git-ignored, never committed) |
+| Migrations V169–V172 | **applied** to dev DB `elmkusoma` (0 failures) |
+| Pricing policies | seeded **DRAFT**, none ACTIVE — you must activate one |
+| Gateway at startup | disabled until you set the variables below |
+
+### 0.1 Two blockers to clear first
+
+1. **No ACTIVE pricing policy.** V169 seeds 17 policies as DRAFT with no rate
+   invented. Until one is ACTIVE, checkout returns HTTP 409 *"Pricing is not
+   configured…"*. Requires a **Platform Admin** (§4).
+2. **`/v1/my/children` resolves nothing.** The seeded `parent_student_links`
+   rows store *user* ids in `student_id`, but that column is a *student* id, so
+   the join matches 0 of 6 `students` rows and the checkout cannot offer a
+   child. Pre-existing seed defect, unrelated to Stakaba. Needs a **DBA** to
+   repair the seed data — see §8.
+
+### 0.2 Create your `.env`
+
+```powershell
+cd C:\Users\dell\Desktop\elmkusoma1\elmkusoma\backend
+Copy-Item .env.example .env          # keep the existing DB_*/JWT_* values
+notepad .env                          # then append the block below
+```
+
+Append (keeping your own values for `DB_PASSWORD` and `JWT_SECRET`):
+
+```dotenv
+ELMKUSOMA_PAYMENT_PROVIDER=stakaba
+STAKABA_ENABLED=true
+STAKABA_BASE_URL=https://api.stakaba.com
+STAKABA_API_KEY=sk_test_PASTE_YOUR_SANDBOX_KEY
+STAKABA_ALLOW_LIVE=false
+STAKABA_CONNECT_TIMEOUT_MS=5000
+STAKABA_READ_TIMEOUT_MS=15000
+STAKABA_SEND_BEARER_FALLBACK=true
+```
+
+Notes:
+
+- Quotes are optional — `STAKABA_API_KEY="sk_test_..."` and
+  `STAKABA_API_KEY=sk_test_...` behave identically. One layer of matching
+  surrounding quotes is stripped on load.
+- `STAKABA_ALLOW_LIVE=false` is the safety interlock. With a live
+  (`sk_live_`) key and this left `false`, **the application refuses to start**.
+  Do not set it `true` for sandbox work.
+- Get the key from app.stakaba.com → Settings → API Keys → sandbox
+  (`sk_test_…`). Never commit it, and never paste it into a chat or issue.
+
+### 0.3 Confirm configuration without exposing the key
+
+```powershell
+cd C:\Users\dell\Desktop\elmkusoma1\elmkusoma\backend
+.\start-backend.ps1 -VerifyConfig
+```
+
+Expected — note it prints **state, never values**:
+
+```
+  .env in use          : ...\elmkusoma\backend\.env
+  DB_PASSWORD          : set
+  provider             : stakaba
+  STAKABA_ENABLED      : true
+  STAKABA_BASE_URL     : https://api.stakaba.com
+  STAKABA_API_KEY      : set (sandbox key sk_test_*)
+  STAKABA_ALLOW_LIVE   : false
+
+  Configuration parsed. Start the app with .\start-backend.ps1
+```
+
+If `STAKABA_API_KEY` shows `set (does not match sk_test_*/sk_live_*)` or
+`not set`, the app will refuse to start with an actionable message. Nothing
+here reveals the key.
+
+### 0.4 Start the backend, then confirm it recognised the key
+
+```powershell
+cd C:\Users\dell\Desktop\elmkusoma1\elmkusoma\backend
+.\start-backend.ps1 -CoreOnly
+```
+
+In the backend log you need exactly one line:
+
+```
+StakabaConfigurationValidator : Stakaba payment gateway enabled:
+    baseUrl=https://api.stakaba.com keyMode=SANDBOX (value never logged)
+```
+
+`keyMode=SANDBOX` is the confirmation. If the log instead says
+*"Stakaba payment gateway disabled"*, your variables did not load — re-check
+the file name (`backend\.env`) and that `STAKABA_ENABLED=true`.
+
+> **Migrations apply on startup.** `spring.flyway.enabled=true` with no
+> target, so starting the backend migrates the configured database
+> automatically. On this machine V169–V172 have already been applied to
+> `elmkusoma`; starting again is a no-op. Point `DB_NAME` elsewhere first if
+> you need to control this.
+
+### 0.5 Start the frontend
+
+```powershell
+cd C:\Users\dell\Desktop\elmkusoma1\elmkusoma\frontend
+npm run dev          # http://localhost:3000
+```
+
+### 0.6 Activate a pricing policy (Platform Admin)
+
+Prices are never taken from the client, and no policy is ACTIVE out of the
+box. Sign in as a Platform Admin, then:
+
+- **UI:** Platform Admin → Pricing → activate the policy for the service you
+  want to buy (e.g. `MONTHLY_ACCESS`).
+- **Or API:** `POST /v1/platform-admin/pricing/policies/{policyId}/activate`
+  with an optional `{"note":"..."}`, `ADMIN` role only, audited.
+
+It refuses rather than adjusts — already ACTIVE, no version, no target, or a
+service price without a default amount are all rejected.
+
+### 0.7 Run a checkout
+
+1. Sign in as a **Parent** who has at least one child. *(Blocked today — see
+   §0.1 item 2 — until the seed data is repaired.)*
+2. Parent → **Payments** → **New payment**.
+3. Choose child, service, network (M-Pesa / Airtel Money / Mixx by Yas /
+   HaloPesa) and a Tanzanian phone number.
+4. **Send payment prompt**.
+
+### 0.8 What you should observe
+
+| Moment | Expected |
+|---|---|
+| Prompt queued | `201`; payment row `provider=stakaba` with an `internalReference`; status stays **PENDING** |
+| Awaiting approval | UI shows *"Waiting for approval on the phone"* and polls — never "paid" |
+| Approve the USSD prompt | Backend re-reads the transaction from Stakaba, then status → **COMPLETED**, entitlement granted once, receipt issued |
+| Simulated failure | Payer `255000000001` → **FAILED**, no entitlement, no receipt, retry offered |
+| Duplicate callback | Second webhook is a no-op — no second entitlement, expiry not extended |
+| Ambiguous timeout | Flagged `initiationAmbiguous`; you are told to check the phone first, never blind-retried |
+
+Full 15-step verification checklist: **§3**.
+
+### 0.9 Stop safely and collect redacted logs
+
+```powershell
+# stop the backend (close the minimised windows, or:)
+Get-Process -Name java | Where-Object { $_.StartTime -gt (Get-Date).AddHours(-2) } |
+    Stop-Process
+```
+
+If something fails, collect diagnostics **without** the secret:
+
+```powershell
+Select-String -Path .\backend.log -Pattern 'Stakaba|dotenv|keyMode|reconcil' |
+    Select-Object -Last 40
+```
+
+That prints `keyMode=SANDBOX`, never the key. Before sharing any log, confirm:
+
+```powershell
+Select-String -Path .\backend.log -Pattern 'sk_test_|sk_live_'   # must return nothing
+```
+
+---
+
 ## 1. What was implemented
 
 Stakaba is wired into the **existing** ELMKUSOMA payment domain. No parallel
@@ -39,14 +210,29 @@ the one checkout. No separate subscription purchase system was introduced.
 | Errors `{"error","message"}`; 401/403 auth, 400/422 validation, 429 rate, 502 provider | `/reference/error-handling` |
 | No idempotency key is accepted; every attempt mints a new `internalReference` | `/reference/error-handling` |
 
-**Known documentation conflict (documented, not guessed around):** the
-auto-generated OpenAPI page for *Get Transaction* lists an `Authorization:
-Bearer` header, while the Authentication page, the Environments page and the
-Mobile Money Collections guide all specify `x-api-key` for payment endpoints.
-This implementation sends **`x-api-key`**, matching three of four sources and
-the documented "All payment endpoints use an `x-api-key` header" rule. If a
-sandbox call returns 401, this is the first thing to re-check with Stakaba
-support.
+**Known documentation conflicts (recorded, not guessed around).** Re-checked
+against the machine-readable spec (`https://docs.stakaba.com/openapi.json`) on
+2026-10-15:
+
+1. **Auth on the status endpoint.** The OpenAPI spec declares
+   `security: [HTTPBearer]` for `GET /api/v1/transactions/{transaction_id}` and
+   exposes **no** `x-api-key` parameter for it — yet the Authentication,
+   Environments and Mobile Money Collections guides all specify `x-api-key` for
+   payment endpoints, and the *same spec* uses `x-api-key` (and no bearer) for
+   `POST /api/v1/payments/collection`. Because both are documented, the status
+   lookup sends **both** `x-api-key` and `Authorization: Bearer <api-key>`
+   (disable with `STAKABA_SEND_BEARER_FALLBACK=false`). The collection endpoint
+   sends only `x-api-key`, matching its spec entry.
+2. **`transaction_id` is declared `format: uuid`** in the spec, while every
+   documented example value and the returned `internalReference`
+   (`M_X7Y8Z9W0`) is **not** a UUID. This integration passes the
+   `internalReference` through verbatim as the path segment, matching the
+   documented examples and the webhook payload. If a sandbox lookup 422s on a
+   UUID-format complaint, this is the suspect.
+3. Confirmed by the spec as implemented: `grossAmount` is an **integer** with
+   `exclusiveMinimum: 0`, `currency` defaults to `TZS`, `network` is the enum
+   `Mpesa | TigoPesa | AirtelMoney | HaloPesa`, collection success is **201**
+   with `object<string,string>`, and `metadata` is a free-form object.
 
 ---
 
@@ -221,3 +407,56 @@ policy for the service type you want to buy (e.g. `MONTHLY_ACCESS`).
    disagrees with the seeded PREMIUM price (TZS 7,000), and its upgrade button
    still does nothing. It was left alone deliberately: wiring it belongs with
    the broader subscription-workflow decision, not this gateway change.
+
+---
+
+## 7. Verified local state (re-checked 2026-10-15)
+
+Recorded so the next run does not have to rediscover it.
+
+| Item | Observed |
+|---|---|
+| Sandbox credentials | **Absent** from `backend\.env`, process env and machine/user env |
+| `.env` ignored | `git check-ignore -v backend/.env` → `.gitignore:9`; never tracked, never committed |
+| Dev DB `elmkusoma` | **V172 applied** (V169–V172 at 11:24:55, `success=t`, 0 failures) — applied by an application start, which migrates automatically |
+| `pricing_policies` | 17 rows, **all DRAFT**, zero ACTIVE; amounts 200–7,000 TZS |
+| `commission_policies` | 14 rows, **all DRAFT**, `commission_rate` NULL on **every** row, `fee_bearer` NULL — no rate invented |
+| `discount_rules` | 0 rows — none activated |
+| `payments` | 0 rows — no payment history touched |
+| Migrations on a fresh DB | V1→V172 replay cleanly (verified on a throwaway DB, since dropped) |
+| Startup with sandbox config | `keyMode=SANDBOX` logged, Tomcat on 8080, `Started ElmkusomaCoreApplication` — **on a throwaway DB, sentinel key only** |
+| `.env` loader | `[dotenv] Loading …\backend\.env`; loaded 0 properties when the shell already supplied them — precedence correct |
+| `parent_student_links` | 2 rows, **0** match `students.id`, **2** match `users.id` — seed defect, blocks checkout (§8) |
+
+**Activation workflow** (do not run without authorization): Platform Admin →
+`POST /v1/platform-admin/pricing/policies/{policyId}/activate` with an optional
+`{"note": "..."}`. `ADMIN` role only, audited with the acting user, and it
+refuses rather than adjusts (already ACTIVE / no version / no target).
+
+---
+
+## 8. Seed defect blocking the first checkout
+
+`parent_student_links.student_id` is a **student** id (the entity and every
+query treat it as one), but the seeded rows store **user** ids. The result:
+
+```
+parent_student_links                     2 rows
+  JOIN students ON students.id = ...      0 matches
+  JOIN users    ON users.id    = ...      2 matches
+```
+
+`GET /v1/my/children` therefore returns an empty list, and the checkout cannot
+offer a child, so the first sandbox payment cannot be started from the UI.
+
+This is **pre-existing and unrelated to the Stakaba integration** — it was
+present before any gateway code existed. Fixing it is a data decision, not a
+gateway change: either re-point the links at the matching `students.id`, or
+confirm that `student_id` was *meant* to hold user ids and correct the queries
+instead. Both alter behaviour other features depend on
+(`CertificateController` joins the same table), so this needs a DBA/owner
+decision and must not be "fixed" as a side effect of payment work.
+
+Until it is resolved, a sandbox collection can still be exercised
+programmatically by creating the parent, student and link rows correctly — but
+not through the parent checkout page.

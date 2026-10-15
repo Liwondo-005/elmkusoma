@@ -15,12 +15,27 @@ Write-Host "========================================" -ForegroundColor Cyan
 
 # 1. Load .env file if present
 $envFile = Join-Path $scriptDir ".env"
+
+# Strips one layer of matching surrounding quotes, mirroring the application
+# loader in ElmkusomaCoreApplication.unquote. The payment gateway key is matched
+# by its sk_test_/sk_live_ prefix, so a quoted value would stop matching and the
+# sandbox would be rejected as "not a Stakaba key".
+function ConvertFrom-DotenvValue {
+    param([string]$Value)
+    if ($null -eq $Value) { return $Value }
+    $v = $Value.Trim()
+    if ($v.Length -ge 2 -and ($v[0] -eq '"' -or $v[0] -eq "'") -and $v[$v.Length - 1] -eq $v[0]) {
+        return $v.Substring(1, $v.Length - 2)
+    }
+    return $v
+}
+
 if (Test-Path $envFile) {
     Write-Host "Loading .env..." -ForegroundColor Yellow
     Get-Content $envFile | ForEach-Object {
         if ($_ -match "^\s*([^#][^=]+)=(.+)$") {
             $key = $Matches[1].Trim()
-            $val = $Matches[2].Trim()
+            $val = ConvertFrom-DotenvValue $Matches[2]
             [Environment]::SetEnvironmentVariable($key, $val, "Process")
         }
     }

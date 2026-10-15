@@ -146,7 +146,7 @@ public class ElmkusomaCoreApplication {
                 if (eq <= 0) continue;
 
                 String key = line.substring(0, eq).trim();
-                String value = line.substring(eq + 1).trim();
+                String value = unquote(line.substring(eq + 1).trim());
 
                 // Only set if not already set by system env or system property.
                 if (envLookup.apply(key) == null && propLookup.apply(key) == null) {
@@ -160,6 +160,34 @@ public class ElmkusomaCoreApplication {
 
     private static boolean isUsable(File file) {
         return file.exists() && file.canRead() && file.isFile();
+    }
+
+    /**
+     * Removes one layer of matching surrounding quotes.
+     *
+     * <p>A value written {@code KEY="value"} is quoted the way a shell would quote it, and
+     * what the caller means is {@code value}. This is not cosmetic: the payment gateway key
+     * is recognised by its {@code sk_test_}/{@code sk_live_} prefix, so a quoted key no longer
+     * matches at position zero and a correctly configured sandbox deployment is rejected as
+     * "not a Stakaba key" - the operator did nothing wrong and gets no useful clue why.</p>
+     *
+     * <p>Only a quote that wraps the <em>entire</em> value is treated as structure, and only
+     * when both ends match. A quote anywhere else is data: {@code say "hello" now} and a
+     * half-written {@code "unclosed} are both returned verbatim, because mangling those would
+     * corrupt a real value while fixing no real problem. Interior escapes are not interpreted
+     * - {@code "a\"b"} keeps its backslash - because no current value needs that and guessing
+     * would be worse than passing the characters through.</p>
+     */
+    static String unquote(String value) {
+        if (value == null || value.length() < 2) {
+            return value;
+        }
+        char first = value.charAt(0);
+        char last = value.charAt(value.length() - 1);
+        if ((first == '"' || first == '\'') && first == last) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     /** Count and key names of a completed load. Deliberately carries no values. */
