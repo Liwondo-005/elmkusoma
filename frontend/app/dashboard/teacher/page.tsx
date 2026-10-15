@@ -33,6 +33,7 @@ import {
   Zap,
   Target,
   Plus,
+  School,
 } from "lucide-react"
 
 function SkeletonPulse({ className }: { className?: string }) {
@@ -364,6 +365,12 @@ export default function TeacherDashboardPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           {t("dashboard.subtitle")}
         </p>
+        {dashboard && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <School className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            <span>{dashboard.institutionName ?? tc("noSchool")}</span>
+          </p>
+        )}
       </div>
 
       {error && (

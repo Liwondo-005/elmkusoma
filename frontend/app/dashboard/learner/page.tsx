@@ -94,7 +94,7 @@ const th = useTranslations("highered")
           <button onClick={loadDashboard} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
         <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
-          <LearnerHeader firstName={firstName} subtitle={t("myLearningWorld")} />
+          <LearnerHeader firstName={firstName} subtitle={t("myLearningWorld")} schoolName={user.institutionName ?? undefined} />
         </div>
       </div>
     )
@@ -111,7 +111,7 @@ const th = useTranslations("highered")
           </div>
         )}
         <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
-          <LearnerHeader firstName={firstName} subtitle={t("myLearningWorld")} />
+          <LearnerHeader firstName={firstName} subtitle={t("myLearningWorld")} schoolName={user.institutionName ?? undefined} />
         </div>
         <LearningFeedCard notifications={feedNotifications} />
         {continueState && (
@@ -223,6 +223,7 @@ const th = useTranslations("highered")
         <LearnerHeader
           firstName={firstName}
           subtitle={learningContextLabel || t("myLearningWorld")}
+          schoolName={user.institutionName ?? undefined}
         />
         <div className="mt-3 flex flex-wrap gap-2">
           {dash.programmeName && (

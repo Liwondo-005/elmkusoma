@@ -1186,8 +1186,14 @@ AuditService auditService,
             }
         }
 
+        String institutionName = null;
         if (user.getInstitutionId() != null) {
             institutionId = user.getInstitutionId().toString();
+            // School display name comes from the persisted relationship only —
+            // resolved here from users.institution_id, never from a request.
+            institutionName = institutionRepository.findByIdAndIsDeletedFalse(user.getInstitutionId())
+                    .map(tz.elmkusoma.shared.domain.Institution::getName)
+                    .orElse(null);
         }
 
         return AuthResponse.UserInfo.builder()
@@ -1198,6 +1204,7 @@ AuditService auditService,
                 .role(user.getRole().name())
                 .emailVerified(user.getIsEmailVerified())
                 .institutionId(institutionId)
+                .institutionName(institutionName)
                 .classGroupId(classGroupId)
                 .learningLevel(user.getLearningLevel() != null ? user.getLearningLevel().name() : null)
                 .secondaryStage(user.getSecondaryStage() != null ? user.getSecondaryStage().name() : null)

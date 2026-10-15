@@ -25,5 +25,12 @@ public class TeacherResponse {
     private String specialization;
     private LocalDate hireDate;
     private String bio;
+    /**
+     * The teacher's school affiliation: id from the persisted relationship
+     * (teachers.institution_id, falling back to the user's organisation), name
+     * resolved server-side from the institution record — never client-supplied.
+     */
+    private UUID institutionId;
+    private String institutionName;
     private LocalDateTime createdAt;
 }

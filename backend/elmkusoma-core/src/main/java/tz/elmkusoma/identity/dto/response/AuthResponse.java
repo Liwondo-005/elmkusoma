@@ -36,6 +36,12 @@ public class AuthResponse {
         private String role;
         private boolean emailVerified;
         private String institutionId;
+        /**
+         * Display name of {@link #institutionId}, resolved server-side from the
+         * persisted institution record (never client-supplied). Null when the
+         * account has no resolvable organisation yet ("awaiting placement").
+         */
+        private String institutionName;
         private String classGroupId;
         private String learningLevel;
         private String secondaryStage;

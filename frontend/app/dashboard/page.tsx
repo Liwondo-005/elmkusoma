@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { dashboardApi, primaryApi, type DashboardSummary, type ContinueLearningItem, type RecentActivity } from "@/lib/api"
-import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight, Award, Users, TrendingUp, Clock, CheckCircle, Compass, Play, Star, Calendar, Video, ChevronRight, Sparkles, Lightbulb, Target, Map, GraduationCap } from "lucide-react"
+import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight, Award, Users, TrendingUp, Clock, CheckCircle, Compass, Play, Star, Calendar, Video, ChevronRight, Sparkles, Lightbulb, Target, Map, GraduationCap, School } from "lucide-react"
 import { getDashboardConfig, getLevelLabel, type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { resolveWorkspace } from "@/lib/workspace"
 import { LearnerHeader, ContinueLearningCard, LearningItemCard, AssignmentCard, ProgressCard, EmptyState, LoadingState } from "@/components/learner/shared"
@@ -209,7 +209,12 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} level={levelLabel} subtitle={config.subtitle} />
+      <LearnerHeader
+        firstName={firstName}
+        level={levelLabel}
+        subtitle={config.subtitle}
+        schoolName={summary ? (summary.institutionName ?? null) : undefined}
+      />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -424,6 +429,12 @@ function PrimaryDashboard({
             <p className="mt-1 text-muted-foreground">
               {config.subtitle}
             </p>
+            {summary && (
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                <School className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                <span>{summary.institutionName ?? tc("noSchool")}</span>
+              </p>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 <Star className="size-3" /> {t("keepLearningEveryDay")}
