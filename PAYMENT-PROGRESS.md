@@ -30,7 +30,35 @@ targeted only. Payment-relevant suites confirmed present and green in the same r
 
 ---
 
-## 1. Verified DONE — with evidence
+## 1b. Frontend payment surface — verified WIRED (corrected)
+
+An earlier pass reported this as MISSING. That was wrong. Verified by inspection:
+
+| Layer | Evidence |
+|---|---|
+| Parent payments page | `app/dashboard/parent/payments/page.tsx`, 1027 lines, proper `loading`/`error`/`cancellingId`/`checkout` state |
+| Data layer | `parentApi.getPayments()` → `lib/parent-api.ts:557` → `GET /v1/my/payments` |
+| Backend | `ParentSelfController.java:256` `@GetMapping("/payments")` |
+| Learner payments | `app/dashboard/learner/payments` + sidebar entry (`dashboard-sidebar.tsx:295`) |
+| Parent payments nav | `dashboard-sidebar.tsx:493` → `/dashboard/parent/payments` |
+| Platform Admin | `platform-admin-sidebar.tsx:53-54` Finance + Payments |
+| Refunds / receipts | `RefundController`, `ReceiptController` endpoints exist |
+| CSV export | `toCsv`/`downloadCsv` from `lib/csv` — the hardened exporter from §1 |
+
+No fabricated totals were found; the page loads through the real API. `authority-sidebar`
+has **no** finance/earnings entry.
+
+## 1c. Per-persona earnings — confirmed PARTIAL
+
+- Backend: `EarningsService.summaryFor(UUID institutionId, ...)` — **institution-scoped only**.
+- `InstitutionEarningsController` → `/v1/institution/earnings/summary`.
+- Platform-wide reporting: `FinancialReportingController` → `/v1/platform-admin/financial/*`.
+- **No provider / teacher / trainer / organizer earnings endpoint or page exists.**
+
+Root blocker: no payment records a beneficiary. Commission is allocated per *institution*
+(`CommissionService`), so per-persona earnings cannot be derived. This requires a forward
+migration adding beneficiary attribution plus dashboard work. **Do not infer earnings from
+profile ownership** — that would fabricate history.
 
 Each row was executed and observed in this session. Exit code and counts are real.
 
@@ -91,8 +119,8 @@ Recorded because they were real and non-obvious:
 | Item | Status | Blocker |
 |---|---|---|
 | Full backend suite green | **DONE** | `mvn -o clean test` — see §1a | **2303/0/0/5** |
-| Frontend Payments & Transactions nav/dashboards | **MISSING** | Not started |
-| Provider/teacher/organizer earnings views | **PARTIAL** | Institution-scoped only; no per-persona attribution |
+| Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
+| Provider/teacher/organizer earnings views | **PARTIAL** | Institution-scoped only; no per-persona attribution — see §1c |
 | Bundles/packages | **MISSING** | Not started |
 | Subscription cancellation API | **BLOCKED** | No approved effective-date policy. `requestCancellation` correctly refuses to invent one |
 | Payment methods (bank/card) | **N/A** | Not modelled by existing gateway |
