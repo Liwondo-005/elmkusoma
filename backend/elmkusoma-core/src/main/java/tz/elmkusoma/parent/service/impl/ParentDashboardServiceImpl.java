@@ -39,6 +39,7 @@ import tz.elmkusoma.parent.domain.ParentStudentLink;
 import tz.elmkusoma.parent.dto.response.*;
 import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
+import tz.elmkusoma.parent.service.ParentFinancialNotificationAssembler;
 import tz.elmkusoma.parent.service.ParentDashboardService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -59,6 +60,7 @@ public class ParentDashboardServiceImpl implements ParentDashboardService {
 
     private final ParentRepository parentRepository;
     private final ParentStudentLinkRepository studentLinkRepository;
+    private final ParentFinancialNotificationAssembler parentFinancialNotificationAssembler;
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
@@ -605,6 +607,14 @@ public class ParentDashboardServiceImpl implements ParentDashboardService {
                     .priority("NORMAL")
                     .build());
         }
+
+        // Financial items (payments, receipts, refunds) are derived from this parent's own
+        // records, so one parent's money can never appear in another parent's inbox. The
+        // assembler applies the feeAlerts preference and returns nothing when it is off, and it
+        // only reads - a dashboard GET must never send, persist or otherwise act on a payment.
+        parentRepository.findByUserIdAndIsDeletedFalse(userId)
+                .map(p -> parentFinancialNotificationAssembler.assemble(p.getId(), studentId, studentName))
+                .ifPresent(notifications::addAll);
 
         notifications.sort(Comparator.comparing(
                 (ParentNotificationResponse.NotificationItem n) -> "HIGH".equals(n.getPriority()) ? 0 : 1)
