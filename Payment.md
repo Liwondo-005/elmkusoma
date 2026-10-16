@@ -1,1312 +1,1811 @@
-ELMKUSOMA PAYMENT SYSTEM — MASTER AUDIT, IMPLEMENTATION, SECURITY, AND DELIVERY PROMPT
+ELMKUSOMA PAYMENTS & TRANSACTIONS
 
-1. YOUR ROLE AND MISSION
+MASTER IMPLEMENTATION PROMPT — COMPLETE AUDIT, SPECIFICATION, IMPLEMENTATION AND VERIFICATION
 
-Act as a Principal Software Architect, Senior Full-Stack Engineer, Senior Java/Spring Boot Security Engineer, Senior React/Next.js Engineer, Database Architect, Payment Systems Engineer, Financial Controls Specialist, QA Automation Engineer, and Technical Delivery Lead.
-
-You are working on the EXISTING ELMKUSOMA production-oriented education and digital services ecosystem.
-
-Your mission is to audit, improve, implement, test, secure, and integrate the ELMKUSOMA Payment System into the existing application at the highest practical engineering standard.
-
-Target: deliver the maximum verified implementation quality, using approximately 98% of your available capability efficiently. Work decisively and systematically. Do not waste time on repetitive planning, unnecessary rewrites, cosmetic-only work, or endless reports. However, never sacrifice security, correctness, existing functionality, or verification for speed.
+Repository: "Liwondo-005/elmkusoma"
+Master file: "Payment.md" at repository root
+Backend: "backend/elmkusoma-core"
+Frontend: "frontend"
+Stack: Existing Spring Boot, Spring Security, JPA, Flyway, PostgreSQL, Redis, RabbitMQ, Next.js, React, TypeScript and Tailwind architecture, subject to verification against the current repository
+Currency: TZS
+Implementation ownership: One implementation owner — the repository owner
+Execution model: Sequential, evidence-driven, phase-gated implementation
+Primary objective: Complete the existing ELMKUSOMA payment ecosystem without duplicating modules, corrupting financial records, weakening authorization or falsely claiming completion.
 
-The required engineering process is:
+---
 
-UNDERSTAND → AUDIT → CLASSIFY → PLAN → DEFINE CONTRACTS → IMPLEMENT → INTEGRATE → TEST → VERIFY → HARDEN → DOCUMENT.
+PART I — MISSION AND RULES
 
-The expected outcome is a real, integrated, functional implementation—not merely a requirements document, architecture proposal, attractive mockup, or list of recommendations.
+1. Your mission
 
-2. NON-NEGOTIABLE RULES
+Act as a senior full-stack engineer, payment-systems architect, database migration specialist, application-security engineer, QA engineer and technical auditor.
 
-1. Inspect the actual repository before making assumptions.
-2. Preserve the existing ELMKUSOMA architecture, naming conventions, design system, authentication, authorization, database structure, API conventions, and reusable components wherever appropriate.
-3. Do not rebuild the entire application or replace working modules unnecessarily.
-4. Do not create duplicate payment, purchase, subscription, receipt, notification, reporting, or entitlement modules before inspecting existing implementations.
-5. Do not invent entities, APIs, routes, permissions, roles, financial data, service records, or successful test results.
-6. Never present mock financial data as real production data.
-7. Never grant paid access merely because the frontend displays a success message.
-8. Never enable live payment collection, production gateway credentials, actual money transfers, or automatic payouts during this implementation phase.
-9. Do not perform destructive database changes or apply migrations before the database and migration audit, migration plan, and required approval.
-10. Do not introduce a hidden Super Admin role, secret account, backdoor, undocumented commission, concealed fee, secret financial diversion, or unauthorized transfer mechanism.
-11. All commissions and fees must follow an approved, documented, transparent, auditable business policy.
-12. Do not weaken authentication, authorization, validation, audit logging, or existing tests to make implementation easier.
-13. Do not remove existing features to make new tests pass.
-14. Do not claim that a feature works until you have verified it with appropriate evidence.
-15. Do not expose secrets, credentials, personal data, or sensitive payment information in logs, reports, frontend code, source control, or generated documentation.
-16. Do not stop after the audit. Continue into implementation of verified gaps, subject to the approval boundaries defined below.
-17. Do not stop after creating a visually attractive frontend. Connect it to real, authorized backend functionality.
-18. Do not mark incomplete integrations as complete.
-19. Do not create unnecessary abstractions, speculative frameworks, duplicate APIs, or migrations without a demonstrated need.
-20. Keep every existing unrelated feature working.
-
-If a requirement already exists and works, reuse it. If it exists partially, improve it. If it is broken, diagnose and repair it. If it is missing, implement it where it falls within the authorized scope. If verification is impossible, document the precise blocker instead of guessing.
-
-3. PROJECT DISCOVERY AND AUDIT
-
-Start by examining the repository structure, Git status, current branch, project instructions, existing architecture, dependency versions, tests, configuration, and available development tools.
-
-Inspect at minimum:
-
-- Backend modules, controllers, services, repositories, entities, DTOs, validators, security configuration, exceptions, and API conventions.
-- Frontend routes, layouts, dashboards, navigation, design tokens, forms, API clients, permissions, and reusable components.
-- Authentication, user roles, permissions, provider membership, institution scope, ownership checks, and jurisdiction restrictions.
-- Existing course, programme, module, live class, recorded lesson, event, booking, and service catalogue functionality.
-- Existing payments, purchases, orders, subscriptions, access grants, pricing, commissions, earnings, and refunds.
-- Existing receipts, invoices, PDF generation, downloads, transaction history, and associated permissions.
-- Existing notification infrastructure, asynchronous processing, scheduled tasks, and audit logging.
-- Database schema, relationships, indexes, constraints, migration history, and migration naming conventions.
-- Existing admin analytics, reports, filters, exports, and dashboard APIs.
-- Existing frontend theme, layouts, color palette, typography, spacing, buttons, tables, badges, charts, and responsive patterns.
-- Existing unit, integration, end-to-end, authorization, security, and regression tests.
-- Current environment configuration and payment-provider integration readiness.
-
-Never print secret values while inspecting environment files. Record variable names and configuration presence only.
-
-Classify every relevant feature as:
-
-- DONE — implemented and verified.
-- PARTIAL — implemented but incomplete.
-- MISSING — no suitable implementation exists.
-- BROKEN — implementation exists but fails.
-- NEEDS VERIFICATION — insufficient evidence.
+Your task is to audit, upgrade and maintain the existing root-level "Payment.md" as the single authoritative master specification for completing ELMKUSOMA Payments & Transactions.
 
-Produce a concise baseline report identifying verified behavior, affected files, risks, dependencies, failing tests, and actual implementation gaps.
+The file must describe the entire scope discussed for ELMKUSOMA payments, including:
 
-After the initial audit and a safe implementation plan, continue implementing non-destructive, in-scope improvements. Do not treat the planning-only language in the supplied requirements document as a permanent prohibition on coding; this task explicitly authorizes controlled implementation. Destructive database changes, live payment activation, production credentials, actual money collection, and payouts remain gated.
+- Business requirements.
+- User journeys.
+- Role and permission requirements.
+- Frontend navigation and dashboards.
+- Backend API contracts.
+- Domain models and financial state transitions.
+- Pricing and subscription policies.
+- Payment gateway integration.
+- Orders, transactions and payment attempts.
+- Receipts and invoices.
+- Courses, resources, modules and live-session purchases.
+- Event bookings, group bookings and seat capacity.
+- Parent/guardian and child financial relationships.
+- Provider, teacher, trainer, content creator and organizer earnings.
+- Refunds, cancellations and disputes.
+- Revenue allocation and future settlements.
+- Platform Admin financial governance.
+- Notifications.
+- Reconciliation.
+- Audit logs.
+- Database integrity and migration safety.
+- Security and IDOR prevention.
+- Automated tests and regression testing.
+- Deployment readiness and operational restrictions.
+- Requirement tracking and final completion evidence.
 
-4. TWO-DEVELOPER WORK DIVISION — STRICT FILE OWNERSHIP
+This is not a request to create a second payment application or a replacement architecture.
 
-Divide the work into two clearly separated workstreams. Every task, issue, progress entry, change report, test report, and outstanding item must explicitly identify either "[Developer 01]" or "[Developer 02]".
+Extend and complete the actual existing ELMKUSOMA system.
 
-The work must cover all applicable user roles and personas, but each developer must work only within their assigned technical ownership.
+2. One owner, no developer split
 
-[Developer 01] — BACKEND, DATABASE, SECURITY, AND FINANCIAL DOMAIN
+The user is performing the implementation personally.
 
-Owns all backend and data-layer implementation, including:
+Do not divide the project into Developer 01, Developer 02, parallel developers, imaginary teams or independent implementation tracks.
 
-- Payment-domain architecture and business rules.
-- Existing payment and purchase flow improvements.
-- Service pricing and pricing governance APIs.
-- Orders, purchases, transaction references, and payment statuses.
-- Subscription lifecycle and expiry logic.
-- Entitlement and access-control enforcement.
-- Bundles, packages, and service eligibility.
-- Education and event payment-domain integration.
-- Group bookings, seat reservations, and capacity protection.
-- Receipt and invoice backend integration, reusing existing functionality.
-- Refund requests, approvals, partial-refund records, and adjustments.
-- Provider, teacher, trainer, and host earnings calculations.
-- Approved revenue-sharing and commission policies.
-- Historical pricing and revenue-policy version references.
-- Financial reports, summaries, filters, and backend aggregation.
-- Reconciliation data models and exception workflows.
-- Notification-event integration with existing infrastructure.
-- Authorization, ownership, provider scope, jurisdiction, and financial approval limits.
-- Audit logs, idempotency, transaction consistency, validation, rate limiting, and security.
-- Database changes and migrations, only after the audit, technical design, and required approval.
-- Backend unit, integration, authorization, security, and regression tests.
-- A documented API contract for Developer 02.
+Organize work into sequential phases performed by one implementation owner.
 
-Developer 01 MUST NOT edit frontend source files, UI components, frontend layouts, stylesheets, frontend routes, or frontend-specific tests.
+Use clear checkpoints, prerequisites, evidence, completion criteria and next actions.
 
-If a frontend requirement exposes a backend gap, Developer 02 must document the required contract change and submit it to Developer 01. Developer 01 implements the backend change within the backend ownership boundary.
+Do not stop at a high-level plan when implementation is authorized and safe. However, do not perform dangerous database mutations, activate real payments or make irreversible financial changes without the necessary explicit approval.
 
-[Developer 02] — FRONTEND, DASHBOARDS, UX, AND API INTEGRATION
+3. Mandatory engineering process
 
-Owns all frontend implementation, including:
+Follow this sequence:
 
-- Payment-related navigation and page integration.
-- Purchase and checkout interfaces.
-- Pricing and service details.
-- Subscription management screens.
-- Transaction history and payment-status interfaces.
-- Receipt and invoice views and downloads through existing APIs.
-- Refund-request interfaces and status tracking.
-- Learner/student payment dashboard.
-- Parent/guardian payment dashboard.
-- Teacher/trainer earnings dashboard.
-- Host/event organizer dashboard.
-- Provider dashboard.
-- Provider Admin dashboard.
-- Platform Admin Financial Command Center.
-- Authorized finance/support views where supported by the existing role model.
-- Pricing management and approval interfaces.
-- Service monetization and publication-status interfaces.
-- Event ticketing and group booking interfaces.
-- Revenue and transaction reports.
-- Date filters, search, pagination, loading states, empty states, error handling, and exports through available APIs.
-- Responsive layouts, mobile usability, accessibility, low-bandwidth behavior, and frontend tests.
-- Integration with the existing backend API contract.
-- Preservation of existing navigation, dashboard layout, theme, and visual conventions.
+UNDERSTAND → AUDIT → CLASSIFY → PLAN → VERIFY CONTRACTS → IMPLEMENT → INTEGRATE → TEST → VERIFY → HARDEN → DOCUMENT
 
-Developer 02 MUST NOT edit backend source files, backend tests, database entities, database migrations, repository interfaces, backend security configuration, or server-side business logic.
+Never skip the audit because a requirement sounds familiar.
 
-Developer 02 must never calculate authoritative earnings, commissions, payment success, refund eligibility, or access authorization solely in the frontend.
+Never implement a duplicate feature without checking the existing implementation.
 
-Integration and Coordination Rules
+Never claim a feature is finished merely because code was added.
 
-Before parallel work begins:
+4. Existing architecture takes precedence
 
-1. Record the initial Git status and existing changes.
-2. Map file ownership and likely shared dependencies.
-3. Identify existing API conventions.
-4. Define the backend API contract, DTOs, status enums, pagination, error formats, and authorization expectations.
-5. Record dependencies between the two workstreams.
-6. Identify shared configuration files that must not be concurrently edited.
+Inspect the actual current repository before making decisions.
 
-Developer 01 publishes the agreed backend contract. Developer 02 consumes it.
+Reuse existing:
 
-If an API change becomes necessary, communicate the requirement and update the contract before integration. Do not independently modify the other developer's files.
+- Payment entities.
+- Order models.
+- Transaction models.
+- Payment-attempt records.
+- Gateway adapters.
+- Subscription services.
+- Entitlement services.
+- Event booking services.
+- Receipt generation.
+- Notification infrastructure.
+- User and parent-child relationships.
+- Provider and institution ownership models.
+- RBAC and permission conventions.
+- API response conventions.
+- Database migration conventions.
+- Frontend design system.
+- Routes and sidebar navigation.
+- Test fixtures and integration-test architecture.
 
-If OpenCode supports genuine independent agents or worktrees, use separate isolated workspaces with explicit file ownership and controlled integration. If it does not, execute the workstreams sequentially while enforcing the same boundaries. Never pretend that two independent developers or agents ran when they did not.
+Create a new service, component, endpoint, permission or table only when a demonstrated gap requires it.
 
-The integration lead must review the combined changes, resolve contract mismatches, run regression tests, and produce one consolidated delivery report.
+Do not rebuild an existing working module just to fit a preferred design.
 
-5. EXISTING ELMKUSOMA ARCHITECTURE AND AUTHORIZATION
+5. Required status classifications
 
-Respect the existing production-oriented modular monolith and technology stack.
+Every requirement must be assigned one of these statuses:
 
-Discover the actual versions and conventions in the repository before selecting implementation details. The known stack includes Spring Boot, Spring Security, JPA, Flyway, PostgreSQL, Redis, RabbitMQ, LiveKit, Next.js, React, TypeScript, and Tailwind, but verify actual project configuration.
+- "DONE"
+- "PARTIAL"
+- "MISSING"
+- "BROKEN"
+- "NEEDS VERIFICATION"
+- "N/A"
 
-Do not replace the existing architecture with a new framework or separate application unless a verified architectural requirement justifies it.
+Definitions:
 
-Authorization must respect the existing model, including:
+- "DONE": implemented and verified with relevant evidence.
+- "PARTIAL": partially implemented; the missing behavior is identified.
+- "MISSING": required capability does not exist.
+- "BROKEN": capability exists but fails, violates its contract or creates a material risk.
+- "NEEDS VERIFICATION": available evidence is insufficient.
+- "N/A": not applicable, with an explicit reason.
 
-ROLE + PERMISSION + ORGANIZATION/JURISDICTION SCOPE + RESOURCE OWNERSHIP + RESOURCE STATE + APPROVAL LIMITS.
+Do not mark something "DONE" based only on a class name, route, migration, menu item, comment, mocked response or historical test result.
 
-A role alone is not sufficient.
+6. Data, security and operational safeguards
 
-Preserve existing roles and their semantics. The Platform Admin remains the highest-level platform governance authority. Provider Admin remains restricted to the relevant provider. Do not introduce a separate permanent Super Admin role or hidden financial authority.
+Never:
 
-Test unauthorized access by manipulating resource identifiers, query parameters, request bodies, and API paths.
+- Invent financial records.
+- Invent users, parents, children, students, bookings or gateway transactions.
+- Manufacture success metrics.
+- Trust a frontend payment-success message.
+- Grant paid access based on an unverified callback.
+- Rewrite financial history to make totals appear correct.
+- Delete orphan records without an approved data-recovery decision.
+- Rewrite historical migrations merely to silence Flyway.
+- Run destructive SQL against a shared or production database without approval.
+- Disable meaningful tests to get a green build.
+- Expose credentials in code, logs, browser bundles or documentation.
+- Claim real gateway testing when only mocks were used.
+- Activate live collections, refunds or payouts without the required readiness and approval.
 
-6. BUSINESS SCOPE OF THE PAYMENT SYSTEM
+---
 
-Implement and integrate the following requirements where they are missing and authorized.
+PART II — PHASE 0: REPOSITORY BASELINE AND DOCUMENT CONTROL
 
-Service catalogue
+7. Inspect the actual repository
 
-Support existing or approved service types, including:
+Before editing any files, determine:
 
-- Learning resources, notes, and study materials.
-- Courses, programmes, modules, and learning packages.
-- Live classes, training sessions, and live-class series.
-- Recorded lessons and replay access.
-- Approved certificate-related services.
-- Seminars, workshops, conferences, and educational events.
-- Religious, community, NGO/CBO, and corporate events.
-- Provider services and approved premium platform tools.
-- Other services approved by the Platform Admin.
+1. Repository root.
+2. Current Git branch.
+3. Current commit.
+4. Whether the working tree is clean.
+5. Whether the branch is ahead of or behind its upstream.
+6. Whether there are staged, unstaged or untracked changes.
+7. Whether another process is already building or modifying the repository.
+8. The actual paths of the backend and frontend.
+9. The current location and contents of "Payment.md".
+10. Existing payment-related documentation and matrices.
+
+Preserve all user changes.
+
+Do not reset, clean, force-push, discard, overwrite or revert unrelated work.
 
-Do not invent purchasable services. Use genuine catalogue records and existing service ownership.
+If the existing "Payment.md" has valuable requirements absent from this specification, incorporate them unless they are obsolete or contradictory. Record important conflicts rather than silently discarding decisions.
 
-Each monetized service must have the appropriate fields, whether already implemented or added after review:
+8. Upgrade the existing Payment.md
 
-- Unique identifier and name.
-- Type and description.
-- Owner/provider.
-- Pricing model, amount, and currency.
-- Duration and access rules.
-- Publication and approval status.
-- Refund policy.
-- Revenue-sharing policy.
-- Eligibility and availability.
-- Included and excluded package features.
+The deliverable for this phase is an upgraded version of the existing root-level "Payment.md", not a new competing master document.
+
+The upgraded document must:
+
+- Contain all requirements in this prompt.
+- Preserve relevant valid requirements already in the file.
+- Identify unresolved business decisions.
+- Define implementation phases and phase gates.
+- Define role permissions and scope.
+- Define payment and fulfillment invariants.
+- Define frontend and backend requirements.
+- Define migration and data-integrity safeguards.
+- Define test coverage and acceptance criteria.
+- Define production-readiness restrictions.
+- Define final evidence and reporting requirements.
 
-Pricing models
+Avoid unnecessary duplication.
 
-Support applicable models:
+Use stable requirement identifiers so each requirement can be tracked.
 
-- Free access.
-- One-time purchase.
-- Daily access.
-- Weekly access.
-- Monthly subscription.
-- Approved custom durations.
-- Individual purchases.
-- Bundles and tiered packages.
-- Subscriptions providing defined service access.
-- Individual event tickets.
-- Group event bookings.
+Do not reduce the document to a short summary.
 
-Daily access requires an explicit business decision between a rolling 24-hour duration and a calendar day. Do not silently choose a business policy when the decision materially affects customers.
+Do not replace detailed requirements with statements such as “implement payment functionality” or “make the system secure.”
 
-A monthly subscription lasts exactly 30 days from activation, as specified in the requirements, not automatically until the end of a calendar month.
+Write specific, testable requirements.
 
-Preserve the historical price, currency, terms, and policy version applicable to each purchase.
+After editing, verify the file's actual contents, size and section coverage. If any required section is missing, correct it before declaring Phase 0 complete.
 
-Providers may set prices only within approved Platform Admin policies, limits, eligibility requirements, and publication rules.
+---
+
+PART III — PHASE 1: COMPLETE PAYMENT AUDIT
 
-Discounts require defined permissions, limits, eligibility, validity periods, usage rules, and audit history.
+9. Audit the backend
 
-Do not make every education service paid. Free services must continue working without fabricated payment transactions.
+Search the actual backend for all payment-related implementations, including:
 
-7. PAYMENT LIFECYCLE AND TRANSACTION INTEGRITY
+- Controllers.
+- Services.
+- Service implementations.
+- DTOs.
+- Entities.
+- Repositories.
+- Gateway adapters.
+- Callback handlers.
+- Webhook handlers.
+- Security configuration.
+- Authorization annotations and permission checks.
+- Subscription and entitlement code.
+- Pricing services.
+- Event booking integration.
+- Receipt and invoice generation.
+- Refund processing.
+- Earnings calculations.
+- Notification integration.
+- Scheduled jobs.
+- Background workers.
+- Database migrations.
+- Unit tests.
+- Integration tests.
+- Configuration files.
 
-Audit the current payment lifecycle and improve the actual gaps.
+Identify the actual file paths and explain their responsibilities.
 
-The target lifecycle is:
+Do not assume package names or classes exist merely because they appear in this prompt or an earlier report.
 
-1. User selects a genuine service.
-2. Backend verifies service availability, publication status, eligibility, and ownership.
-3. Backend resolves the authoritative price, currency, duration, applicable fees, and policy versions.
-4. Backend creates or reuses an appropriate purchase/order.
-5. Payment attempt creation remains safely separated from confirmed payment.
-6. Payment stays pending until trusted verification is complete.
-7. The backend records the verified outcome.
-8. Appropriate access entitlements are granted exactly once.
-9. Existing receipt functionality is reused or improved.
-10. Relevant notifications are attempted.
-11. Transaction information becomes available for authorized reporting and reconciliation.
-12. Revenue allocations are recorded according to the applicable approved policy.
+10. Audit the frontend
 
-Inspect the current transaction-state model before adding or renaming statuses. It may require states such as created, pending, processing, successful, failed, cancelled, expired, refund pending, partially refunded, refunded, or disputed.
+Inspect:
 
-Do not blindly introduce incompatible states if the existing implementation already has a suitable model.
+- Existing payment routes.
+- Transaction history pages.
+- Payment forms and initiation flows.
+- Purchase flows.
+- Subscription pages.
+- Receipts and invoice views.
+- Refund interfaces.
+- Provider earnings.
+- Event booking and checkout pages.
+- Role-specific dashboards.
+- Sidebar configuration.
+- Permission-aware navigation.
+- API client functions.
+- DTO and TypeScript interfaces.
+- Loading and error states.
+- Responsive behavior.
+- Accessibility.
+- Frontend tests.
 
-Implement or verify:
+Determine which existing components can be extended and which genuine gaps require implementation.
 
-- Server-side price validation.
-- Unique transaction references.
-- Idempotency controls.
-- Safe repeated requests.
-- Safe retry behavior.
-- Transactional consistency.
-- Duplicate callback protection.
-- Late callback handling.
-- Mismatched reference detection.
-- Correct pending/failed/successful states.
-- Recovery from interrupted browser sessions.
-- Recovery when notifications or receipt generation fail.
-- Controlled handling of successful payments with missing entitlements.
-- Detection of possible duplicate payments.
+11. Audit authorization
 
-A notification failure must not turn a confirmed payment into a failed payment. A receipt-generation failure must not silently erase a successful transaction.
+Identify the actual roles, permissions, scopes and resource relationships.
+
+Document:
+
+- Who may initiate payments.
+- Who may view transactions.
+- Who may download receipts.
+- Who may request refunds.
+- Who may approve refunds.
+- Who may change pricing.
+- Who may access provider earnings.
+- Who may view institution-scoped information.
+- Who may manage gateway configuration.
+- Who may run reconciliation.
+- Who may export financial reports.
+- Which actions remain disabled.
+
+Inspect both frontend visibility and backend enforcement.
+
+Frontend visibility is not a substitute for backend authorization.
+
+12. Audit payment lifecycle integration
+
+Trace an actual purchase through the code:
+
+"Service → Price Resolution → Order → Payment Attempt → Gateway → Verification → Fulfillment → Entitlement/Booking → Receipt → Notification → Reconciliation"
+
+For each transition, identify:
+
+- Source file.
+- Method or endpoint.
+- Persisted state.
+- Transaction boundary.
+- Authorization check.
+- Failure behavior.
+- Retry behavior.
+- Idempotency behavior.
+- Relevant tests.
+
+Identify broken or missing links.
+
+Do not infer integration merely because two services exist.
+
+13. Produce an evidence-based audit report
+
+Before implementation, provide:
+
+1. Repository baseline.
+2. Existing architecture.
+3. Existing payment features.
+4. Role and permission matrix.
+5. API and database map.
+6. Gateway readiness.
+7. Test baseline.
+8. Security findings.
+9. Migration risks.
+10. Requirement classification.
+11. Prioritized implementation plan.
+12. Blockers requiring user decisions.
+
+Do not start risky schema modifications while the baseline remains uncertain.
+
+---
 
-Never create duplicate entitlements, receipts, or financial allocations when a request or callback is repeated.
+PART IV — PAYMENT DOMAIN AND FINANCIAL INVARIANTS
 
-8. PAYMENT GATEWAY BOUNDARIES
+14. Distinguish the payment domain concepts
 
-For this phase, do not connect a live gateway, collect real money, configure production credentials, or execute payouts.
+Audit whether the existing system correctly separates the following concepts:
+
+1. Service catalogue and pricing policy.
+2. Order or purchase.
+3. Payment transaction.
+4. Payment attempt.
+5. Gateway reference.
+6. Subscription.
+7. Entitlement.
+8. Receipt or invoice.
+9. Refund or financial adjustment.
+10. Event booking and seat allocation.
+11. Beneficiary allocation.
+12. Earnings.
+13. Settlement or payout.
+14. Reconciliation exception.
+15. Audit event.
 
-Audit gateway-related code and establish a safe integration boundary for future mobile money, bank, and card providers.
+These are logical domain responsibilities, not a requirement to create fifteen new database tables.
 
-If gateway interfaces or configuration already exist, reuse them where appropriate. Otherwise, implement only the safe, necessary abstraction and readiness documentation justified by the architecture.
+Reuse existing models where appropriate.
 
-Do not fabricate a sandbox provider, pretend that API credentials exist, or report a successful gateway test without actually performing one.
+15. Core transaction lifecycle
 
-Gateway selection remains an open business decision. Before any sandbox connection, document the candidate provider, Tanzania support, merchant onboarding, supported payment methods, fees, refunds, callback security, settlement rules, documentation, and compliance requirements.
+Implement the appropriate lifecycle for the configured gateway:
 
-Once a provider is selected, prepare a separate sandbox integration stage. Obtain and configure sandbox credentials only through an approved secure method, using environment variables or the approved secrets manager. Never ask the user to paste secrets into source code or public chat.
+1. Authenticate the requester.
+2. Authorize the operation and resource scope.
+3. Resolve the service from trusted backend data.
+4. Validate publication, availability and purchase eligibility.
+5. Resolve the applicable approved price.
+6. Calculate the amount on the server.
+7. Create or reuse the appropriate order.
+8. Persist a price and currency snapshot.
+9. Create an idempotent payment attempt.
+10. Initiate the gateway operation.
+11. Persist the initiation result.
+12. Verify the gateway's authoritative transaction outcome.
+13. Validate the transaction reference, merchant, amount and currency.
+14. Persist the verified outcome safely.
+15. Fulfil the correct purchase, entitlement or booking exactly once.
+16. Generate or finalize the applicable receipt.
+17. Emit appropriate notifications.
+18. Update authorized transaction views.
+19. Reconcile unresolved discrepancies.
+20. Preserve audit history.
 
-Do not begin credential-dependent testing until the sandbox provider is connected and the required credentials are securely configured. Once sandbox linking is available and authorized, perform real sandbox tests, verify callbacks and transaction reconciliation, and report actual outcomes.
+Adapt the exact sequence to the gateway's documented protocol and the current application architecture.
 
-Live activation and production credentials require explicit approval for a separate release phase. Sandbox success does not authorize live payments.
+Do not hold database locks during slow network calls without a justified design.
 
-Payouts are also a separate future phase. Prepare appropriate data and reporting only where justified. Do not transfer funds or represent prepared balances as already paid.
+16. Required invariants
 
-9. SUBSCRIPTIONS, PURCHASES, AND ACCESS ENTITLEMENTS
+- Frontend success is never authoritative.
+- An unverified callback cannot grant paid access.
+- A pending payment is not a successful payment.
+- A failed payment cannot fulfil a purchase.
+- Duplicate callbacks cannot duplicate financial effects.
+- A mismatched amount or currency cannot fulfil an order.
+- Unknown references must not be silently attached to users.
+- A successful payment must not fulfil twice under concurrent processing.
+- A notification failure must not reverse verified payment.
+- A refund request is not proof of completed refund.
+- Earnings are not proof of a payout.
+- A receipt must reflect the verified financial state.
+- Price changes must not silently rewrite existing orders.
+- Financial corrections must preserve the original transaction.
+- Invalid or suspicious gateway events must be auditable.
+- External gateway calls and local database transactions must have explicit failure and recovery handling.
 
-Audit and implement missing functionality for:
+Define permitted state transitions using the existing domain model. Reject invalid transitions.
 
-- Individual purchases.
-- Bundles and packages.
-- Tiered access.
-- Subscriptions.
-- Subscription expiry.
-- Renewal rules.
-- Cancellation.
-- Access restrictions.
-- Revocation.
-- Historical purchase records.
-- Entitlement history.
+---
 
-A payment record and an access entitlement are distinct concepts.
+PART V — PRICING AND COMMERCIAL POLICIES
 
-Each entitlement should correctly reference the authorized recipient, service, purchase/subscription source, activation time, expiry where applicable, current status, and revocation reason.
+17. Status of proposed prices
 
-Paid entitlements must be granted only after verified payment and the relevant business conditions are satisfied.
+The following values are proposed business defaults from the project discussion. They are not permission to activate live charging automatically.
 
-Free access must follow the existing enrollment policy without fake payment records.
+Inspect the current policy and configuration first.
 
-Support parent-paid purchases where the parent-child relationship and authority are verified. Distinguish the payer, account owner, service recipient, and learner receiving access.
+If a conflicting approved policy already exists, preserve it and report the conflict.
 
-Expired subscriptions must follow the service's access policy. Cancellation and refunds must remain separate operations.
+18. Proposed access packages
 
-Automatic renewal must remain disabled unless a later authorized phase establishes provider support, user consent, cancellation controls, failure handling, notifications, and compliance readiness.
+Package| Proposed price| Duration
+Daily Access| TZS 500| Rolling 24 hours
+Weekly Access| TZS 1,000| Rolling 7 days
+Monthly Access| TZS 5,000| Rolling 30 days
 
-For courses, modules, and programmes, respect prerequisites and existing education rules.
+Define exactly which services each package includes before activation.
 
-For certificates, payment must never replace academic completion, assessment, or authorized issuance requirements.
+Do not interpret rolling 30 days as a calendar month.
 
-For recorded classes, enforce backend access control even when someone knows or shares the recording URL.
+19. Proposed subscription tiers
 
-10. EVENTS, TICKETS, AND GROUP BOOKINGS
+Tier| Proposed price| Period
+Free| TZS 0| No paid period
+Basic| TZS 3,000| 30 days
+Plus| TZS 5,000| 30 days
+Premium| TZS 7,000| 30 days
 
-Support the existing event architecture and improve missing capabilities.
+The tier benefits, exclusions, upgrade/downgrade rules and auto-renewal policy remain subject to explicit approval.
 
-Individual bookings
+Do not assume Premium grants every service in the platform.
 
-Track the relevant event, attendee, ticket type, amount, payment status, registration status, access authorization, cancellation, and attendance.
+Do not enable recurring charges without an approved renewal policy and supported gateway behavior.
 
-Organizer-paid group bookings
+20. Proposed individual prices
 
-Support an authorized organizer purchasing multiple seats.
+Service| Proposed price
+Resource, notes or revision material| TZS 500
+Standard course| TZS 2,000
+Academic/vocational module| TZS 1,000
+Live session| TZS 500
+Replay| TZS 1,000
+Eligible certificate reprint| TZS 5,000
+Seminar/workshop/conference ticket| TZS 2,000
+Eligible community/NGO/CBO/religious/corporate event ticket| TZS 200 per participant
 
-Track the organizer/payer, booking reference, seat quantity, payment status, assigned participants, confirmed participants, unused seats, transfer policy, and refund policy.
+Distinguish a certificate reprint from the original certificate award.
 
-Individually paid group registrations
+Validate the actual service type and eligibility before applying a proposed price.
 
-Support a group registration process in which every attendee has an independently tracked payment and registration status.
+21. Proposed education price bands
 
-Capacity and attendance
+Category| Minimum| Maximum
+Primary| TZS 500| TZS 3,000
+Secondary| TZS 1,000| TZS 5,000
+Higher education/college/university/vocational| TZS 1,000| TZS 15,000
 
-Prevent event overselling. If pending payments reserve seats, implement a defined reservation-expiry and release policy.
+Apply these bands only to applicable education products.
 
-Keep payment, registration, seat assignment, and attendance as separate states.
+Do not silently clamp a conflicting fixed price to fit a band. Report the conflict and request a policy decision.
 
-Event cancellation must follow the applicable refund policy and preserve the reason, affected attendees, decisions, and audit history.
+22. Proposed bundles
 
-11. REVENUE SHARING, COMMISSIONS, AND EARNINGS
+Bundle| Proposed price
+Five resources| TZS 5,000
+Ten resources| TZS 8,000
+Four live classes| TZS 10,000
+Three courses| TZS 35,000
+Five-seat group booking| TZS 45,000
+Ten-seat group booking| TZS 85,000
+
+Before activation, validate bundle membership, quantity, availability, duplicate entries, price snapshots, entitlement fulfillment, expiry and refund behavior.
 
-Implement backend-authoritative calculations only where the approved policy is sufficiently defined.
+23. Unresolved commercial decisions
 
-Revenue-sharing policies may vary by service, provider, teacher, trainer, host, or approved agreement.
+Do not invent:
 
-For each applicable transaction, preserve the necessary financial breakdown:
+- Subscription benefits.
+- Auto-renewal rules.
+- Commission percentages.
+- Gateway fee allocation.
+- Tax treatment.
+- Refund windows.
+- Cancellation and proration rules.
+- Discounts.
+- Payout schedules.
+- Minimum payout amounts.
+- Provider settlement rules.
+- Reserve and dispute policies.
 
-- Original gross amount.
-- Discount.
-- Refunds and adjustments.
-- Processing fees.
-- Approved platform commission.
-- Other explicitly approved fees.
-- Provider/teacher/host share.
-- Net attributable amount.
-- Applicable policy/version reference.
-- Allocation status and audit history.
+Record each decision as:
+
+- Decision ID.
+- Question.
+- Existing implementation.
+- Options.
+- Financial or technical impact.
+- Recommended safe default, if appropriate.
+- Approval status.
+- Required approver.
 
-Do not silently assume who bears payment processing fees. Record this as an unresolved policy where the business has not decided.
+Keep unapproved policy disabled.
 
-Optional provider/teacher platform fees must not be activated without an approved billing rule.
+24. Platform Admin pricing governance
 
-Never implement undisclosed commissions, hidden fees, secret percentage deductions, or concealed transfers. Financial terms shown to customers and service providers must accurately reflect the approved policies and relevant contractual terms.
+Reuse the existing authorization and configuration architecture.
 
-Historical allocations must not be silently recalculated when a new policy is introduced.
+Where supported, provide:
 
-Corrections must use authorized adjustment records with reasons and audit history rather than silently overwriting or deleting financial records.
+- Price policy creation.
+- Review and approval.
+- Versioned publication.
+- Permitted minimum and maximum prices.
+- Service category restrictions.
+- Offer activation/deactivation.
+- Audit history.
+- Policy preview.
+- Safe future-price changes.
+
+Preserve order-level price snapshots.
+
+Do not introduce a permanent Super Admin above Platform Admin.
+
+---
 
-Distinguish gross sales, confirmed collections, refunds, net collections, platform revenue, provider shares, pending balances, liabilities, expenses, and profit/loss.
+PART VI — GATEWAY INTEGRATION AND READINESS
 
-Do not calculate official profit from gross sales minus provider shares alone. If required accounting data or an approved methodology is missing, display the metric as unavailable or explicitly identified as an operational estimate—not as an authoritative financial figure.
+25. Verify the real gateway
 
-12. RECEIPTS, INVOICES, AND REFUNDS
+Inspect the actual integration, including Stakaba if present.
 
-Receipts and invoices
+Verify official documentation for:
 
-Before changing anything, inspect the existing receipt implementation, including entities, APIs, frontend pages, transaction links, PDF/download support, permissions, and tests.
+- Tanzania support.
+- TZS support.
+- Merchant onboarding.
+- Mobile money.
+- Bank payments.
+- Card payments.
+- Initiation endpoints.
+- Transaction-status queries.
+- Callback authentication.
+- Reference handling.
+- Idempotency.
+- Refunds.
+- Reversals.
+- Settlement and payout support.
+- Sandbox availability.
+- Fees.
+- Timeouts.
+- Retry rules.
+- Reconciliation.
 
-Reuse and improve it wherever appropriate. Do not create a duplicate receipt module.
+Do not infer production support from a mocked service or configuration placeholder.
 
-A receipt must be linked to the correct genuine transaction and contain the appropriate available information:
+26. Gateway security
 
-- Unique receipt number.
+- Keep credentials outside source code.
+- Use the established environment/secrets mechanism.
+- Never expose secrets in frontend bundles.
+- Never log sensitive credentials.
+- Mask gateway identifiers where appropriate.
+- Validate the callback according to the gateway protocol.
+- Validate reference, amount, currency and merchant.
+- Reject or safely quarantine unknown callbacks.
+- Make callback processing idempotent.
+- Handle replay and out-of-order delivery.
+- Reconcile ambiguous outcomes.
+
+If gateway documentation requires a server-side transaction query after a callback, implement that verification.
+
+27. Live-operation restrictions
+
+Until all relevant approvals and readiness checks are complete:
+
+- Do not activate real-money collection.
+- Do not execute real refunds.
+- Do not execute real payouts.
+- Do not represent mock results as sandbox transactions.
+- Do not represent sandbox transactions as production payments.
+- Do not claim that production onboarding is complete without evidence.
+
+Record separately:
+
+1. Code implemented.
+2. Mock tests passed.
+3. Sandbox credentials configured.
+4. Real sandbox transactions verified.
+5. Production credentials configured.
+6. Production onboarding approved.
+7. Live collections authorized.
+8. Refund capability verified.
+9. Settlement/payout capability verified.
+
+---
+
+PART VII — UNIFIED FRONTEND AND NAVIGATION
+
+28. One coherent Payments & Transactions area
+
+Use one shared payment module and the existing ELMKUSOMA design system.
+
+Do not build a different duplicate payment application for every role.
+
+The applicable areas should include:
+
+- Overview.
+- Transaction history.
+- Transaction details.
+- Orders and purchases.
+- Payment attempts.
+- Receipts and invoices.
+- Subscriptions and access passes.
+- Bundles and entitlements.
+- Refunds and cancellations.
+- Earnings and allocations.
+- Settlements/payouts, only when supported.
+- Reconciliation and exceptions for authorized users.
+- Notifications.
+- Reports and exports.
+- Platform Admin controls.
+
+Map these capabilities to actual existing routes. Do not create duplicate pages when an equivalent page already exists.
+
+29. Required transaction information
+
+Display applicable:
+
 - Transaction reference.
-- Payer and service details.
+- Order reference.
+- Service name and type.
+- Payer.
+- Authorized beneficiary.
 - Amount and currency.
-- Transaction date.
-- Applicable payment channel.
-- Accurate transaction status.
-- Provider information where required.
-- Refund reference where applicable.
+- Payment method.
+- Current status.
+- Relevant timestamps.
+- Status timeline.
+- Gateway reference, appropriately masked.
+- Receipt.
+- Subscription or entitlement.
+- Event booking or seat.
+- Refund history.
+- Available actions and their eligibility.
 
-An invoice represents an amount requested or due. A receipt documents a payment received or confirmed under the applicable policy.
+Do not conflate the payer, student, parent, attendee, provider, organizer and beneficiary.
 
-Do not silently alter historical receipts after a refund. Preserve the original transaction and create appropriate refund documentation, credit notes, or adjustment records according to the existing accounting/documentation design.
+30. Frontend interaction states
 
-Refunds
+Implement:
 
-Audit and improve the complete refund lifecycle:
+- Loading state.
+- Empty state.
+- Error state.
+- Retry state.
+- Pending state.
+- Verified success state.
+- Failed state.
+- Cancelled state.
+- Expired state.
+- Refund states supported by the domain.
+- Disabled-action explanations.
+- Pagination and filtering states.
 
-1. Request.
-2. Eligibility check.
-3. Evidence review where required.
-4. Approval or rejection.
-5. Refund status tracking.
-6. Financial adjustment.
-7. Entitlement adjustment according to policy.
-8. Refund documentation.
-9. Notification.
-10. Audit history.
+Do not use color alone to communicate payment status.
 
-Support service-specific refund policies, approval limits, partial refunds where required, duplicate-refund protection, and future dispute/chargeback readiness.
+Do not show fake metrics.
 
-A refund request is not a completed refund. Because no live payment gateway is enabled, do not claim that funds have actually been returned. Clearly distinguish refund requested, approved, processing, completed, rejected, and other appropriate verified states.
+Do not show success when an operation has failed.
 
-13. USER DASHBOARDS — ALL RELEVANT PERSONAS
+31. Visual and accessibility requirements
 
-Every dashboard must be integrated with existing ELMKUSOMA layouts, navigation, role permissions, and design conventions.
+- Preserve ELMKUSOMA's existing design language.
+- Use the established palette and shared components.
+- Avoid unrelated dark admin templates.
+- Avoid excessive gradients, shadows and decorative cards.
+- Support small mobile screens.
+- Support low-bandwidth usage.
+- Use accessible labels and keyboard navigation.
+- Provide clear status text.
+- Avoid unnecessary large payloads.
+- Prevent accidental duplicate submissions.
+- Ensure responsive tables or equivalent mobile layouts.
+- Follow the application's existing localization conventions.
 
-Do not force every user into the same dashboard or display financial controls to unauthorized roles.
+---
 
-Learner/Student — [Developer 02]
+PART VIII — ROLE-SPECIFIC REQUIREMENTS
 
-Implement or improve the relevant views:
+32. Student
 
-- My Purchases.
-- My Subscriptions.
-- Payment History.
-- Receipts.
-- Pending Payments.
-- Expiring Access.
-- Refund Requests.
-- Available Premium Services.
+Support authorized access to:
 
-Show genuine purchases, clear status labels, service access details, expiry, and relevant actions.
+- Own transactions.
+- Own orders.
+- Own payment attempts.
+- Own receipts.
+- Own subscriptions.
+- Own access periods and entitlements.
+- Paid courses, modules, resources, live sessions and replays.
+- Event bookings.
+- Payment retries.
+- Eligible refund requests.
+- Relevant notifications.
 
-Parent/Guardian — [Developer 02]
+A student cannot access another student's financial records by manipulating an identifier.
 
-Show authorized children's purchases, subscriptions, receipts, and access status. Provide child selection where supported by the existing design.
+33. Parent/guardian
 
-Enforce the parent-child relationship in the backend; never rely on the selected child ID alone.
+Support:
 
-Teacher/Trainer/Instructor — [Developer 02]
+- Parent's own transactions.
+- Verified linked-child selection.
+- Child-specific payments and services.
+- Authorized receipts.
+- Relevant subscriptions and access.
+- Pending and failed payments.
+- Authorized unpaid-service information where an actual fee model exists.
+- Group event bookings.
+- Relevant refund information.
+- Financial notifications.
 
-Show authorized paid services, sales, transaction history, applicable fees, earnings, pending balances, refunds, and reports.
+Resolve access from authoritative parent-child relationships.
 
-Host/Event Organizer — [Developer 02]
+Do not use numeric ID equality as a substitute for a verified relationship.
 
-Show authorized events, tickets, registrations, paid attendees, group bookings, seat allocation, event sales, cancellations, refunds, and earnings reports.
+34. Teacher/trainer/content creator
 
-Provider — [Developer 02]
+Support authorized access to:
 
-Show authorized services, pricing, publication/approval state, sales, subscription performance, gross sales, refunds, platform fees, net attributable earnings, pending balances, and reports.
+- Their eligible service sales.
+- Gross revenue.
+- Refunds.
+- Approved fees and commissions.
+- Net eligible earnings.
+- Pending and held earnings.
+- Available earnings where supported.
+- Actual settled amounts only where verified.
+- Service-level reports.
+- Settlement history only when the payout system exists.
 
-Provider Admin — [Developer 02]
+Do not expose unnecessary payer personal data.
 
-Show financial and service-management information only for the provider organization they are authorized to administer.
+35. Host/event organizer
 
-Do not give Provider Admin automatic platform-wide financial access.
+Support:
 
-Finance/Support and Other Authorized Staff — [Developer 02]
+- Event transactions.
+- Ticket sales.
+- Group bookings.
+- Individual bookings.
+- Seat capacity.
+- Seat reservations.
+- Seat utilization.
+- Payment status.
+- Refunds.
+- Gross revenue.
+- Approved deductions.
+- Net eligible earnings.
+- Authorized reports.
 
-Use existing roles and explicit permissions. Provide only the views and operations justified by the actual responsibilities. Mask sensitive information where appropriate.
+Seat counts must come from authoritative booking data.
 
-Platform Admin Financial Command Center — [Developer 02]
+36. Provider
 
-Build a dedicated platform-wide financial operations area. This is not a learner dashboard.
+Support authorized access to:
 
-Include the relevant verified metrics:
+- Provider-owned service sales.
+- Orders and transactions.
+- Gross revenue.
+- Refunds.
+- Approved commissions and fees.
+- Net eligible earnings.
+- Pending, held, available and settled amounts where implemented.
+- Bundle performance.
+- Refund cases.
+- Reports.
+- Authorized institution/service breakdowns.
+- Relevant staff activity.
 
-- Confirmed collections.
-- Pending collections.
-- Successful and failed transactions.
+A Provider may represent an organization or authorized individual and is not necessarily an educational institution.
+
+37. Provider Admin
+
+Restrict access to the assigned Provider and explicitly delegated permissions.
+
+Do not grant access to other Providers, global payment controls, gateway secrets or platform-wide financial records without an explicit, justified permission and scope.
+
+38. Institution/College Admin
+
+Where supported, provide:
+
+- Institution-scoped transactions.
+- Authorized student/cohort summaries.
+- Relevant receipts.
+- Applicable pending payments.
+- Refund information.
+- Institution earnings only if the institution is an approved beneficiary.
+
+Do not assume every institution is entitled to a share of every payment.
+
+39. NGO/CBO, religious and corporate service owners
+
+Reuse the existing Provider/service-owner model wherever possible.
+
+Support their own eligible services, bookings, transactions, refunds and allocations.
+
+Do not create redundant financial roles or modules.
+
+40. Ordinary registered users
+
+Support authorized access to the user's own purchases, transaction history, receipts, subscriptions and entitlements.
+
+41. Platform Admin
+
+Provide global governance and operational visibility over:
+
+- Transactions.
+- Payment attempts.
+- Gateway health/readiness.
+- Callback exceptions.
+- Pricing policies.
+- Subscriptions and entitlements.
+- Refunds.
+- Provider and creator earnings.
+- Allocations.
+- Reconciliation.
+- Receipts and invoices.
+- Authorized reports and exports.
+- Audit logs.
+- Relevant payment-related support operations.
+
+Platform Admin is the highest platform governance authority.
+
+Do not create a permanent Super Admin above it.
+
+Do not create separate Finance Staff or Payment Support Staff roles.
+
+42. Other existing roles
+
+Inspect all actual roles.
+
+Document each role's required navigation, accessible records, permitted actions and restrictions.
+
+Do not invent roles.
+
+Where a user has multiple roles, combine only the permissions legitimately granted by those roles and their scopes.
+
+---
+
+PART IX — BACKEND API CONTRACTS
+
+43. API audit
+
+Inventory existing endpoints before proposing new ones.
+
+For each endpoint, record:
+
+- Route and HTTP method.
+- Controller.
+- Request DTO.
+- Response DTO.
+- Service method.
+- Repository dependencies.
+- Authentication.
+- Authorization.
+- Ownership/scope.
+- Validation.
+- Transaction boundary.
+- Error handling.
+- Idempotency.
+- Audit behavior.
+- Tests.
+- Frontend consumers.
+
+Reuse established API conventions.
+
+Do not break existing consumers unnecessarily.
+
+44. Required API capabilities
+
+Where missing and justified by the actual architecture, provide the relevant contracts for:
+
+- Listing authorized transactions.
+- Retrieving a transaction.
+- Listing orders.
+- Creating an eligible purchase.
+- Initiating a payment attempt.
+- Checking payment status.
+- Retrying an eligible attempt.
+- Viewing receipts.
+- Viewing subscriptions.
+- Viewing entitlements.
+- Requesting a refund.
+- Reviewing refunds with proper permissions.
+- Viewing authorized earnings.
+- Viewing reconciliation exceptions.
+- Updating approved pricing policy.
+- Producing authorized reports.
+
+These are capability requirements, not mandatory endpoint names. Follow existing naming conventions.
+
+45. API validation
+
+- Resolve prices server-side.
+- Validate amounts and currency.
+- Validate order ownership.
+- Validate beneficiary eligibility.
+- Validate event capacity.
+- Validate subscription eligibility.
+- Validate idempotency keys where supported.
+- Reject unexpected state transitions.
+- Enforce permissions for exports and downloads.
+- Prevent mass assignment of financial state.
+- Never accept arbitrary "success=true" or "paid=true" as proof of payment.
+- Use consistent errors.
+- Avoid leaking private record existence.
+
+---
+
+PART X — DATABASE, FLYWAY AND MIGRATION SAFETY
+
+46. Audit the actual schema
+
+Inspect:
+
+- Flyway migration files.
+- Actual database migration history.
+- Physical tables and columns.
+- Constraints.
+- Indexes.
+- Foreign keys.
+- Unique constraints.
+- Extensions.
+- Existing financial records.
+- Orphan relationships.
+- Entity-to-schema mappings.
+
+Do not assume local schema and migration history are synchronized.
+
+47. Historical V174–V177 warnings
+
+Earlier reports raised possible discrepancies involving:
+
+- "V174__parent_student_link_integrity.sql".
+- A recorded V174 checksum reportedly different from the local file checksum.
+- Different historical meanings for V175.
+- "V175__allow_independent_teachers".
+- "V176__allow_institutionless_audit_logs".
+- "V177__subscription_lifecycle".
+- Subscription lifecycle schema artifacts.
+- "ex_subscriptions_active_no_overlap".
+- "btree_gist".
+- Potential missing independent-teacher schema artifacts.
+- Possible orphan parent-child links.
+
+These reports are not current-state proof.
+
+Recheck the current repository and database.
+
+Do not blindly run Flyway repair.
+
+Do not rewrite an applied historical migration.
+
+Do not delete Flyway history.
+
+Do not baseline an uncertain database.
+
+Do not invent student records.
+
+Do not delete orphan links without a verified recovery decision.
+
+Do not mutate a shared database before the discrepancy has been documented and the recovery plan explicitly approved.
+
+48. Safe migration procedure
+
+For every required schema change:
+
+1. Identify the verified defect or requirement.
+2. Inspect the actual starting schema.
+3. Determine whether the target database is disposable or shared.
+4. Create an incremental migration following repository conventions.
+5. Rehearse the migration on a suitable disposable database.
+6. Verify constraints, indexes and data preservation.
+7. Test upgrade behavior from supported states.
+8. Record any required backup or rollback/recovery procedure.
+9. Obtain approval before risky shared-database changes.
+10. Run applicable integration tests.
+11. Document the result.
+
+Do not add duplicate schema objects to conceal an unresolved migration-history conflict.
+
+---
+
+PART XI — SUBSCRIPTIONS AND ENTITLEMENTS
+
+49. Subscription lifecycle
+
+Verify and implement the approved behavior for:
+
+- First purchase.
+- Renewal.
+- Expiry.
+- Access checks.
+- Period extension.
+- Failed renewal.
+- Duplicate payment events.
+- Concurrent activation.
+- Cancellation.
+- Refund interaction.
+- Audit history.
+
+A payment and an entitlement must remain distinguishable.
+
+50. Period calculations
+
+Where confirmed as the existing approved rule:
+
+- Renewal during an active paid period starts after the existing period ends.
+- A purchase after the previous period has elapsed starts at the approved effective time.
+- Use the persisted duration snapshot, such as "payment.getAccessDays()", where that field is authoritative.
+- Use "[start, end)" boundaries.
+- The exact end instant does not grant access.
+- Preserve previous periods.
+- Avoid duplicate or invalid overlapping periods.
+- Do not shorten an already purchased period through an unrelated price update.
+
+Verify these rules against actual code and tests before modifying implementation.
+
+51. Expiry scheduler
+
+Inspect the existing scheduled jobs and service callers.
+
+Earlier reports mentioned an existing "CoreScheduler" with approximately fourteen "@Scheduled" methods and a possible missing "expireElapsed()" operational caller. Recheck the actual repository.
+
+Reuse an appropriate existing scheduler if available.
+
+Add a new scheduler only if a verified gap exists.
+
+Test idempotency, concurrency, exact boundaries, failures and recovery.
+
+52. Concurrency
+
+Review existing locking and database constraints.
+
+Verify that:
+
+- Concurrent first purchases cannot create invalid duplicate subscriptions.
+- Concurrent renewals follow the approved business rule.
+- Duplicate callbacks cannot duplicate subscription activation.
+- Transactions roll back safely when activation fails.
+- Database constraints match application-level invariants.
+
+A historical passing test is not sufficient; rerun relevant tests on the current tree.
+
+---
+
+PART XII — EVENT BOOKINGS AND SEAT CONFIRMATION
+
+53. Payment and booking relationships
+
+Support both:
+
+- Organizer-paid group bookings.
+- Individually paid participant bookings.
+
+Keep payer, parent, student, attendee, organizer, provider, order, payment and booking relationships distinct.
+
+Never assume the same numeric identifier represents the same person across tables.
+
+54. Historical integration warning
+
+Earlier reports raised a possible issue involving "Payment.parentId" and "studentId" both being populated with an attendee user ID, despite representing different identifier spaces.
+
+Recheck the actual code.
+
+Where the authoritative model uses "parent_student_links" and "students.user_id", use those relationships to resolve identity and eligibility.
+
+Do not invent student records or silently delete orphan relationships.
+
+55. Gateway-to-booking integration
+
+Verify the actual gateway-to-"EventBookingService.confirmSeat" path or its current equivalent.
+
+Test:
+
+- Pending payments do not confirm paid seats.
+- Failed payments do not confirm paid seats.
+- Invalid callbacks do not confirm paid seats.
+- Amount mismatches do not confirm seats.
+- Verified success confirms the correct booking once.
+- Duplicate callbacks do not duplicate seat allocation.
+- Concurrent bookings cannot oversell capacity.
+- Organizer-paid groups follow the approved group rules.
+- Individual payments remain linked to the correct participant.
+- Refund/cancellation effects follow approved policy.
+
+Use database locking, constraints or another appropriate concurrency mechanism consistent with the current architecture.
+
+---
+
+PART XIII — RECEIPTS, REFUNDS AND AUDIT
+
+56. Receipts and invoices
+
+Provide the applicable capabilities for:
+
+- Unique receipt reference.
+- Correct order and transaction association.
+- Correct payer and service.
+- Amount and currency.
+- Transaction status and dates.
+- Authorized view/download/print.
+- Verification where supported.
+- Refund references.
+- Reissue/correction history.
+
+Never issue a final paid receipt for an unverified transaction.
+
+Never expose receipts through unrestricted or guessable download URLs.
+
+57. Refund lifecycle
+
+Use the actual established domain states where possible.
+
+Support the applicable states for request, review, decision, gateway submission, pending confirmation, completion and failure.
+
+Do not invent eligibility or processing windows.
+
+Prevent duplicate refunds beyond the permitted amount.
+
+Preserve the original transaction.
+
+Do not mark a refund complete until the required authoritative confirmation exists.
+
+Do not execute live refunds until the gateway, policy, authorization and testing are approved.
+
+58. Financial audit
+
+Audit events must record the appropriate actor, action, target, timestamp, result and correlation identifiers.
+
+Protect logs from tampering and avoid unnecessary personal information.
+
+Financial history must remain traceable.
+
+Use explicit adjustments instead of silently editing historical transactions.
+
+---
+
+PART XIV — EARNINGS AND FUTURE PAYOUTS
+
+59. Revenue model
+
+The intended direction is platform-first collection, with future provider payouts.
+
+The discussed model is platform/provider pricing with per-service revenue sharing.
+
+Teacher and host fees are optional and require explicit approval.
+
+Do not assume any commission percentage.
+
+60. Required distinctions
+
+Where supported, report separately:
+
 - Gross sales.
 - Refunds.
-- Net collections.
-- Platform revenue.
-- Provider, teacher, and host shares.
-- Processing fees.
-- Pending provider balances/liabilities where appropriately defined.
-- Reconciliation exceptions.
-- Recent transactions and exceptions.
-- Service/provider performance.
-- Financial reporting and authorized exports.
+- Gateway fees.
+- Approved platform commission.
+- Approved beneficiary allocation.
+- Net eligible earnings.
+- Pending earnings.
+- Held earnings.
+- Available earnings.
+- Settled amounts.
+- Actual payout transactions.
 
-Provide useful filters:
+Use consistent server-side calculations.
 
-- Today and yesterday.
-- This week and previous week.
-- This month and previous month.
-- Custom date range.
-- Service and category.
-- Provider.
-- Teacher or host.
-- Subscription plan and bundle.
-- Event.
-- Payment method.
-- Transaction status.
+Avoid different dashboards independently calculating incompatible totals.
 
-Support authorized search by transaction reference, receipt number, user reference, provider, service, date range, and status.
+An allocation is not a payout.
 
-Use backend pagination, filtering, and aggregation appropriate to the existing API. Avoid loading the entire transaction history into the browser.
+An earnings balance is not a transfer.
 
-All dashboard totals must be derived from genuine backend data and clearly defined calculations. Do not invent figures to make the dashboard look populated.
+A pending payout is not a completed payout.
 
-Where there is no genuine data, show a clear empty state such as “No transactions found for this period.” Distinguish zero from unavailable or not-yet-implemented data.
+Do not activate actual payout operations until policy, gateway support, approvals and operational safeguards exist.
 
-14. EXISTING DESIGN SYSTEM AND PROFESSIONAL UX
+---
 
-[Developer 02] Frontend design responsibility
+PART XV — NOTIFICATIONS AND PARENT DASHBOARD INTEGRATION
 
-First inspect the existing ELMKUSOMA theme, layouts, dashboards, color tokens, typography, component library, navigation, responsive rules, and visual hierarchy.
+61. Reuse existing notifications
 
-Reuse the existing approved ELMKUSOMA design system. The known brand direction is a premium light African EdTech experience using blue, teal, orange accents, white, light backgrounds, and dark readable text. Known reference colors include:
+Audit and reuse the current notification infrastructure.
 
-- Blue: "#2563EB"
-- Teal: "#0D9488"
-- Orange: "#F59E0B"
-- Light background: "#F8FAFC"
-- Main text: "#1E293B"
+Support relevant events such as:
 
-Treat these as references, not permission to overwrite a different verified existing theme.
+- Payment initiated.
+- Payment verified.
+- Payment failed.
+- Payment cancelled or expired.
+- Receipt available.
+- Subscription activated or expiring.
+- Booking confirmed.
+- Refund status changed.
 
-The interface must be:
+Make duplicate notifications safe and respect the existing preference model.
 
-- Professional, clean, premium, and production-oriented.
-- Consistent with the current application.
-- Easy to understand for Tanzanian users.
-- Responsive across desktop, tablet, and mobile.
-- Lightweight for low-bandwidth connections.
-- Accessible through keyboard navigation, labels, clear contrast, and meaningful status indicators.
-- Consistent in spacing, typography, cards, tables, forms, filters, and page headers.
+Notifications must not independently grant access.
 
-Avoid:
+62. Parent financial notifications
 
-- A completely unrelated dashboard template.
-- Excessive gradients, shadows, oversized cards, and decorative charts.
-- Fake AI visuals or arbitrary animations.
-- Random icon styles.
-- Decorative financial metrics without reliable data.
-- Hard-coded demo transactions in production interfaces.
-- Buttons that look functional but do nothing.
-- Empty chart areas with misleading values.
+Verify the actual integration of "ParentFinancialNotificationAssembler".
 
-Use genuine API data, clear loading states, useful empty states, actionable error messages, and safe retry behavior.
+Earlier reports mentioned approximately seventeen unit tests and a possible gap in integration with "ParentDashboardServiceImpl", including "getChildNotifications" and "getAllChildrenNotifications".
 
-Show prices, currency, duration, inclusions, exclusions, applicable fees, refund terms, and renewal rules before purchase.
+These are historical findings; recheck them.
 
-Never show pending transactions as successful. Preserve transaction references when a connection fails and allow users to check status without creating a duplicate purchase.
+Where relevant, verify integration with:
 
-15. PLATFORM ADMIN PRICING AND GOVERNANCE
+"tz.elmkusoma.parent.dto.response.ParentNotificationResponse"
 
-Backend — [Developer 01]
+Requirements:
 
-Implement or improve authorized controls for:
+- Respect verified linked-child relationships.
+- Respect "feeAlerts" or the actual established equivalent.
+- Preserve assignments, attendance, live classes and announcements.
+- Use stable, deduplicated notification identifiers.
+- Avoid financial writes or duplicate side effects during ordinary dashboard reads.
+- Add integration tests for the actual dashboard/API response.
 
-- Pricing policies and limits.
-- Allowed pricing models.
-- Service categories requiring approval.
-- Commission and fee policies.
-- Revenue-sharing policy versions.
-- Refund policy templates.
-- Discount rules.
-- Service monetization eligibility.
-- Financial approval limits.
-- Auditable financial corrections.
-- Relevant policy history.
+Unit tests for a standalone assembler do not prove integration.
 
-Frontend — [Developer 02]
+---
 
-Provide clear, permission-controlled screens for managing and reviewing these settings.
+PART XVI — SECURITY AND IDOR TESTING
 
-Providers may set prices only within applicable rules. The Platform Admin can govern platform-wide pricing policies and financial rules without a hidden role or backdoor.
+63. Mandatory security matrix
 
-Preserve existing approval workflows. Do not invent a final commission percentage, refund time limit, tax rule, processing-fee allocation, or provider settlement rule when business approval is missing.
+Test at least:
 
-Where a business decision is unresolved, implement safe configuration/readiness support only if justified, document the decision, and prevent unauthorized activation.
+1. User A reads User B's transaction.
+2. User A downloads User B's receipt.
+3. Parent A accesses an unlinked child.
+4. Provider A accesses Provider B's earnings.
+5. Provider Admin changes global pricing.
+6. Teacher accesses another teacher's sales.
+7. Organizer modifies an unrelated event.
+8. Institution Admin accesses another institution.
+9. Unauthorized user requests a refund.
+10. Unauthorized user approves a refund.
+11. Unauthorized user exports financial records.
+12. User manipulates transaction IDs.
+13. User manipulates order IDs.
+14. User manipulates gateway references.
+15. User changes amounts or currencies.
+16. User changes beneficiary identifiers.
+17. User supplies forged payment-success values.
+18. A callback is replayed.
+19. A callback has a mismatched amount.
+20. A callback references an unknown transaction.
+21. Unauthorized users access reconciliation.
+22. Unauthorized users initiate or approve payouts.
+23. Parent/child access uses an invalid relationship.
+24. Provider/institution filters are manipulated.
+25. An unauthorized user changes payment policy.
 
-16. NOTIFICATIONS AND OPERATIONAL RECOVERY
+Enforce all relevant checks in the backend.
 
-Integrate with the existing notification system.
+Test both allowed and denied behavior.
 
-Support applicable notifications for:
+Do not rely on frontend menu hiding.
 
-- Purchase initiated.
-- Payment pending, successful, failed, or cancelled.
-- Subscription activation and expiry reminders.
-- Receipt availability.
-- Refund request, decision, and verified completion.
-- Booking confirmation and group-seat allocation.
-- Authorized sales and earnings updates.
-- Reconciliation exceptions requiring attention.
+---
 
-Use existing channels such as in-app notifications, email, or SMS only where configured and supported.
+PART XVII — AUTOMATED TESTING AND REGRESSION
 
-Notification retries must not duplicate financial effects. A notification failure must not change the payment outcome.
+64. Baseline before changes
 
-Define and test recovery paths for browser closure, lost internet, delayed responses, repeated callbacks, receipt failure, missing entitlement, unresolved refunds, duplicate payments, changed services, and event cancellation.
+Record actual current results for:
 
-Support personnel must use controlled, authorized workflows instead of uncontrolled direct database edits.
-
-17. FINANCIAL REPORTING AND RECONCILIATION
-
-Backend — [Developer 01]
-
-Build or improve authorized reporting and reconciliation capabilities using genuine transaction records.
-
-Reconciliation should be ready to identify, where source data is available:
-
-- External transactions missing internally.
-- Unresolved pending transactions.
-- Amount mismatches.
-- Duplicate external references.
-- Confirmed payments with missing entitlements.
-- Refund mismatches.
-- Fee mismatches.
-- Inconsistent transaction statuses.
-
-Record each exception's reference, type, amount where applicable, discovery date, status, assigned owner where necessary, resolution notes, and audit history.
-
-Do not silently modify financial records to make reports balance.
-
-Frontend — [Developer 02]
-
-Provide usable reports, filters, exception details, transaction search, and authorized exports.
-
-Implement CSV, Excel, or PDF exports only through existing supported capabilities or a justified, tested extension. Protect export endpoints and record sensitive financial operations where required.
-
-Use Tanzania's timezone ("Africa/Dar_es_Salaam") for relevant business date boundaries. Verify how the existing system stores timestamps and converts timezones before making changes.
-
-18. SECURITY REQUIREMENTS
-
-[Developer 01] Backend enforcement
-
-Verify and test:
-
-- Role and permission enforcement.
-- Provider/institution/jurisdiction scope.
-- Resource ownership and IDOR protections.
-- Service publication and approval requirements.
-- Server-side pricing and fee calculations.
-- Purchase eligibility.
-- Subscription and entitlement authorization.
-- Refund permissions and approval limits.
-- Financial report authorization.
-- Parent-child access restrictions.
-- Transactional consistency and idempotency.
-- Duplicate payment/refund prevention.
-- Input validation and safe error handling.
-- Rate limiting where supported by the architecture.
-- Audit history for sensitive financial operations.
-- Secure handling of gateway secrets.
-- Protection against unauthorized financial adjustments.
-- No card CVV storage or unnecessary sensitive payment data.
-- No secret values in logs or responses.
-
-Test maliciously modified IDs, prices, amounts, status values, provider IDs, recipient IDs, and refund requests.
-
-Never trust client-supplied values for authoritative prices, commissions, earnings, payment outcomes, or permissions.
-
-[Developer 02] Frontend security and UX
-
-Hide or disable unauthorized controls appropriately, but do not treat frontend visibility as the authorization boundary.
-
-Handle 401, 403, validation errors, pending transactions, timeouts, expired sessions, and API failures correctly.
-
-Do not store gateway secrets in the frontend. Do not expose unauthorized transaction details through client-side state, URLs, logs, or error messages.
-
-19. DATABASE AND MIGRATION GOVERNANCE
-
-[Developer 01]
-
-Before changing the database:
-
-1. Inspect existing entities, tables, relationships, constraints, indexes, and migration history.
-2. Identify reusable structures and data duplication risks.
-3. Document the current schema and the verified gap.
-4. Propose the smallest necessary data-model change.
-5. Check referential integrity, uniqueness, transaction consistency, and historical-data compatibility.
-6. Review migration ordering and naming conventions.
-7. Define rollback or recovery procedures where feasible.
-8. Obtain the required approval before applying destructive or materially risky migrations.
-
-Do not recreate existing tables or rename existing fields casually.
-
-Never delete transaction history to simplify implementation.
-
-Use precise decimal types and safe currency handling appropriate to the existing backend. Do not use floating-point arithmetic for authoritative financial calculations.
-
-Store original currency and amount accurately. Do not add foreign-exchange calculations without an approved requirement.
-
-If no schema change is necessary, do not create one simply to demonstrate work.
-
-20. TESTING AND QUALITY GATES
-
-Both developers must write and run tests within their own ownership boundaries.
-
-[Developer 01] Backend tests
-
-Test relevant behavior for:
-
-- Pricing policies and price changes.
-- Free and paid service handling.
-- Subscription activation and exact 30-day monthly expiry.
-- Entitlement creation, expiration, and revocation.
-- Service eligibility and approval.
-- Group seat capacity and reservation expiry.
-- Transaction state transitions.
-- Duplicate requests and idempotency.
-- Trusted payment-verification boundaries.
-- Refund permissions, partial refunds, and duplicate-refund prevention.
-- Revenue allocation and policy versioning.
-- Receipt reuse and transaction linking.
-- Parent-child authorization.
-- Provider ownership and financial data isolation.
-- Platform Admin financial permissions.
-- IDOR and privilege escalation.
-- Reconciliation and audit records.
-- Notification failure handling.
-- Migration and backward compatibility where applicable.
-
-[Developer 02] Frontend tests
-
-Test relevant behavior for:
-
-- Role-specific dashboard visibility.
-- API loading, empty, success, and error states.
-- Pricing and purchase flows.
-- Clear pending/success/failed/refunded statuses.
-- Subscription expiry and cancellation interfaces.
-- Transaction history and receipt access.
-- Refund request workflows.
-- Parent/child switching and data visibility.
-- Provider and teacher earnings displays.
-- Platform Admin filters and transaction search.
-- Mobile layout and accessibility.
-- Safe retry behavior without duplicate purchases.
-- Unauthorized actions and API error handling.
-
-Integration and regression testing
-
-The integration lead must verify the complete user journey across both workstreams.
-
-Use the project's existing test tools and conventions. Inspect package scripts and build configuration before choosing commands.
-
-Run the relevant:
-
-- Unit tests.
-- Backend compilation and tests.
-- Frontend type checking and linting where configured.
+- Backend compilation.
+- Backend unit tests.
+- Backend integration tests.
+- Flyway/schema validation.
+- Frontend type checking.
+- Frontend linting where configured.
 - Frontend production build.
-- Integration tests.
-- Security/authorization tests.
-- Existing regression tests.
-- End-to-end tests where available.
+- Relevant end-to-end tests.
+- Security tests.
+- Migration tests.
 
-Compare results against the baseline. Distinguish pre-existing failures from regressions introduced by these changes.
+Historical reports have included different backend test totals and frontend build results. They are not evidence of the current repository's state.
 
-Never weaken or delete tests simply to obtain a passing build.
+Rerun the relevant commands and record actual results.
 
-If a test cannot run due to missing infrastructure, credentials, unavailable services, or environment limitations, report the exact reason and mark it unverified.
+65. Payment lifecycle tests
 
-Do not claim that an entire suite passed when only a subset ran.
+Cover:
 
-21. IMPLEMENTATION EXECUTION PLAN
+- Verified success.
+- Pending.
+- Failure.
+- Cancellation.
+- Timeout.
+- Duplicate callbacks.
+- Replayed callbacks.
+- Unknown references.
+- Amount mismatch.
+- Currency mismatch.
+- Incorrect merchant.
+- Out-of-order callbacks.
+- Retry.
+- Duplicate fulfillment.
+- Receipt consistency.
+- Notification failure.
+- Reconciliation.
+- Concurrent attempts.
+- Partial-processing recovery.
 
-Work through the following phases efficiently.
+66. Subscription tests
 
-Phase A — Audit and baseline
+Cover:
 
-Owner: Integration Lead, with findings assigned to [Developer 01] and [Developer 02].
+- First purchase.
+- Renewal before expiry.
+- Renewal after expiry.
+- Exact time boundaries.
+- Persisted duration.
+- Concurrent renewal.
+- Duplicate callback.
+- Expiry scheduler.
+- Idempotency.
+- Recovery.
+- Database constraints.
+- Entitlement correctness.
 
-Inspect the repository and identify the verified implementation gaps. Preserve unrelated working changes. Do not overwrite user modifications.
+67. Event tests
 
-Deliver a concise baseline report and file-ownership map.
+Cover:
 
-Phase B — Contract and technical plan
+- Group organizer-paid booking.
+- Individual participant payment.
+- Correct identity relationships.
+- Verified seat confirmation.
+- Invalid payment rejection.
+- Duplicate callback.
+- Concurrent capacity limits.
+- Cancellation and approved refund effects.
+- Correct provider/organizer scope.
 
-[Developer 01]: Define backend/domain requirements, API contracts, security rules, data-model assessment, and required migrations.
+68. Frontend tests
 
-[Developer 02]: Map the existing UI, design system, routes, personas, frontend dependencies, and screens requiring integration.
+Cover:
 
-Identify unresolved business decisions and dependencies before implementing dependent functionality.
+- Role navigation.
+- Permission-dependent actions.
+- Transaction listing.
+- Filtering and pagination.
+- Transaction details.
+- Receipts.
+- Subscription access.
+- Refund states.
+- Loading and empty states.
+- Errors and retries.
+- Mobile responsiveness.
+- Accessibility.
+- No fabricated financial values.
+- No false success messages.
+- No unauthorized record exposure.
 
-Phase C — Backend implementation
+69. Regression rules
 
-Owner: [Developer 01].
+Never disable tests simply to get a green build.
 
-Implement the highest-priority verified gaps in a controlled sequence. Add appropriate tests with each change.
+Never misrepresent mocked tests as gateway tests.
 
-Keep payment collection and payout execution disabled.
+Inspect existing build processes before starting competing builds.
 
-Phase D — Frontend implementation
+Do not terminate a running process without authorization.
 
-Owner: [Developer 02].
+For every test command, record the command, exit code, results, failures and skipped tests.
 
-Implement the corresponding interfaces using existing layouts, colors, components, and agreed API contracts.
+---
 
-Do not substitute hard-coded demo data for missing backend endpoints.
+PART XVIII — RECONCILIATION AND OPERATIONAL READINESS
 
-Phase E — Integration and verification
+70. Reconciliation
 
-Integration Lead, with backend work owned by [Developer 01] and frontend work owned by [Developer 02].
+Where the gateway supports it, compare authoritative gateway records with local transactions.
 
-Resolve contract mismatches, verify all relevant personas, execute regression tests, inspect Git diffs, and correct introduced defects.
+Identify:
 
-Phase F — Hardening and delivery
+- Gateway success with missing local fulfillment.
+- Local success with uncertain gateway outcome.
+- Unknown gateway references.
+- Amount mismatches.
+- Currency mismatches.
+- Stale pending attempts.
+- Duplicate gateway events.
+- Refund inconsistencies.
+- Earnings allocation discrepancies.
 
-[Developer 01]: Report backend/security/data changes and verified backend results.
+Do not silently modify balances to force reconciliation.
 
-[Developer 02]: Report frontend/screens/API integration and verified UI results.
+Classify exceptions and use authorized, auditable recovery procedures.
 
-Integration Lead: Produce one consolidated report covering implementation, test evidence, risks, and outstanding work.
+71. Operational visibility
 
-Do not stop after Phase A or B unless a genuine blocker prevents safe implementation. Do not claim all phases are complete unless the evidence supports that claim.
+Provide appropriate monitoring and logs for:
 
-22. PRIORITY ORDER
+- Gateway initiation failures.
+- Callback verification failures.
+- Unknown references.
+- Duplicate callbacks.
+- Stale pending transactions.
+- Fulfillment failures.
+- Receipt failures.
+- Notification failures.
+- Refund discrepancies.
+- Subscription expiry failures.
+- Seat-capacity conflicts.
+- Reconciliation exceptions.
 
-Use this order unless the audit identifies a critical security or architectural dependency that requires another sequence:
+Use correlation IDs.
 
-1. Preserve existing functionality and establish a trustworthy baseline.
-2. Fix critical authorization, ownership, payment-integrity, or financial-data defects.
-3. Establish the backend contract and core transaction/purchase lifecycle.
-4. Integrate existing receipt functionality and subscription/entitlement logic.
-5. Implement missing pricing, refund, earnings, and reporting capabilities.
-6. Build the role-specific dashboards and connect them to real APIs.
-7. Implement events/group bookings and remaining applicable service types.
-8. Complete notifications, reconciliation readiness, and failure recovery.
-9. Run regression tests, accessibility checks, and security hardening.
-10. Document sandbox readiness, open business decisions, and release gates.
+Do not log secrets, authentication tokens or unnecessary personal data.
 
-Within each priority, prefer the smallest complete, testable change that preserves the existing architecture.
+---
 
-23. ACCEPTANCE CRITERIA
+PART XIX — PHASED IMPLEMENTATION
 
-Treat the work as complete only when the relevant applicable criteria have evidence.
+72. Phase 0 — Master document and repository baseline
 
-Pricing and services
+Deliver:
 
-- Platform Admin pricing governance respects permissions.
-- Providers cannot exceed authorized limits.
-- Free services continue to work.
-- Historical purchase terms remain accurate.
-- Prices, duration, inclusions, exclusions, and fees are clear before purchase.
+- Existing document review.
+- Repository baseline.
+- Upgraded "Payment.md".
+- Preserved valid requirements.
+- Identified unresolved decisions.
+- No unnecessary duplicate documentation.
 
-Transactions and entitlements
+Exit gate: The specification is complete and the actual repository state is known.
 
-- Frontend messages cannot independently confirm payment.
-- Failed or pending payments do not improperly grant paid access.
-- Repeated requests do not create duplicate financial effects.
-- Purchases, transactions, and entitlements are linked correctly.
-- Recorded content and other protected resources enforce backend authorization.
+73. Phase 1 — Complete audit and requirement matrix
 
-Subscriptions
+Deliver:
 
-- Approved durations work.
-- Monthly subscriptions last 30 days from activation.
-- Expiry and cancellation are handled correctly.
-- Cancellation does not automatically imply a refund.
-- Access follows the approved policy.
+- Backend map.
+- Frontend map.
+- API map.
+- Database map.
+- Role/permission matrix.
+- Gateway readiness report.
+- Baseline test results.
+- Requirement classifications.
+- Prioritized blockers.
 
-Events and group bookings
+Exit gate: Each requirement has a known status or explicit verification blocker.
 
-- Individual tickets and both group-payment models work where implemented.
-- Capacity limits prevent overselling.
-- Payment, registration, seat assignment, and attendance remain distinct.
-- Cancellations follow the applicable policy.
+74. Phase 2 — Critical security and data-integrity fixes
 
-Earnings and financial reports
+Address verified defects involving:
 
-- Calculations use genuine transactions and approved policies.
-- Provider shares are distinguishable from platform revenue.
-- Historical policy versions are preserved.
-- No hidden fees or unauthorized deductions exist.
-- Missing accounting information is not replaced with invented profit figures.
+- IDOR.
+- Gateway verification.
+- Duplicate payment processing.
+- Incorrect identity relationships.
+- Subscription concurrency.
+- Event seat integrity.
+- Migration conflicts.
+- Financial history.
 
-Receipts and refunds
+Exit gate: Critical risks are fixed and tested, or explicitly blocked with documented evidence and required approval.
 
-- Existing receipt functionality is reused appropriately.
-- Receipts are linked to the correct transactions.
-- Ownership checks prevent unauthorized receipt access.
-- Refunds preserve original history and require appropriate authorization.
-- No live refund is claimed without actual verified processing.
+75. Phase 3 — Payment lifecycle and gateway
 
-Dashboards and security
+Complete the actual order/payment/attempt flow, server-side pricing, verification, idempotency, safe fulfillment and failure handling.
 
-- Each relevant persona sees only authorized information.
-- The Platform Admin has a dedicated financial command center.
-- Providers cannot see other providers' private financial records.
-- Parent access respects verified relationships.
-- Reports and exports enforce permissions.
-- Dashboards use genuine backend data.
-- The frontend uses the existing ELMKUSOMA design system.
+Exit gate: Lifecycle tests pass and gateway limitations are accurately recorded.
 
-Release governance
+76. Phase 4 — Subscriptions and entitlements
 
-- Relevant tests pass, with results recorded.
-- Existing features are not regressed.
-- Changes and migrations are documented.
-- Live gateways, production credentials, actual payment collection, and payouts remain disabled.
-- Sandbox testing is reported honestly and is performed only after authorized provider linking and secure credential configuration.
+Complete applicable subscriptions, access passes, expiry processing, purchase fulfillment and bundles.
 
-24. REQUIRED FINAL REPORT
+Exit gate: Entitlements match verified purchases and subscription periods.
 
-At the end, produce a concise but technically detailed report with the following sections.
+77. Phase 5 — Events, receipts and notifications
 
-A. Executive summary
+Complete event payment integration, booking integrity, receipts and applicable notifications.
 
-What was actually audited, implemented, tested, and verified.
+Exit gate: Payment, booking, receipt and notification behavior is integrated and tested.
 
-B. Initial audit findings
+78. Phase 6 — Unified frontend
 
-A table containing:
+Complete role-aware Payments & Transactions navigation, dashboards, transaction history, details, receipts, subscriptions and applicable financial views.
 
-- Feature/component.
-- Initial status: DONE / PARTIAL / MISSING / BROKEN / NEEDS VERIFICATION.
-- Evidence.
-- Risk or gap.
-- Assigned owner: Developer 01 or Developer 02.
+Exit gate: Every applicable existing role has verified navigation and backend-enforced access.
 
-C. Implementation report
+79. Phase 7 — Earnings and financial governance
 
-For every task:
+Complete applicable earnings, pricing controls, refunds and reconciliation.
 
-- Task ID.
-- Assigned developer.
+Keep unsupported payouts disabled.
+
+Exit gate: Financial figures are consistent and operational states are represented truthfully.
+
+80. Phase 8 — Hardening and regression
+
+Run the relevant backend, frontend, integration, security and migration tests.
+
+Resolve regressions.
+
+Exit gate: Completion claims are supported by current evidence.
+
+81. Phase 9 — Final documentation and handover
+
+Update the single requirements matrix, record completed work and document remaining blockers.
+
+Exit gate: The repository and documentation accurately describe implementation and production readiness.
+
+---
+
+PART XX — REQUIREMENT MATRIX
+
+82. Maintain one authoritative matrix
+
+Use an existing appropriate matrix if one already exists. Otherwise, add the matrix to "Payment.md" or the established project documentation location.
+
+Do not create competing matrices.
+
+Use the following fields:
+
+Field| Required content
+Requirement ID| Stable identifier
+Domain| Payment, UI, security, subscription, event, etc.
+Requirement| Specific expected behavior
+Role| Applicable role(s)
+Navigation| Sidebar/dashboard entry
+Frontend| Actual route/component
+Backend| Actual API/service
+Database| Actual entity/migration
+Permission| Authorization and scope
+Tests| Relevant verification
+Status| Required status classification
+Evidence| Actual result or code location
+Gap| Missing or broken behavior
+Priority| Critical/High/Medium/Low
+Next action| Concrete step
+
+Every material requirement must be traceable.
+
+Do not mark requirements DONE without evidence.
+
+---
+
+PART XXI — FINAL ACCEPTANCE CRITERIA
+
+83. Functional acceptance
+
+Verify applicable:
+
+- Purchase creation.
+- Payment initiation.
+- Gateway verification.
+- Transaction history.
+- Transaction details.
+- Receipts.
+- Subscription activation.
+- Entitlement fulfillment.
+- Renewal and expiry.
+- Individual purchases.
+- Bundles.
+- Event bookings.
+- Group payments.
+- Seat integrity.
+- Parent/guardian scope.
+- Provider/teacher/organizer financial views.
+- Pricing governance.
+- Refund workflow where approved.
+- Reconciliation.
+- Notifications.
+
+84. Security acceptance
+
+Verify:
+
+- Backend authorization.
+- Resource ownership.
+- Provider/institution scope.
+- Parent-child relationships.
+- IDOR protection.
+- Callback authentication.
+- Amount and currency validation.
+- Idempotency.
+- Safe receipt downloads.
+- Export authorization.
+- Refund and payout authorization.
+- Audit logging.
+- Secret protection.
+
+85. Quality acceptance
+
+Verify:
+
+- Backend tests.
+- Frontend type checks.
+- Frontend build.
+- Relevant integration tests.
+- Security tests.
+- Migration tests.
+- Responsive UI.
+- Accessibility.
+- Failure recovery.
+- Documentation consistency.
+
+86. Production-readiness acceptance
+
+Production readiness must be reported separately from code completion.
+
+Do not claim production readiness unless the relevant requirements are actually verified, including:
+
+- Gateway onboarding.
+- Approved pricing policy.
+- Approved refund policy.
+- Required production configuration.
+- Secret management.
+- Reconciliation readiness.
+- Monitoring.
+- Operational recovery.
+- Security verification.
+- Required financial approvals.
+
+---
+
+PART XXII — REQUIRED FINAL REPORT
+
+87. Final report format
+
+Provide:
+
+A. Repository state
+
+- Branch.
+- Starting and final commit where applicable.
+- Changed files.
+- Preserved user changes.
+- Database/migration baseline.
+
+B. Audit findings
+
+- Existing functionality.
+- Missing features.
+- Broken behavior.
+- Security risks.
+- Migration conflicts.
+- Blockers.
+
+C. Implementation
+
+- Actual files changed.
+- Backend changes.
+- Frontend changes.
+- Database changes.
+- API changes.
+- Documentation changes.
+
+D. Role coverage
+
+- Applicable roles.
+- Accessible records.
+- Permitted actions.
+- Navigation.
+- Test evidence.
+
+E. Financial integrity
+
+- Payment lifecycle.
+- Idempotency.
+- Subscriptions.
+- Entitlements.
+- Event bookings.
+- Receipts.
+- Refunds.
+- Earnings.
+- Reconciliation.
+
+F. Security
+
+- Authorization.
+- IDOR tests.
+- Callback verification.
+- Cross-tenant isolation.
+- Remaining risks.
+
+G. Tests
+
+- Actual commands.
+- Exit codes.
+- Test counts.
+- Failures.
+- Skipped tests.
+- Unavailable test infrastructure.
+
+H. Gateway readiness
+
+- Mock status.
+- Sandbox status.
+- Production configuration.
+- Production approval.
+- Live collection.
+- Refund readiness.
+- Payout readiness.
+
+I. Remaining work
+
 - Requirement.
-- Files changed.
-- What changed and why.
-- API/database impact.
-- Security considerations.
-- Verification performed.
-- Status: DONE / PARTIAL / BLOCKED / NOT STARTED.
+- Severity.
+- Evidence.
+- User decision required.
+- Safe next action.
 
-D. Dashboard and persona coverage
+J. Final classification
 
-Report the verified implementation status of:
+- DONE.
+- PARTIAL.
+- MISSING.
+- BROKEN.
+- NEEDS VERIFICATION.
+- N/A.
 
-- Learner/student.
-- Parent/guardian.
-- Teacher/trainer.
-- Host/event organizer.
-- Provider.
-- Provider Admin.
-- Platform Admin.
-- Authorized finance/support roles where applicable.
+Do not claim 100% completion if required behavior remains unverified.
 
-E. API and integration report
+Do not conceal a critical security or financial defect behind a completion percentage.
 
-Document the APIs used or introduced, frontend integration, contract mismatches, and outstanding dependencies.
+---
 
-F. Database and migration report
+PART XXIII — EXECUTION INSTRUCTIONS
 
-List any migration files, schema changes, compatibility considerations, and whether changes were merely proposed or actually applied.
+88. Start correctly
 
-G. Testing evidence
+Begin with Phase 0 and Phase 1.
 
-For every executed command, report the actual command, result, pass/fail counts where available, and any failures. Separate pre-existing failures from newly introduced regressions when evidence allows.
+1. Inspect the existing "Payment.md".
+2. Inspect the actual repository state.
+3. Preserve useful existing requirements.
+4. Replace the old contents with the complete master specification.
+5. Verify that all sections are present.
+6. Audit actual code, database history and tests.
+7. Build the requirement matrix.
+8. Prioritize critical blockers.
+9. Implement only after the relevant contracts and risks are understood.
 
-H. Security and financial-integrity report
+Do not jump straight into large-scale implementation.
 
-Report authorization, IDOR, idempotency, refund, entitlement, receipt, financial calculation, audit logging, and secret-handling verification.
+89. Work incrementally
 
-I. Remaining work and blockers
+For each implementation task:
 
-List every incomplete or unverified requirement, its owner, priority, dependency, and next action.
+1. State the requirement.
+2. Identify existing files and contracts.
+3. State the current defect or gap.
+4. Define the smallest safe change.
+5. Implement the change.
+6. Add or update relevant tests.
+7. Run the targeted tests.
+8. Run relevant regression tests.
+9. Review security and data-integrity implications.
+10. Record evidence.
+11. Update the requirement matrix.
+12. Proceed to the next task.
 
-J. Sandbox and production readiness
+Do not bundle unrelated changes into one opaque patch.
 
-State explicitly:
+90. Completion rule
 
-- Whether a payment provider has been selected.
-- Whether sandbox credentials have been configured.
-- Which sandbox tests were actually run.
-- Whether any live gateway is enabled.
-- Whether real money was collected.
-- Whether payouts were executed.
+The goal is not merely to create a large "Payment.md" or generate code.
 
-The expected current result is that live payment collection and payouts remain disabled.
+The goal is to complete ELMKUSOMA Payments & Transactions through a controlled, verifiable implementation.
 
-K. Final status classification
+Preserve the existing system.
 
-Summarize remaining items as DONE, PARTIAL, MISSING, BROKEN, or NEEDS VERIFICATION.
+Avoid duplicate architecture.
 
-Never report 100% completion unless all claimed requirements have actually been verified. Report real progress rather than a fabricated percentage.
+Protect real financial data.
 
-25. FINAL EXECUTION INSTRUCTION
+Do not activate unsupported real-money operations.
 
-Start now by auditing the actual ELMKUSOMA repository and checking the current Git status. Establish the baseline, assign the work to Developer 01 and Developer 02, define the interface contract, and then implement the highest-priority verified gaps within the ownership boundaries.
+Do not invent policy.
 
-Use maximum practical reasoning and available tooling. Work quickly but carefully. Do not repeatedly ask the user questions that the repository can answer. Resolve technical details independently where safe; document business decisions that genuinely require approval.
+Do not fabricate tests or results.
 
-Do not silently cross developer ownership boundaries. Do not skip tests. Do not invent data. Do not fabricate progress. Do not stop at planning. Do not redesign unrelated parts of ELMKUSOMA.
+Do not split the work between developers.
 
-Deliver the strongest practical, secure, integrated, maintainable implementation that the existing repository and available environment support.
+Use this document as the single master specification and continue until every safely implementable requirement is verified or every remaining blocker is explicitly documented.
 
-The final deliverable must be working code with verification evidence, plus a clear consolidated report—not merely a prompt, mockup, or recommendation list.
-
-
-
-# ADDENDUM: ELMKUSOMA AFFORDABLE PRICING POLICY & STRICT DEVELOPER OWNERSHIP
-
-## 1. PURPOSE AND PRECEDENCE
-
-This addendum extends the original ELMKUSOMA PAYMENT SYSTEM — MASTER AUDIT, IMPLEMENTATION, SECURITY, AND DELIVERY PROMPT.
-
-The original master prompt remains authoritative. Preserve its architecture, audit-first process, security rules, testing requirements, and no-live-payment/no-payout restrictions.
-
-Implement the user-selected affordable TZS pricing catalogue below as configurable policy data. Do not duplicate existing payment modules or rebuild existing functionality.
-
-## 2. STRICT DEVELOPER RESPONSIBILITY BOUNDARIES
-
-### DEVELOPER 01 — BACKEND, DATABASE, PRICING ENGINE & FINANCIAL SECURITY
-
-Developer 01 owns all backend and database implementation responsibilities, including:
-
-- Existing payment-domain audit and backend gap analysis.
-- Pricing and price-policy configuration.
-- Education-level pricing limits and validation.
-- Subscription plans, durations, entitlements, and access enforcement.
-- Bundles, individual purchases, and group-booking business rules.
-- Backend discount approval and validation.
-- Configurable commission policies and financial calculation rules.
-- Gateway-fee policy and authoritative checkout totals.
-- Order and transaction snapshots, idempotency, audit logs, and financial integrity.
-- Existing database migration strategy and backend API contracts.
-- Backend authorization, provider ownership, institution jurisdiction, and IDOR prevention.
-- Backend unit, integration, security, migration, and regression tests.
-- Documentation of API request/response contracts for Developer 02.
-
-Developer 01 MUST NOT independently redesign frontend pages, modify frontend components, or implement Developer 02's UI responsibilities.
-
-Developer 01 must first inspect the existing repository and reuse existing backend components where appropriate. Do not create duplicate pricing, receipt, payment, or entitlement systems.
-
-### DEVELOPER 02 — FRONTEND, PRICING EXPERIENCE & DASHBOARDS
-
-Developer 02 owns all frontend implementation responsibilities, including:
-
-- Existing payment and pricing UI audit.
-- Pricing catalogue and service-price presentation.
-- Display of Primary, Secondary, and Higher Education pricing where applicable.
-- Basic, Plus, and Premium subscription comparisons.
-- Daily, weekly, and monthly access-pass presentation.
-- Bundle, course, module, live-class, replay, event, and eligible certificate-service purchase interfaces.
-- Checkout price breakdown, approved discounts, disclosed applicable fees, and final payable amount.
-- Subscription status, entitlement information, and expiry-date presentation.
-- Provider pricing forms and clear validation errors returned by the backend.
-- Platform Admin pricing-policy and approval interfaces, using the existing authorization and dashboard architecture.
-- Existing user, provider, and Platform Admin payment-related dashboard integration.
-- Frontend API integration using Developer 01's documented contracts.
-- Frontend type checking, build verification, accessibility, responsive layout, and regression tests.
-
-Developer 02 MUST NOT independently implement or modify backend financial calculations, database migrations, commission logic, authoritative pricing rules, payment verification, or server-side authorization.
-
-Developer 02 must not calculate the authoritative final payment amount in the frontend. The backend remains the source of truth.
-
-## 3. SHARED WORK AND NON-INTERFERENCE RULES
-
-1. Each developer must audit the current working tree and existing changes before editing.
-2. Neither developer may discard, reset, overwrite, or reformat unrelated work belonging to the other developer.
-3. Do not edit files owned by the other developer unless an explicit, documented coordination decision authorizes a specific change.
-4. Do not independently change shared API contracts, database schemas, generated types, or common configuration without coordination.
-5. Developer 01 owns backend API implementation and its contract. Developer 02 consumes that contract.
-6. Developer 02 must report missing API capabilities instead of implementing a frontend-only substitute.
-7. Developer 01 must communicate API changes and required data fields before Developer 02 integrates them.
-8. If a shared file or responsibility cannot be cleanly separated, stop and document the dependency before editing it.
-9. Use the repository's existing branches and integration process. Do not create conflicting parallel implementations of the same feature.
-10. Before merging or integrating work, inspect the combined diff and run relevant regression tests.
-11. Neither developer may claim completion based only on code being written. Verification evidence is mandatory.
-12. The original project architecture, role hierarchy, provider boundaries, receipt module, and all existing functionality must be preserved.
-
-## 4. PRICING POLICY — USER-SELECTED TZS VALUES
-
-### Access passes
-
-- Daily Access: TZS 500 per rolling 24 hours.
-- Weekly Access: TZS 1,000 per rolling 7 days.
-- Monthly Access: TZS 5,000 per rolling 30 days.
-
-### Subscription tiers
-
-- Free: TZS 0.
-- Basic Access: TZS 3,000 per 30 days.
-- Plus Access: TZS 5,000 per 30 days.
-- Premium Access: TZS 7,000 per 30 days.
-
-Each paid tier must have explicitly configured benefits and eligible catalogue items. Do not assume every course, provider, live class, replay, event, or certificate service is included.
-
-### Individual service prices
-
-- Learning resources, notes, and revision materials: TZS 500.
-- Standard online course: TZS 2,000.
-- Academic or vocational module: TZS 1,000.
-- Live online class/session: TZS 500.
-- Recorded lesson/replay: TZS 1,000.
-- Eligible certificate reprint/duplicate: TZS 5,000.
-- Seminar, workshop, or conference ticket: TZS 2,000.
-- Paid community, NGO, CBO, religious, or corporate event: TZS 200 per participant ticket, subject to the applicable event configuration.
-
-Free services must remain free where explicitly designated.
-
-Payment must never grant academic eligibility, assessment results, or an unearned certificate.
-
-### Education-level price bands
-
-- Primary: TZS 500–3,000.
-- Secondary: TZS 1,000–5,000.
-- Higher education, colleges, universities, and vocational training: TZS 1,000–15,000.
-
-Apply these bands to eligible education products and services, not indiscriminately to administrative certificate services or event categories governed by separate pricing policies.
-
-Certificate reprints/duplicates must use their separate administrative pricing policy.
-
-Validate catalogue prices against the applicable approved policy. Do not silently clamp or rewrite a price when limits conflict.
-
-### Proposed bundles
-
-- 5 eligible learning resources: TZS 5,000.
-- 10 eligible learning resources: TZS 8,000.
-- 4 eligible live classes: TZS 10,000.
-- 3 eligible courses: TZS 35,000.
-- Group booking of 5 seats: TZS 45,000.
-- Group booking of 10 seats: TZS 85,000.
-
-These bundle amounts remain proposed values until formally approved.
-
-## 5. PRICING APPROVAL STATUS
-
-The values above represent user-selected pricing proposals for configuration and testing. They must not be falsely reported as formally approved production prices.
-
-Platform Admin is responsible for authorized approval and activation of platform-wide pricing, education-level limits, provider pricing limits, discount policies, exceptions, and commission policies.
-
-Store prices and policy versions as configurable data rather than scattering hardcoded amounts throughout the codebase.
-
-Preserve historical prices and policy snapshots for completed orders, receipts, and transactions.
-
-## 6. COMMISSION, GATEWAY FEES & DISCOUNTS
-
-- Commission must be configurable under an authorized policy.
-- Do not invent a universal commission percentage.
-- Gateway fees must be disclosed before checkout confirmation.
-- Do not invent gateway fees, tax rates, provider shares, or settlement rules.
-- Discounts require Platform Admin approval or explicitly authorized rules.
-- The backend must calculate and validate authoritative prices, discounts, fees, and final totals.
-- The frontend must display backend-calculated amounts and validation results.
-- Historical transactions must retain their applicable financial-policy snapshots.
-- Do not claim actual refunds or settlements without verified evidence.
-
-## 7. PAYMENT AND PAYOUT RESTRICTIONS
-
-This addendum does not authorize live payment collection, production gateway credentials, actual provider payouts, or live gateway activation.
-
-Implement pricing, payment-domain behavior, and acceptance tests in the existing safe/non-production mode.
-
-Gateway sandbox integration, credential configuration, reconciliation, and production enablement remain separate phases requiring explicit authorization.
-
-## 8. ACCEPTANCE AND INTEGRATION GATES
-
-### Developer 01 completion gate
-
-Developer 01 must provide:
-
-- Audit findings and baseline.
-- Backend implementation and migration evidence.
-- Documented API contracts for Developer 02.
-- Pricing validation, authorization, idempotency, and financial-integrity test results.
-- Confirmation that live payments and actual payouts remain disabled.
-
-### Developer 02 completion gate
-
-Developer 02 must provide:
-
-- Frontend audit findings.
-- Pricing UI and dashboard integration evidence.
-- Confirmation that frontend values come from backend APIs where applicable.
-- Frontend type-check, build, accessibility, and regression test results.
-- Confirmation that no frontend-only payment-success or entitlement mechanism was introduced.
-
-### Final integration gate
-
-Before declaring completion:
-
-1. Review both developers' diffs and ensure responsibility boundaries were respected.
-2. Verify that API contracts and frontend integrations agree.
-3. Run database migration validation and relevant backend and frontend test suites.
-4. Verify education-level price limits, subscription durations, discount approval, provider isolation, and checkout disclosures.
-5. Confirm no existing receipt, payment, catalogue, or entitlement feature was duplicated or broken.
-6. Report DONE, PARTIAL, MISSING, BROKEN, and NEEDS VERIFICATION using actual evidence.
-7. Explicitly confirm that live payment collection and actual provider payouts remain disabled.
-
-No developer may claim full completion without evidence from the actual repository and test results.
-
-
-
-# FINAL PRECEDENCE OVERRIDES — AUTHORITATIVE INSTRUCTIONS
-
-These rules resolve any conflict between the original master prompt and its pricing/developer-ownership addendum.
-
-## 1. AUTHORITATIVE DEVELOPER OWNERSHIP
-
-The original Section 4 and the addendum's strict ownership rules must be read together.
-
-- **[Developer 01]** exclusively owns backend source, backend tests, database entities, repositories, migrations, backend security, financial business logic, pricing validation, and backend API contracts.
-- **[Developer 02]** exclusively owns frontend source, frontend tests, layouts, routes, UI components, styles, dashboard screens, and frontend API integration.
-- Neither developer may modify files assigned to the other without explicit, documented coordination.
-- Shared contracts must be coordinated before integration. If independent agents or worktrees are unavailable, execute the workstreams sequentially.
-- Every task, file-change report, test result, blocker, and completion claim must identify its assigned developer.
-- The integration lead must inspect the combined diff and verify compatibility without taking unauthorized ownership of either workstream.
-
-## 2. FINAL USER-SELECTED PRICING CONFIGURATION
-
-Use the latest user-selected prices in the pricing addendum instead of any conflicting older proposed amounts:
-
-- Daily Access: TZS 500 per rolling 24 hours.
-- Weekly Access: TZS 1,000 per rolling 7 days.
-- Monthly Access: TZS 5,000 per rolling 30 days.
-- Basic Access: TZS 3,000 per 30 days.
-- Plus Access: TZS 5,000 per 30 days.
-- Premium Access: TZS 7,000 per 30 days.
-- Learning resources, notes, and revision materials: TZS 500.
-- Standard online course: TZS 2,000.
-- Academic or vocational module: TZS 1,000.
-- Live online class/session: TZS 500.
-- Recorded lesson/replay: TZS 1,000.
-- Eligible certificate reprint/duplicate: TZS 5,000.
-- Seminar, workshop, or conference ticket: TZS 2,000.
-- Paid community, NGO, CBO, religious, or corporate event: TZS 200 per participant ticket.
-
-Education-level pricing bands:
-
-- Primary: TZS 500–3,000.
-- Secondary: TZS 1,000–5,000.
-- Higher education, colleges, universities, and vocational training: TZS 1,000–15,000.
-
-Proposed bundles:
-
-- 5 eligible resources: TZS 5,000.
-- 10 eligible resources: TZS 8,000.
-- 4 eligible live classes: TZS 10,000.
-- 3 eligible courses: TZS 35,000.
-- 5-seat group booking: TZS 45,000.
-- 10-seat group booking: TZS 85,000.
-
-These values supersede conflicting older proposed prices. Do not create duplicate pricing entries when equivalent catalogue records already exist.
-
-## 3. PRICING APPROVAL STATUS
-
-The prices above are the user's selected proposed pricing configuration. They are not automatically formally approved or active production prices.
-
-Implement them as configurable, versioned draft policy data where the existing architecture supports it. Activation requires the appropriate authorized approval.
-
-Do not invent an approval record, approver, or production status.
-
-## 4. EDUCATION-LEVEL PRICE VALIDATION
-
-Apply education-level bands only to applicable education products and services. Use separate policy rules for certificate administration and other service categories where appropriate.
-
-If a proposed service price conflicts with its applicable education-level limit, report the conflict and require an authorized policy decision. Do not silently change the user's price or bypass an approved limit.
-
-## 5. DAILY ACCESS DECISION RESOLVED
-
-The daily access model has been decided: it uses a rolling 24-hour duration from verified entitlement activation.
-
-Do not ask the user to choose between rolling 24 hours and a calendar day again.
-
-Weekly access uses a rolling 7-day duration. Monthly access and the Basic, Plus, and Premium subscriptions use exactly 30 days from verified activation.
-
-## 6. NON-NEGOTIABLE RELEASE BOUNDARY
-
-All original security, audit, testing, migration, and delivery requirements remain in force.
-
-Pricing implementation does not authorize live payment collection, production gateway credentials, actual money transfers, or provider payouts.
-
-Do not activate live payments or payouts during this task. Keep unresolved commission rates, gateway fee allocation, refund rules, taxes, subscription benefits, and other unapproved business decisions configurable or explicitly blocked until authorized.
-
-## 7. FINAL EXECUTION RULE
-
-Audit the actual repository first, preserve existing changes, assign every task to Developer 01 or Developer 02, implement verified gaps within ownership boundaries, and test the integrated result.
-
-Do not replace the original master prompt with this override. Apply this section only to resolve conflicts and clarify the latest user decisions.
-
-The final report must distinguish verified implementation from proposals, incomplete work, blockers, and untested behavior.
+END OF MASTER IMPLEMENTATION PROMPT
