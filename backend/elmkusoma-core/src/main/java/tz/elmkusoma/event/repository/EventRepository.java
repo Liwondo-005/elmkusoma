@@ -1,6 +1,8 @@
 package tz.elmkusoma.event.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -10,10 +12,29 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface EventRepository extends JpaRepository<Event, UUID> {
+
+    /**
+     * Row-locked read used by registration.
+     *
+     * <p>Seat capacity is a count-then-insert: the available seats are read and the
+     * registration is written a moment later. Without a lock, two people registering for the
+     * last seat both read "1 of 1 free" and both are inserted, so the event is oversold - which
+     * is a lost sale at best and a broken promise to every attendee at worst. Taking the row
+     * lock first makes the second registration observe the first one's write and refuse,
+     * which is what "prevent event overselling" actually requires.</p>
+     *
+     * <p>Same convention as {@code LiveClassRepository.findByIdForUpdate} and
+     * {@code PaymentRepository.findByIdForUpdate}; the event row is the only lock taken, so
+     * registration and cancellation cannot deadlock against each other.</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM Event e WHERE e.id = :id")
+    Optional<Event> findByIdForUpdate(@Param("id") UUID id);
 
     List<Event> findByInstitutionIdAndIsDeletedFalseOrderByStartsAtAsc(UUID institutionId);
 

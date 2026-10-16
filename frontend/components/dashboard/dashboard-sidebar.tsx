@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play, KeyRound, Wrench, UserCog } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Receipt, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play, KeyRound, Wrench, UserCog } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
@@ -292,6 +292,7 @@ const universityNavSections: NavSection[] = [
       { label: "Professional Dev", labelKey: "professionalDev", href: "/dashboard/learner/professional-dev", icon: TrendingUp },
       { label: "Career World", labelKey: "careerWorld", href: "/dashboard/learner/career", icon: Target },
       { label: "Certificates", labelKey: "certificates", href: "/dashboard/learner/certificates", icon: Award },
+    { label: "My Payments", labelKey: "payments", href: "/dashboard/learner/payments", icon: Receipt },
     ],
   },
   {
@@ -504,7 +505,7 @@ type AdminNavGroup = {
   items: AdminNavItem[]
 }
 
-// §019 — admin workspace navigation is grouped and collapsible so the sidebar
+// Â§019 â€” admin workspace navigation is grouped and collapsible so the sidebar
 // stays short. Every href resolves to a route that actually exists.
 const adminNavGroups: AdminNavGroup[] = [
   {
@@ -575,7 +576,7 @@ const adminNavGroups: AdminNavGroup[] = [
   },
 ]
 
-// Platform workspace entry — platform admins only (filtered by role below).
+// Platform workspace entry â€” platform admins only (filtered by role below).
 const platformNavGroup: AdminNavGroup = {
   id: "platform",
   group: "PLATFORM",
@@ -602,7 +603,7 @@ function getStudentNavFlat(user: { learningLevel?: string | null } | null) {
   return []
 }
 
-// Account links shown to authority roles on the shared /dashboard pages —
+// Account links shown to authority roles on the shared /dashboard pages â€”
 // mirrors the account group already present in AuthoritySidebar and
 // RegionalAdminSidebar (Profile/Settings stay reachable from their shells).
 const authorityAccountNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard }> = [
@@ -628,7 +629,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isParent = user?.role === "Parent"
   const isLearner = user?.role === "Other Learner"
   // Education-authority roles must never fall through to the student nav on
-  // the shared /dashboard pages (Profile/Settings/Notifications) — they get
+  // the shared /dashboard pages (Profile/Settings/Notifications) â€” they get
   // their own workspace links below.
   const isAuthority =
     user?.role === "National Admin" || user?.role === "Regional Admin" || user?.role === "District Admin"
@@ -641,7 +642,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [badges, setBadges] = useState<Record<string, number>>({})
 
   const fetchBadges = useCallback(async () => {
-    // Admin workspaces render no badged learner items — skip student-only
+    // Admin workspaces render no badged learner items â€” skip student-only
     // badge polling (previously fired student endpoints with an admin token).
     // Provider workspaces likewise render no learner badges, and authority
     // workspaces render no learner items either (their 403s were polluting
@@ -910,8 +911,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           ))
         ) : isProvider ? (
-          // Provider workspace nav — provider roles never render learner or
-          // institution-admin items (spec §10 workspace model).
+          // Provider workspace nav â€” provider roles never render learner or
+          // institution-admin items (spec Â§10 workspace model).
           providerNavSections.map((section, si) => (
             <div key={section.group}>
               {si > 0 && <div className="my-2 border-t border-border" />}
@@ -922,8 +923,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           ))
         ) : isAdmin ? (
-          // Admin workspaces get administration nav only — learner/secondary
-          // items must never render for admin roles (spec §10 workspace model).
+          // Admin workspaces get administration nav only â€” learner/secondary
+          // items must never render for admin roles (spec Â§10 workspace model).
           <div>
             {renderAdminGroups(
               user?.role === "Admin" ? [platformNavGroup, ...adminNavGroups] : adminNavGroups,
@@ -931,9 +932,9 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ) : isAuthority ? (
           // Education-authority roles on shared /dashboard pages (Profile,
-          // Settings, Notifications) get their own workspace nav — reusing
-          // the exact section data of their shell — never the student
-          // fall-through (role-specific navigation, spec §10 workspace model).
+          // Settings, Notifications) get their own workspace nav â€” reusing
+          // the exact section data of their shell â€” never the student
+          // fall-through (role-specific navigation, spec Â§10 workspace model).
           <div>
             {isRegionalAuthority
               ? regionalNavSections.map((section, si) => (
@@ -976,7 +977,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ) : isParent ? (
           // Parent workspace nav (parentNav was previously defined but never
-          // rendered — parents fell through the chain to an empty sidebar).
+          // rendered â€” parents fell through the chain to an empty sidebar).
           renderNavItems(parentNav)
         ) : isPrimary && !isParent ? (
           renderPrimarySections(primaryNavSections)

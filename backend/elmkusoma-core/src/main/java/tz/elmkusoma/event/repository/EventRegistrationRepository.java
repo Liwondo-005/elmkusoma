@@ -27,6 +27,25 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
 
     long countByEventIdAndStatusAndIsDeletedFalse(UUID eventId, String status);
 
+    /**
+     * Seats actually held, summed across registrations.
+     *
+     * <p>Capacity is consumed by the SUM of seats, not by a row count. An organiser booking five
+     * seats in one registration occupies exactly the same five seats as five separate
+     * registrations, and a booking that asked for zero would otherwise hold a place without
+     * consuming anything - which is what the positive-seats constraint in V173 exists to stop.</p>
+     *
+     * <p>Only REGISTERED and ATTENDED count. A registration awaiting payment holds nothing: a
+     * queued prompt must not take a seat away from someone who has actually paid.</p>
+     */
+    @Query("SELECT COALESCE(SUM(er.seats), 0) FROM EventRegistration er " +
+           "WHERE er.eventId = :eventId AND er.isDeleted = false " +
+           "AND er.status IN ('REGISTERED', 'ATTENDED')")
+    long sumHeldSeats(@Param("eventId") UUID eventId);
+
+    /** Registrations awaiting payment for this event, oldest first, for the expiry sweep. */
+    List<EventRegistration> findByEventIdAndStatusAndIsDeletedFalseOrderByRegisteredAtAsc(
+            UUID eventId, String status);
     @Query("SELECT er FROM EventRegistration er WHERE er.userId = :userId AND er.isDeleted = false " +
            "AND er.status IN ('REGISTERED', 'ATTENDED') " +
            "ORDER BY er.registeredAt DESC")

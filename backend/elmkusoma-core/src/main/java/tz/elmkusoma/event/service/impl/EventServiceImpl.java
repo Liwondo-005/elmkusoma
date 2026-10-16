@@ -673,7 +673,13 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventRegistrationResponse registerForEvent(UUID eventId, UUID userId) {
-        Event event = requireEvent(eventId);
+        // Locked read. Seat capacity is a count-then-insert, so without serialising here two
+        // people can both observe the last seat as free and both be registered, overselling the
+        // event. The lock is released on commit, so the loser of the race reads the winner's
+        // count and is refused by assertCapacityAvailable instead.
+        Event event = eventRepository.findByIdForUpdate(eventId)
+                .filter(e -> !Boolean.TRUE.equals(e.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Event", "id", eventId));
 
         EventStatus status = currentStatus(event);
         if (REGISTRATION_BLOCKED_STATUSES.contains(status)) {
@@ -766,14 +772,30 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    /** Â§69: rejects registration when at capacity; keeps currentRegistrations in sync. */
+    /**
+     * Refuses a booking that would take more seats than the event has left.
+     *
+     * <p>Counts held SEATS rather than registrations, so an organiser buying five places in one
+     * booking consumes five places rather than one. A registration awaiting payment holds
+     * nothing, so a queued prompt cannot take a seat from someone who has actually paid.</p>
+     *
+     * <p>The caller must already hold the event row lock; this is the check, not the
+     * serialisation.</p>
+     */
     private void assertCapacityAvailable(Event event) {
+        assertCapacityAvailable(event, 1);
+    }
+
+    private void assertCapacityAvailable(Event event, int seatsRequested) {
         if (event.getMaxParticipants() == null) {
             return;
         }
-        long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(event.getId(), "REGISTERED");
-        if (registeredCount >= event.getMaxParticipants()) {
-            throw new IllegalStateException("This event is full - no seats remaining");
+        long held = registrationRepository.sumHeldSeats(event.getId());
+        if (held + seatsRequested > event.getMaxParticipants()) {
+            long remaining = Math.max(0, event.getMaxParticipants() - held);
+            throw new IllegalStateException(seatsRequested > remaining
+                    ? "This event has only " + remaining + " seat(s) remaining"
+                    : "This event is full - no seats remaining");
         }
     }
 
@@ -786,13 +808,13 @@ public class EventServiceImpl implements EventService {
         if (event.getMaxParticipants() == null) {
             return;
         }
-        long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(event.getId(), "REGISTERED");
-        event.setCurrentRegistrations((int) registeredCount);
-        if (registeredCount >= event.getMaxParticipants()) {
+        long heldSeats = registrationRepository.sumHeldSeats(event.getId());
+        event.setCurrentRegistrations((int) heldSeats);
+        if (heldSeats >= event.getMaxParticipants()) {
             EventStatus status = currentStatus(event);
             if (status.canTransitionTo(EventStatus.FULL)) {
                 applyStatus(event, EventStatus.FULL);
-                log.info("Event {} marked FULL at capacity {}/{}", event.getId(), registeredCount, event.getMaxParticipants());
+                log.info("Event {} marked FULL at capacity {}/{}", event.getId(), heldSeats, event.getMaxParticipants());
             }
         }
         eventRepository.save(event);

@@ -3050,6 +3050,29 @@
     "kiswahili": "Kiswahili"
   },
   "learner": {
+    "payments": {
+      "title": "Malipo Yangu",
+      "subtitle": "Ununzuri wako, staketi na ufikiaji ulio wa sasa.",
+      "loadFailed": "Hatukuweza kupakia malipo yako. Tafuta jaribu tena.",
+      "defaultLearnerName": "Mwanafunzi",
+      "accessTitle": "Ufikiaji wangu",
+      "active": "Hai",
+      "expires": "Inaisha",
+      "noExpiry": "Haina tarehe ya kumaliza",
+      "expiredTitle": "Ufikiaji {count} umeisha",
+      "expiredOn": "Ilimalizika",
+      "revoked": "Imebatilishwa",
+      "noAccess": "Hakuna ufikiaji hai",
+      "noAccessDescription": "Ununzuri ukithibitishwa, ufikiaji wako utaonekana hapa kiotomatiki.",
+      "historyTitle": "Historia ya malipo",
+      "noPayments": "Hakuna malipo bado",
+      "noPaymentsDescription": "Malipo unayofanya, na yale mzazi anayofanya kwa ajili yako, yataonekana hapa.",
+      "caption": "Historia yako mwenyewe ya malipo",
+      "service": "Huduma",
+      "status": "Hali",
+      "amount": "Kiasi",
+      "date": "Tarehe"
+    },
     "myLearningWorld": "Ulimwengu Wangu wa Kujifunza",
     "welcomeBack": "Karibu Tena",
     "whatNext": "Nini Kifuate?",
@@ -5859,12 +5882,29 @@
       "loading": "Inapakia kumbukumbu za fedha",
       "loadFailed": "Hatukuweza kupakia kumbukumbu za fedha. Angalia muunganisho wako na jaribu tena.",
       "retry": "Jaribu tena",
-      "tabs": {
-        "payments": "Malipo",
-        "entitlements": "Ufikiaji uliotolewa",
-        "exceptions": "Makosa",
-        "catalogue": "Bei za huduma"
-      },
+"tabs": {
+      "payments": "Malipo",
+      "transactions": "Miamala",
+      "entitlements": "Ufikiaji uliotolewa",
+      "exceptions": "Makosa",
+      "catalogue": "Bei za huduma"
+    },
+    "transactions": {
+      "reference": "Namba ya staketi, kumbukumbu ya mfumo wa malipo, au ID ya malipo",
+      "searchPlaceholder": "mfano: RCPT-2026-ABC123 au kumbukumbu ya Stakaba",
+      "export": "Hamisha CSV",
+      "receipt": "Staketi",
+      "service": "Huduma",
+      "status": "Hali",
+      "amount": "Kiasi",
+      "refunded": "Imerejeshwa",
+      "commission": "Kampuni",
+      "paidAt": "Imelipwa",
+      "empty": "Hakuna miamala iliyolingana na vichujio hivi.",
+      "caption": "Matokeo ya utafutaji wa miamala kwa mfano wote",
+      "loadFailed": "Hatukuweza kupakia miamala. Angalia muunganisho wako na jaribu tena.",
+      "noApprovedRate": "Hakuna kiwango kilichoidhinishwa"
+    },
       "counts": {
         "payments": "Kumbukumbu za malipo",
         "entitlements": "Ufikiaji uliotolewa",
