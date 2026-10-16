@@ -770,6 +770,39 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * V173 makes a paid event seat reconcilable against the ledger.
+     *
+     * <p>The point of the migration is not the columns themselves but the constraint. Without a
+     * positive-seats check a group booking could ask for zero places, be recorded as a
+     * registration, and consume no capacity while still occupying a row - which is how an event
+     * ends up overbooked by a booking that appears to take nothing.</p>
+     */
+    @Test
+    void eventMonetisationColumns_AreDeclaredInMigrations() throws IOException {
+        String sql = readMigration("V173__event_monetisation.sql");
+
+        assertTrue(sql.contains("ticket_price") && sql.contains("ticket_currency"),
+                "events must carry a seat price and its currency, otherwise a paid event is "
+                        + "indistinguishable from a free one and cannot be reconciled");
+        assertTrue(sql.contains("payment_id") && sql.contains("amount_paid"),
+                "a registration must link to the payment that paid for the seat and snapshot "
+                        + "what was actually taken");
+        assertTrue(sql.contains("seats"),
+                "capacity must be consumable in units larger than one registration, which is what "
+                        + "a group booking is");
+
+        // A booking that consumes no seats must not be representable.
+        assertTrue(sql.contains("chk_event_registration_seats_positive")
+                        && sql.contains("CHECK (seats > 0)"),
+                "a zero or negative seat count would hold a place without consuming capacity");
+
+        // Additive only: applying over live data must not be able to lose a registration.
+        assertFalse(sql.matches("(?s).*(DROP COLUMN|ALTER COLUMN|RENAME TO|TRUNCATE).*"),
+                "V173 must be purely additive; an existing registration is real attendance data");
+        assertTrue(sql.contains("DEFAULT 1"),
+                "every existing registration keeps its current meaning of one seat");
+    }
+    /**
      * V157 adds the publication/access columns that make a live class publicly discoverable.
      *
      * <p>The same reasoning as the news assertion applies, and it matters more here: the test
