@@ -20,11 +20,35 @@ import java.util.UUID;
 @SuperBuilder
 public class Payment extends BaseEntity {
 
-    @Column(name = "parent_id", nullable = false)
+    /**
+     * The parent account that pays, when a parent really is the payer.
+     *
+     * <p>Nullable since V178. It was NOT NULL and was being populated with the attendee's user id
+     * whenever no parent was involved, which made every payer-scoped report group the payment under
+     * a parent that does not exist. A staff member buying their own ticket has no parent account at
+     * all, and refusing to record that purchase was the wrong trade. Use {@link #purchaserId} for
+     * "who paid".
+     */
+    @Column(name = "parent_id")
     private UUID parentId;
 
-    @Column(name = "student_id", nullable = false)
+    /** The learner the access is for, when the purchase is for a learner. Nullable since V178. */
+    @Column(name = "student_id")
     private UUID studentId;
+
+    /**
+     * Who actually paid, regardless of whose account or whose access the payment relates to.
+     *
+     * <p>Populated since V178 and the column reports, refunds and reconciliation should group by.
+     * Never write a parent or student id here: this holds an id in the space named by
+     * {@link #purchaserType}.
+     */
+    @Column(name = "purchaser_id")
+    private UUID purchaserId;
+
+    /** Which identifier space {@link #purchaserId} belongs to: USER, PARENT or INSTITUTION. */
+    @Column(name = "purchaser_type", length = 32)
+    private String purchaserType;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;

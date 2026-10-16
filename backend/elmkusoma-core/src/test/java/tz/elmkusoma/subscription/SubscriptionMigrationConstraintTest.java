@@ -128,8 +128,8 @@ Flyway flyway = Flyway.configure()
                         + "ORDER BY installed_rank DESC LIMIT 1");
              ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "the chain must have recorded something");
-                assertEquals("177", rs.getString(1),
-                        "the chain must reach V177, not stop earlier or skip it");
+                assertEquals("178", rs.getString(1),
+                        "the chain must reach V178, not stop earlier or skip it");
             }
     }
 

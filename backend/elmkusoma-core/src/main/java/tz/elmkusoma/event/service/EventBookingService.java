@@ -10,15 +10,22 @@ import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.parent.domain.Parent;
+import tz.elmkusoma.parent.domain.ParentStudentLink;
 import tz.elmkusoma.parent.domain.Payment;
+import tz.elmkusoma.parent.repository.ParentRepository;
+import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
 import tz.elmkusoma.parent.repository.PaymentRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,6 +52,37 @@ public class EventBookingService {
     /** Service type recorded against a ticket payment. */
     public static final String SERVICE_TYPE = "EVENT_TICKET";
 
+    /** Recorded in {@code Payment.purchaserType} when the attendee pays for themselves. */
+    public static final String PURCHASER_TYPE_USER = "USER";
+
+    /**
+     * The parent who pays for this attendee, or {@code null} when nobody is linked.
+     *
+     * <p>A missing link is not an error. A teacher or staff member buying their own ticket is a
+     * paying attendee with no guardian, and refusing the sale - or inventing a payer - would be
+     * worse than recording the purchase honestly. The payment records the attendee as the
+     * purchaser, and the absence of a parent simply stays absent.
+     *
+     * <p>Resolved through {@code parent_student_links}, the only relationship that authorises a
+     * parent to act for a child, and never inferred from a matching id. The primary guardian wins;
+     * with several links and no primary the first is chosen, so the same payer is picked every
+     * time for the same attendee.
+     */
+    private Parent resolvePayingParent(UUID studentId) {
+        List<ParentStudentLink> links = parentStudentLinkRepository.findAllByStudentId(studentId);
+        if (links.isEmpty()) {
+            return null;
+        }
+        UUID parentId = links.stream()
+                .filter(l -> Boolean.TRUE.equals(l.getIsPrimary()))
+                .findFirst()
+                .orElse(links.get(0))
+                .getParentId();
+        // Resolved through the repository rather than the link's lazy association: parent_id is
+        // the authoritative value and this avoids depending on a proxy being initialised.
+        return parentRepository.findById(parentId).orElse(null);
+    }
+
     // Mirrors EventServiceImpl's sets so both registration paths agree on what "open" means.
     private static final Set<EventStatus> REGISTRATION_OPEN_STATUSES =
             EnumSet.of(EventStatus.PUBLISHED, EventStatus.REGISTRATION_OPEN);
@@ -56,6 +94,9 @@ public class EventBookingService {
     private final EventRegistrationRepository registrationRepository;
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
+    private final ParentStudentLinkRepository parentStudentLinkRepository;
+    private final ParentRepository parentRepository;
 
     /** What a booking attempt produced. */
     public record Booking(UUID eventId,
@@ -113,6 +154,12 @@ public class EventBookingService {
         BigDecimal unit = event.getTicketPrice();
         BigDecimal total = unit.multiply(BigDecimal.valueOf(seats));
 
+        // Resolved where they genuinely exist, and tolerated as absent where they do not. Neither
+        // lookup is an authorisation decision: access is already decided by assertEligibleToBook,
+        // and the payer of record is the attendee themselves, recorded on the payment above.
+        Student attendee = studentRepository.findByUserIdAndIsDeletedFalse(attendeeUserId).orElse(null);
+        Parent payingParent = attendee == null ? null : resolvePayingParent(attendee.getId());
+
         // Seats are NOT taken yet. Taking them now would let an abandoned prompt hold a place
         // away from someone who has paid; they are taken in confirmSeat once collection lands.
         EventRegistration registration = EventRegistration.builder()
@@ -127,8 +174,17 @@ public class EventBookingService {
         registration = registrationRepository.saveAndFlush(registration);
 
         Payment payment = Payment.builder()
-                .parentId(attendeeUserId)
-                .studentId(attendeeUserId)
+                // Who paid is recorded explicitly, in its own identifier space. Previously the
+                // attendee's user id was written into parent_id and student_id, neither of which
+                // is a users.id reference, so payer-scoped reporting, refunds and the parent inbox
+                // could never see the money an event collected.
+                .purchaserId(attendeeUserId)
+                .purchaserType(PURCHASER_TYPE_USER)
+                // Populated only when they are true. A staff member or teacher buying their own
+                // ticket has no parent account and no learner record, and inventing either would
+                // attach the payment to a person who does not exist.
+                .parentId(payingParent == null ? null : payingParent.getId())
+                .studentId(attendee == null ? null : attendee.getId())
                 .serviceType(SERVICE_TYPE)
                 .serviceId(eventId)
                 .amount(total)
