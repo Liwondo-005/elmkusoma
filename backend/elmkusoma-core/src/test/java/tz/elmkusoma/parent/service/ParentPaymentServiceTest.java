@@ -40,6 +40,8 @@ class ParentPaymentServiceTest {
     @Mock private tz.elmkusoma.finance.service.ReconciliationService reconciliationService;
     @Mock private RefundService refundService;
     @Mock private tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
+    @Mock private tz.elmkusoma.event.service.EventBookingService eventBookingService;
+    @Mock private tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
 
     @InjectMocks
     private ParentPaymentService paymentService;
@@ -251,6 +253,50 @@ class ParentPaymentServiceTest {
 
         assertEquals("COMPLETED", result.getStatus());
         verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void verifyPayment_handsOverTheEventSeatTheTicketPaidFor() {
+        // confirmSeat had no caller anywhere in main, so a paid booking collected the money and
+        // never granted the place. The verified, persisted payment is the authority for the seat,
+        // so verification must drive the handover.
+        Payment pending = buildPayment("PENDING", new BigDecimal("5000"));
+        pending.setServiceType(tz.elmkusoma.event.service.EventBookingService.SERVICE_TYPE);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), anyString(), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(anyString(), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("5000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        var registration = new tz.elmkusoma.event.domain.EventRegistration();
+        registration.setId(UUID.randomUUID());
+        when(eventRegistrationRepository.findByPaymentIdAndIsDeletedFalse(eq(PAYMENT_ID)))
+                .thenReturn(Optional.of(registration));
+
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-ticket", UUID.randomUUID());
+
+        assertEquals("COMPLETED", result.getStatus());
+        verify(eventBookingService).confirmSeat(registration.getId());
+    }
+
+    @Test
+    void verifyPayment_doesNotTouchSeatsForANonEventPayment() {
+        Payment pending = buildPayment("PENDING", new BigDecimal("100000"));
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("TUITION"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("TUITION"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("100000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        paymentService.verifyPayment(PAYMENT_ID, "ref-tui", UUID.randomUUID());
+
+        verify(eventBookingService, never()).confirmSeat(any());
     }
 
     private Payment subscriptionPayment(String status) {

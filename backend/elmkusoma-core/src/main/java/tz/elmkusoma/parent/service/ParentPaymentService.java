@@ -43,6 +43,8 @@ public class ParentPaymentService {
     private final tz.elmkusoma.finance.service.ReconciliationService reconciliationService;
     private final RefundService refundService;
     private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
+    private final tz.elmkusoma.event.service.EventBookingService eventBookingService;
+    private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
 
     /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
      * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
@@ -210,9 +212,16 @@ public class ParentPaymentService {
 
         Entitlement grantedEntitlement = grantEntitlement(payment);
 
-        // The entitlement says "access until X". The subscription is the auditable record of the
-        // period that was actually sold, and it is what cancellation and expiry act on.
+        // The subscription is the auditable record of the period that was actually sold, and it is
+        // what cancellation and expiry act on.
         openSubscriptionFor(payment, grantedEntitlement);
+
+        // An event ticket's "product" is a seat. Entitlements and subscriptions do not apply, so
+        // nothing else in this flow would ever grant the place the attendee paid for: the seat was
+        // deliberately left unheld until collection landed, which meant confirmSeat had no caller
+        // and a paying attendee was charged and still refused entry. The verified, persisted payment
+        // is the authority for the seat, so the handover happens here and only here.
+        confirmEventSeatsFor(payment);
 
         // A receipt documents money that was actually received, so it is only issued here, once
         // the payment is confirmed. Idempotent: a duplicate callback returns the existing one.
@@ -280,6 +289,33 @@ public class ParentPaymentService {
                     .expiresAt(now.plus(granted))
                     .build();
             return entitlementRepository.save(entitlement);
+        }
+    }
+
+    /**
+     * Hands over the event seats a verified ticket payment paid for.
+     *
+     * <p>Idempotent: the payment reaches COMPLETED once, and confirmSeat itself returns early when
+     * the registration is no longer PAYMENT_PENDING, so a retried webhook cannot add a second seat.
+     *
+     * <p>A failure here does not roll the payment back. The money really was collected, and
+     * discarding a confirmed transaction because the event filled up in the meantime would be worse
+     * for both sides than an unresolved seat: the payer keeps a confirmed, refundable payment and
+     * operators get a visible reconciliation task instead of a silently broken booking.
+     */
+    private void confirmEventSeatsFor(Payment payment) {
+        if (!tz.elmkusoma.event.service.EventBookingService.SERVICE_TYPE
+                .equals(payment.getServiceType())) {
+            return;
+        }
+        try {
+            eventRegistrationRepository
+                    .findByPaymentIdAndIsDeletedFalse(payment.getId())
+                    .ifPresent(registration -> eventBookingService.confirmSeat(registration.getId()));
+        } catch (RuntimeException ex) {
+            log.error("Seat confirmation failed for verified event payment {}; the payment stands "
+                    + "and the seat is left for reconciliation", payment.getId(), ex);
+            reconciliationService.raiseReceiptFailure(payment, ex);
         }
     }
 
