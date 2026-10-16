@@ -1,0 +1,12 @@
+-- V174: audit_logs must be able to record institution-less events.
+--
+-- Since V173 a teacher may exist without a school (independent teacher), and platform
+-- reviewers act outside any institution. Their editorial events (submit / approve /
+-- publish) still MUST be audited, but audit_logs.institution_id was NOT NULL (V18), so
+-- the audit insert failed with a constraint violation (HTTP 409) after the business
+-- change had already succeeded — losing the audit trail for exactly those actors.
+--
+-- NULL here means "the acting context had no school". The only alternatives would be
+-- refusing the event (blocking independent teaching) or writing an institution that was
+-- not part of the action (fabricated affiliation) — both unacceptable.
+ALTER TABLE audit_logs ALTER COLUMN institution_id DROP NOT NULL;

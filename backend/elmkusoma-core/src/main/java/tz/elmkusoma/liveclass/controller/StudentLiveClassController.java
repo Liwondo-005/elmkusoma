@@ -17,6 +17,7 @@ import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -46,11 +47,24 @@ public class StudentLiveClassController {
         }
 
         LocalDate today = LocalDate.now();
-        List<LiveClass> classes = liveClassRepository
-                .findByInstitutionIdAndScheduledAtBetween(
-                        institutionId,
-                        today.minusDays(7).atStartOfDay(),
-                        today.plusDays(7).atTime(LocalTime.MAX));
+        LocalDateTime windowFrom = today.minusDays(7).atStartOfDay();
+        LocalDateTime windowTo = today.plusDays(7).atTime(LocalTime.MAX);
+        List<LiveClass> classes = new ArrayList<>(liveClassRepository
+                .findByInstitutionIdAndScheduledAtBetween(institutionId, windowFrom, windowTo));
+
+        // Eligible open learning sessions from ANY school surface alongside the school's own
+        // sessions — cross-institution learning without changing the learner's affiliation.
+        // Same time window, deduplicated against rows the school query already returned.
+        Set<UUID> seen = new HashSet<>();
+        classes.forEach(lc -> seen.add(lc.getId()));
+        for (LiveClass open : liveClassRepository.findOpenLearningSessions()) {
+            if (open.getScheduledAt() != null
+                    && !open.getScheduledAt().isBefore(windowFrom)
+                    && !open.getScheduledAt().isAfter(windowTo)
+                    && seen.add(open.getId())) {
+                classes.add(open);
+            }
+        }
 
         // The institution is a tenant boundary, not an audience: membership alone must not hand
         // a learner every class-specific session in the school. This applies the same rule that
@@ -200,8 +214,14 @@ public class StudentLiveClassController {
         // tenant. The repository query does that, but an authorization decision should not rest on
         // one layer alone, so the tenant boundary is restated here - and fails closed rather than
         // failing open if either side is unresolved.
-        if (liveClass == null || institutionId == null
-                || !institutionId.equals(liveClass.getInstitutionId())) {
+        if (liveClass == null) {
+            return false;
+        }
+        // The single deliberate cross-tenant exception: a genuine open learning session
+        // (PUBLISHED + PUBLIC + no declared class audience) is eligible for learners of every
+        // school and for independent learners. Every other class still needs an exact match.
+        boolean openSession = liveClass.isOpenLearningSession();
+        if (!openSession && (institutionId == null || !institutionId.equals(liveClass.getInstitutionId()))) {
             return false;
         }
         String role = getUserRole(request);

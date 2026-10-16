@@ -257,7 +257,7 @@ public class LiveClassInteractionService {
             UUID institutionId, UUID userId, UUID classId, Map<String, Object> body) {
         LiveClass lc = loadClass(classId);
         if (lc == null) return err(404, "Live class not found");
-        if (!lc.getInstitutionId().equals(institutionId)) return err(403, "Access denied");
+        if (!java.util.Objects.equals(lc.getInstitutionId(), institutionId)) return err(403, "Access denied");
         if (!isClassTeacher(lc, userId)) return err(403, "Only the teacher can create quizzes");
 
         String title = body.get("title") != null ? String.valueOf(body.get("title")).trim() : "";
@@ -531,7 +531,7 @@ public class LiveClassInteractionService {
             UUID institutionId, UUID userId, UUID classId, Map<String, Object> body) {
         LiveClass lc = loadClass(classId);
         if (lc == null) return err(404, "Live class not found");
-        if (!lc.getInstitutionId().equals(institutionId)) return err(403, "Access denied");
+        if (!java.util.Objects.equals(lc.getInstitutionId(), institutionId)) return err(403, "Access denied");
         if (!isClassTeacher(lc, userId)) return err(403, "Only the teacher can create polls");
 
         String question = body.get("question") != null ? String.valueOf(body.get("question")).trim() : "";
@@ -699,7 +699,7 @@ public class LiveClassInteractionService {
             UUID institutionId, UUID userId, UUID classId, Map<String, Object> body) {
         LiveClass lc = loadClass(classId);
         if (lc == null) return err(404, "Live class not found");
-        if (!lc.getInstitutionId().equals(institutionId)) return err(403, "Access denied");
+        if (!java.util.Objects.equals(lc.getInstitutionId(), institutionId)) return err(403, "Access denied");
         if (!isClassTeacher(lc, userId)) return err(403, "Only the teacher can create breakout rooms");
 
         String name = body.get("name") != null ? String.valueOf(body.get("name")).trim() : "";

@@ -44,12 +44,13 @@ async function learnerFetch<T>(path: string, options?: RequestInit): Promise<T> 
       }
     } catch {}
   }
-  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "X-Institution-Id": institutionId,
+      // No fabricated fallback: learners without a school simply send no institution
+      // header, and the server scopes them from their own account (or refuses).
+      ...(institutionId ? { "X-Institution-Id": institutionId } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
@@ -841,10 +842,9 @@ export const learnerApi = {
         }
       } catch {}
     }
-    if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
     const res = await fetch(`${API_BASE_URL}/v1/resources/${resourceId}/download`, {
       headers: {
-        "X-Institution-Id": institutionId,
+        ...(institutionId ? { "X-Institution-Id": institutionId } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     })

@@ -20,6 +20,10 @@ public class LiveClassResponse {
     /** Actual start (server clock), null until the teacher starts the session. */
     private String startedAt;
     private String status;
+    /** Audience axis (PUBLIC / INSTITUTION / ...), independent from editorial publication. */
+    private String accessLevel;
+    /** Editorial publication state (DRAFT / PENDING_APPROVAL / APPROVED / PUBLISHED / REJECTED). */
+    private String publicationStatus;
     private Integer maxParticipants;
     private String subjectName;
     private String teacherName;

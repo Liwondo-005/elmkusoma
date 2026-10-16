@@ -31,7 +31,10 @@ public class TeacherController {
     @Operation(summary = "Get current teacher's profile")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<ApiResponse<TeacherResponse>> getMyProfile(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            // Optional: an independent (school-less) teacher resolves no institution at all.
+            // Affiliated teachers keep sending the header; a mismatching one is still rejected
+            // by OrganizationContextResolver before this method runs.
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
         TeacherResponse teacher = teacherService.getTeacherByUserId(userId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(teacher));
@@ -53,7 +56,7 @@ public class TeacherController {
     @Operation(summary = "Get current teacher's assigned classes")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<ApiResponse<List<TeacherClassResponse>>> getMyClasses(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
         List<TeacherClassResponse> classes = teacherService.getTeacherClasses(userId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(classes));
@@ -63,7 +66,7 @@ public class TeacherController {
     @Operation(summary = "Get students in current teacher's assigned classes")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<ApiResponse<List<TeacherStudentResponse>>> getMyStudents(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
         List<TeacherStudentResponse> students = teacherService.getTeacherStudents(userId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(students));
@@ -73,7 +76,7 @@ public class TeacherController {
     @Operation(summary = "Get current teacher's dashboard data")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<ApiResponse<TeacherDashboardResponse>> getMyDashboard(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
         TeacherDashboardResponse dashboard = teacherService.getTeacherDashboard(userId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(dashboard));

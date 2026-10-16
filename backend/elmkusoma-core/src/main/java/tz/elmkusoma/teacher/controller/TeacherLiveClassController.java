@@ -54,7 +54,7 @@ public class TeacherLiveClassController {
     @GetMapping
     @Operation(summary = "List my live classes")
     public ResponseEntity<ApiResponse<List<LiveClassResponse>>> getMyLiveClasses(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         List<LiveClassResponse> classes = liveClassService.getTeacherLiveClasses(teacher.getId());
@@ -64,7 +64,7 @@ public class TeacherLiveClassController {
     @PostMapping
     @Operation(summary = "Create a live class")
     public ResponseEntity<ApiResponse<LiveClassResponse>> createLiveClass(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -101,7 +101,7 @@ public class TeacherLiveClassController {
     @PutMapping("/{id}")
     @Operation(summary = "Update a live class")
     public ResponseEntity<ApiResponse<LiveClassResponse>> updateLiveClass(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -137,7 +137,7 @@ public class TeacherLiveClassController {
     @PutMapping("/{id}/lesson")
     @Operation(summary = "Link an existing lesson to this live class (Lesson ↔ Live Class)")
     public ResponseEntity<ApiResponse<LiveClassResponse>> linkLesson(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -158,7 +158,7 @@ public class TeacherLiveClassController {
     @DeleteMapping("/{id}/lesson")
     @Operation(summary = "Unlink the lesson from this live class")
     public ResponseEntity<ApiResponse<LiveClassResponse>> unlinkLesson(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -179,7 +179,7 @@ public class TeacherLiveClassController {
     @PostMapping("/{id}/submit-for-approval")
     @Operation(summary = "Submit a class to Platform Admin for public listing review")
     public ResponseEntity<ApiResponse<LiveClassResponse>> submitForApproval(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -203,7 +203,7 @@ public class TeacherLiveClassController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Cancel a live class")
     public ResponseEntity<ApiResponse<Void>> cancelLiveClass(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -234,7 +234,7 @@ public class TeacherLiveClassController {
     @PostMapping("/{id}/start")
     @Operation(summary = "Start a live session (SCHEDULED -> IN_PROGRESS)")
     public ResponseEntity<ApiResponse<LiveClassResponse>> startSession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -261,7 +261,7 @@ public class TeacherLiveClassController {
     @PostMapping("/{id}/end")
     @Operation(summary = "End a live session (IN_PROGRESS -> COMPLETED)")
     public ResponseEntity<ApiResponse<LiveClassResponse>> endSession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userEmail", required = false) String userEmail,
             @RequestAttribute(value = "userRole", required = false) String userRole,
@@ -291,7 +291,7 @@ public class TeacherLiveClassController {
     @GetMapping("/{id}")
     @Operation(summary = "Get live class detail")
     public ResponseEntity<ApiResponse<LiveClassResponse>> getLiveClass(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
@@ -307,9 +307,9 @@ public class TeacherLiveClassController {
     @GetMapping("/{id}/participants")
     @Operation(summary = "Get participants for a live class")
     public ResponseEntity<ApiResponse<List<tz.elmkusoma.liveclass.dto.ParticipantInfo>>> getParticipants(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID serverInstitutionId,
             @PathVariable UUID id) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         verifyLiveClassOwnership(id, teacher.getId(), serverInstitutionId);
@@ -333,9 +333,9 @@ public class TeacherLiveClassController {
     @GetMapping("/{id}/stats")
     @Operation(summary = "Get participation stats for a live class")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getParticipantStats(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID serverInstitutionId,
             @PathVariable UUID id) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         verifyLiveClassOwnership(id, teacher.getId(), serverInstitutionId);
@@ -368,8 +368,16 @@ public class TeacherLiveClassController {
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
                 .orElse(null);
         if (liveClass != null) {
-            if (liveClass.getInstitutionId() == null || !liveClass.getInstitutionId().equals(serverInstitutionId)
-                    || liveClass.getTeacherId() == null || !liveClass.getTeacherId().equals(teacherId)) {
+            // Tenant boundary first: a class that declares an institution must match the caller's
+            // resolved scope exactly — an independent caller resolves none, so this fails closed
+            // and a mismatched school can never read another tenant's participants or stats.
+            if (liveClass.getInstitutionId() != null
+                    && !liveClass.getInstitutionId().equals(serverInstitutionId)) {
+                throw new ForbiddenException("Live class", "access");
+            }
+            // An institution-less class declares no tenant: ownership alone decides, so the
+            // owning (independent) teacher manages it and any other teacher is refused.
+            if (liveClass.getTeacherId() == null || !liveClass.getTeacherId().equals(teacherId)) {
                 throw new ForbiddenException("Live class", "access");
             }
         }

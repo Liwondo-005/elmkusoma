@@ -52,16 +52,32 @@ public class LiveClassRecordingAccessService {
             return true;
         }
         if ("TEACHER".equals(userRole)) {
-            if (userId == null || callerInstitutionId == null) {
+            if (userId == null) {
                 return false;
             }
-            // teacher owns the class (teacherId may store either Teacher.id or User.id)
+            // The owning teacher always reads their own session's recording — including an
+            // independent (institution-less) teacher, for whom there is no tenant to match.
+            // teacherId may store either Teacher.id or User.id, exactly as before.
+            if (liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(userId)) {
+                return true;
+            }
+            if (callerInstitutionId == null) {
+                return false;
+            }
+            // teacher's own institution and class (teacherId may store Teacher.id or User.id)
             return teacherRepository.findByUserIdAndInstitutionId(userId, callerInstitutionId)
                     .map(t -> liveClass.getTeacherId() != null
                             && (liveClass.getTeacherId().equals(t.getId())
                             || liveClass.getTeacherId().equals(userId)))
                     .orElse(liveClass.getTeacherId() != null
                             && liveClass.getTeacherId().equals(userId));
+        }
+        // Open learning session: the recording follows the very same PUBLISHED + PUBLIC + no
+        // declared class audience that already lets any authenticated learner discover and join
+        // the session — independent learners and other schools included. Every other class keeps
+        // the tenant + audience rules below untouched, so no private school recording moves.
+        if (liveClass.isOpenLearningSession()) {
+            return userId != null;
         }
         // learner: must be an active member of the class's institution
         if (userId == null || callerInstitutionId == null) {

@@ -22,6 +22,10 @@ interface LiveClass {
   teacherName: string | null
   classGroupId: string | null
   subjectId: string | null
+  /** Declared audience: PUBLIC = open learning session (published), otherwise school-scoped. */
+  accessLevel?: string
+  /** Editorial state (DRAFT/PENDING_APPROVAL/APPROVED/PUBLISHED/...). */
+  publicationStatus?: string
   createdAt: string
   recordingEnabled: boolean | null
   recordingUrl: string | null
@@ -50,6 +54,13 @@ const initialForm = {
   scheduledAt: "",
   durationMinutes: 60,
   maxParticipants: 50,
+  /**
+   * Explicit audience choice (requirement C). "school" is the behaviour-preserving
+   * default (institution-scoped, no class); "class" makes the class select required;
+   * "open" is the PUBLIC + no-class combination the server treats as an open learning
+   * session. Never derived silently from the class select — the choice is always shown.
+   */
+  audience: "school",
   classGroupId: "",
   subjectId: "",
   enableRecording: false,
@@ -120,6 +131,12 @@ export default function TeacherLiveClassesPage() {
   useEffect(() => {
     if (!user) return
     loadData()
+    // An account without a school cannot have a school audience: fall back to the only
+    // honest choice (open learning) instead of offering an institution that does not exist.
+    if (!user.institutionId && form.audience === "school" && !editingId) {
+      setForm((f) => ({ ...f, audience: "open" }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   // Lesson ↔ Live Class: lesson choices for the class picked in the create/edit form
@@ -196,6 +213,7 @@ export default function TeacherLiveClassesPage() {
       durationMinutes: lc.durationMinutes,
       maxParticipants: lc.maxParticipants || 50,
       classGroupId: lc.classGroupId || "",
+      audience: lc.classGroupId ? "class" : lc.accessLevel === "PUBLIC" ? "open" : "school",
       subjectId: lc.subjectId || "",
       enableRecording: lc.recordingEnabled || false,
       sessionType: lc.sessionType || "LECTURE",
@@ -214,6 +232,12 @@ export default function TeacherLiveClassesPage() {
   function handleProceedToReview() {
     if (!form.title.trim() || !form.scheduledAt) {
       setError(t("liveClasses.requiredError"))
+      return
+    }
+    // The class audience must actually name a class: without this check a "class"
+    // choice with no class would quietly become a classless (school-wide) session.
+    if (form.audience === "class" && !form.classGroupId) {
+      setError(t("liveClasses.audienceClassRequired"))
       return
     }
     const scheduledDate = new Date(form.scheduledAt)
@@ -249,7 +273,20 @@ export default function TeacherLiveClassesPage() {
         isRecurring: form.isRecurring,
         lobbyEnabled: form.lobbyEnabled,
       }
-        if (form.classGroupId) payload.classGroupId = form.classGroupId
+      // Audience is explicit and is the only thing that decides scope: PUBLIC + no class
+      // is the open learning session; INSTITUTION (with or without a class) stays inside
+      // the school. On edit, dropping the class must be stated (clearClassGroupId) — the
+      // server treats an absent classGroupId as "leave unchanged".
+      if (form.audience === "open") {
+        payload.accessLevel = "PUBLIC"
+        if (editingId) payload.clearClassGroupId = true
+      } else if (form.audience === "school") {
+        payload.accessLevel = "INSTITUTION"
+        if (editingId) payload.clearClassGroupId = true
+      } else {
+        payload.accessLevel = "INSTITUTION"
+        payload.classGroupId = form.classGroupId
+      }
         if (form.subjectId) payload.subjectId = form.subjectId
         if (form.lessonId) payload.lessonId = form.lessonId
         if (form.sessionType) payload.sessionType = form.sessionType
@@ -444,6 +481,42 @@ export default function TeacherLiveClassesPage() {
               />
             </div>
 
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <Users className="mr-1 inline size-3" />
+                {t("liveClasses.audienceLabel")}
+              </label>
+              <select
+                value={form.audience}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    audience: e.target.value,
+                    // Leaving the class audience drops its dependent class + lesson picks
+                    // so the payload can never carry a stale class scope.
+                    ...(e.target.value !== "class" ? { classGroupId: "", lessonId: "" } : {}),
+                  })
+                }
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                <option value="school" disabled={!user?.institutionId}>
+                  {t("liveClasses.audienceSchool")}
+                </option>
+                <option value="class" disabled={classes.length === 0}>
+                  {t("liveClasses.audienceClass")}
+                </option>
+                <option value="open">{t("liveClasses.audienceOpen")}</option>
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {!user?.institutionId
+                  ? t("liveClasses.audienceNoSchool")
+                  : form.audience === "open"
+                    ? t("liveClasses.audienceOpenHint")
+                    : t("liveClasses.audienceHint")}
+              </p>
+            </div>
+
+            {form.audience === "class" && (
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 <GraduationCap className="mr-1 inline size-3" />
@@ -454,7 +527,7 @@ export default function TeacherLiveClassesPage() {
                 onChange={(e) => setForm({ ...form, classGroupId: e.target.value, lessonId: "" })}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
-                <option value="">{t("liveClasses.selectClassOptional")}</option>
+                <option value="">{classes.length === 0 ? t("liveClasses.audienceNoClasses") : t("liveClasses.selectClassRequired")}</option>
                 {classes.map((c) => (
                   <option key={c.classGroupId} value={c.classGroupId}>
                     {c.className} {c.subjectName ? `— ${c.subjectName}` : ""}
@@ -462,6 +535,7 @@ export default function TeacherLiveClassesPage() {
                 ))}
               </select>
             </div>
+            )}
 
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
@@ -482,6 +556,7 @@ export default function TeacherLiveClassesPage() {
               </select>
             </div>
 
+            {form.audience === "class" && (
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 <Video className="mr-1 inline size-3" />
@@ -506,6 +581,7 @@ export default function TeacherLiveClassesPage() {
                 <p className="mt-1 text-[11px] text-muted-foreground">{t("liveClasses.noLessonsHint")}</p>
               )}
             </div>
+            )}
 
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lessons.descLabel")}</label>

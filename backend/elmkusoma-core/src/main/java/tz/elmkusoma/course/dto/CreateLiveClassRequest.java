@@ -25,6 +25,14 @@ public class CreateLiveClassRequest {
 
     private UUID classGroupId;
 
+    /**
+     * Explicitly detaches the class audience. Partial updates treat an absent or null
+     * {@code classGroupId} as "leave unchanged", so switching an existing session to a
+     * school-wide or open audience must be intentional — the alternative would silently
+     * keep the old class scope. When set, the class-scoped lesson link is detached too.
+     */
+    private Boolean clearClassGroupId;
+
     /** Optional Lesson link (Lesson ↔ Live Class connection). */
     private UUID lessonId;
 

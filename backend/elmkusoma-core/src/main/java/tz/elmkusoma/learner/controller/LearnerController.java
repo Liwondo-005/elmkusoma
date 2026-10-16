@@ -520,22 +520,31 @@ public class LearnerController {
     // ── Live Classes ─────────────────────────────────────────────────────
 
     @GetMapping("/live-classes")
-    @Operation(summary = "Browse all active live classes in user's institution")
+    @Operation(summary = "Browse own-institution live classes plus eligible open learning sessions")
     public ResponseEntity<ApiResponse<List<LiveClassResponse>>> browseLiveClasses(
             @RequestAttribute("userId") UUID userId) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
         }
-        if (user.getInstitutionId() == null) {
-            return ResponseEntity.ok(ApiResponse.success(List.of()));
+        // Own school's sessions first (none exist for an institution-less independent learner),
+        // then every open learning session from any school. Discovery never rewrites the
+        // learner's affiliation, and open sessions are the only cross-tenant rows admitted.
+        List<LiveClass> classes = new ArrayList<>(user.getInstitutionId() == null
+                ? List.of()
+                : liveClassRepository.findByInstitutionIdAndIsDeletedFalse(user.getInstitutionId()));
+        Set<UUID> seen = new HashSet<>();
+        classes.forEach(lc -> seen.add(lc.getId()));
+        for (LiveClass open : liveClassRepository.findOpenLearningSessions()) {
+            if (seen.add(open.getId())) {
+                classes.add(open);
+            }
         }
-        List<LiveClassResponse> classes = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(user.getInstitutionId())
-                .stream()
+        List<LiveClassResponse> response = classes.stream()
                 .filter(lc -> !"CANCELLED".equals(lc.getStatus()))
                 .map(this::toLiveClassResponse)
                 .toList();
-        return ResponseEntity.ok(ApiResponse.success(classes));
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/live-classes/{id}")
@@ -544,12 +553,16 @@ public class LearnerController {
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
         User user = userRepository.findById(userId).orElse(null);
-        if (user == null || user.getInstitutionId() == null) {
+        if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
         }
         return liveClassRepository.findById(id)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
-                .filter(lc -> user.getInstitutionId().equals(lc.getInstitutionId()))
+                // Own institution, or a genuine open learning session — for school-enrolled and
+                // independent learners alike. A private class stays invisible to everyone else.
+                .filter(lc -> lc.isOpenLearningSession()
+                        || (user.getInstitutionId() != null
+                            && user.getInstitutionId().equals(lc.getInstitutionId())))
                 .map(lc -> ResponseEntity.ok(ApiResponse.success(toLiveClassResponse(lc))))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found")));
     }
@@ -571,7 +584,11 @@ public class LearnerController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
         }
         UUID callerInstitutionId = institutionId != null ? institutionId : user.getInstitutionId();
-        if (callerInstitutionId == null || !callerInstitutionId.equals(liveClass.getInstitutionId())) {
+        // Open learning sessions are joinable across schools and by independent learners; every
+        // other session requires an exact match with the class's institution (fail-closed when
+        // either side is institution-less).
+        if (!liveClass.isOpenLearningSession()
+                && (callerInstitutionId == null || !callerInstitutionId.equals(liveClass.getInstitutionId()))) {
             throw new ForbiddenException("Live class", "access");
         }
         String joinStatus = liveClass.getStatus();

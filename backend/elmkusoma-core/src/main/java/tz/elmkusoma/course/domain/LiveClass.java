@@ -212,4 +212,18 @@ public class LiveClass extends BaseEntity {
         return PublicationStatus.PUBLISHED.name().equals(publicationStatus)
                 && AccessLevel.PUBLIC.name().equals(accessLevel);
     }
+
+    /**
+     * An open learning session: publicly discoverable AND not scoped to a declared class audience.
+     *
+     * <p>Exactly this combination — and nothing weaker — lets learners from other schools and
+     * institution-less (independent) learners discover, join and replay a session. Both halves are
+     * required: PUBLISHED is the Platform Admin's editorial decision, PUBLIC is the audience
+     * decision, and a null {@code classGroupId} means the session never declared a private class
+     * audience. A PUBLIC draft stays joinable only within its own institution; a class-scoped
+     * session stays closed to outsiders even when published.</p>
+     */
+    public boolean isOpenLearningSession() {
+        return isPubliclyDiscoverable() && classGroupId == null;
+    }
 }

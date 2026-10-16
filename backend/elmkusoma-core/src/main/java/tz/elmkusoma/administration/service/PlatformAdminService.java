@@ -404,7 +404,12 @@ public class PlatformAdminService {
         // Audit B-02: organisation-scoped roles were creatable without an institution, producing an
         // account that logs in but resolves no scope -- every provider/administration API call then
         // failed with 400 and the provider workspace was unreachable. Reject it at the boundary.
-        if (requiresInstitution(request.getRole()) && request.getInstitutionId() == null) {
+        // Independent (school-less) teaching staff are the deliberate exception: provisioned only
+        // when the platform admin explicitly asks for it, and only for TEACHER.
+        boolean independentTeacherWaiver = request.getRole() == User.Role.TEACHER
+                && Boolean.TRUE.equals(request.getIndependentTeacher());
+        if (requiresInstitution(request.getRole()) && request.getInstitutionId() == null
+                && !independentTeacherWaiver) {
             throw new IllegalArgumentException(
                     "institutionId is required when creating a user with role " + request.getRole().name());
         }

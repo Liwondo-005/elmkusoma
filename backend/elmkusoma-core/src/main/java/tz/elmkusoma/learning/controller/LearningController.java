@@ -186,12 +186,15 @@ public class LearningController {
 
     private void verifyStudentAccess(UUID studentId, HttpServletRequest request) {
         String role = (String) request.getAttribute("userRole");
-        if ("STUDENT".equals(role)) {
+        if ("STUDENT".equals(role) || "OTHER_LEARNER".equals(role) || "LEARNER".equals(role)) {
             UUID userId = (UUID) request.getAttribute("userId");
             // Learners may pass their own user id; the service resolves it to the student profile.
             if (studentId != null && studentId.equals(userId)) {
                 return;
             }
+            // Any learner role - school-enrolled or independent - reads only their own record.
+            // An independent learner has no student profile at all, so another student's
+            // progress always resolves to denial for them.
             var student = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
             if (student == null || !student.getId().equals(studentId)) {
                 throw new AccessDeniedException("You can only access your own progress");
