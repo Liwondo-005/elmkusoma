@@ -39,6 +39,7 @@ class ParentPaymentServiceTest {
     @Mock private ReceiptService receiptService;
     @Mock private tz.elmkusoma.finance.service.ReconciliationService reconciliationService;
     @Mock private RefundService refundService;
+    @Mock private tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
 
     @InjectMocks
     private ParentPaymentService paymentService;
@@ -250,6 +251,75 @@ class ParentPaymentServiceTest {
 
         assertEquals("COMPLETED", result.getStatus());
         verify(paymentRepository, never()).save(any());
+    }
+
+    private Payment subscriptionPayment(String status) {
+        Payment p = buildPayment(status, new BigDecimal("30000"));
+        p.setServiceType("MONTHLY_ACCESS");
+        p.setAccessDays(30);
+        return p;
+    }
+
+    @Test
+    void verifyPayment_opensTheAuditableSubscriptionForASubscriptionTier() {
+        // SubscriptionService existed but nothing called it, so a month bought for money produced
+        // an entitlement and no subscription record at all - leaving cancellation and expiry with
+        // no row to act on and the sold period reconstructible only from the entitlement.
+        Payment pending = subscriptionPayment("PENDING");
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("MONTHLY_ACCESS"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("MONTHLY_ACCESS"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("30000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-sub", UUID.randomUUID());
+
+        assertEquals("COMPLETED", result.getStatus());
+        verify(subscriptionService).activateFromVerifiedPayment(any(Payment.class), any(Entitlement.class));
+    }
+
+    @Test
+    void verifyPayment_doesNotOpenASubscriptionForASingleServicePurchase() {
+        // An event ticket or a one-off course purchase has no recurring period. Offering it to the
+        // subscription service would be asking it to invent a period nobody priced.
+        Payment pending = buildPayment("PENDING", new BigDecimal("100000"));
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("TUITION"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("TUITION"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("100000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        paymentService.verifyPayment(PAYMENT_ID, "ref-tui", UUID.randomUUID());
+
+        verify(subscriptionService, never()).activateFromVerifiedPayment(any(), any());
+    }
+
+    @Test
+    void verifyPayment_stillCompletesWhenSubscriptionActivationFails() {
+        // Same rule as the receipt: money was really collected and access was really granted, so a
+        // derived reporting record failing must not erase the payment.
+        Payment pending = subscriptionPayment("PENDING");
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("MONTHLY_ACCESS"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("MONTHLY_ACCESS"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("30000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+        org.mockito.Mockito.doThrow(new IllegalStateException("subscription store unavailable"))
+                .when(subscriptionService).activateFromVerifiedPayment(any(), any());
+
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-fail", UUID.randomUUID());
+
+        assertEquals("COMPLETED", result.getStatus());
+        verify(reconciliationService).raiseReceiptFailure(any(Payment.class), any(Exception.class));
     }
 
     private Entitlement activeEntitlement(LocalDateTime startsAt, LocalDateTime expiresAt) {

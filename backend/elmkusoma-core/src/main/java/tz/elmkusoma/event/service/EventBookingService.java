@@ -5,15 +5,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.EventRegistration;
+import tz.elmkusoma.event.domain.EventStatus;
 import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.repository.PaymentRepository;
+import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -39,9 +45,17 @@ public class EventBookingService {
     /** Service type recorded against a ticket payment. */
     public static final String SERVICE_TYPE = "EVENT_TICKET";
 
+    // Mirrors EventServiceImpl's sets so both registration paths agree on what "open" means.
+    private static final Set<EventStatus> REGISTRATION_OPEN_STATUSES =
+            EnumSet.of(EventStatus.PUBLISHED, EventStatus.REGISTRATION_OPEN);
+    private static final Set<EventStatus> REGISTRATION_BLOCKED_STATUSES =
+            EnumSet.of(EventStatus.CANCELLED, EventStatus.RESCHEDULED,
+                    EventStatus.FULL, EventStatus.FAILED);
+
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
     private final PaymentRepository paymentRepository;
+    private final UserRepository userRepository;
 
     /** What a booking attempt produced. */
     public record Booking(UUID eventId,
@@ -76,6 +90,8 @@ public class EventBookingService {
                 .existsByEventIdAndUserIdAndIsDeletedFalse(eventId, attendeeUserId)) {
             throw new IllegalStateException("This attendee is already registered for the event");
         }
+
+        assertEligibleToBook(event, attendeeUserId);
 
         if (!event.isPaid()) {
             // Free events keep the existing behaviour and never touch the payment domain.
@@ -137,6 +153,16 @@ public class EventBookingService {
      */
     @Transactional
     public EventRegistration confirmSeat(UUID registrationId) {
+        // Read under the event row lock BEFORE deciding whether anything is left to do. Read
+        // first, two concurrent confirmations of the same booking would both see PAYMENT_PENDING,
+        // both pass this guard, and both add their seats to the event.
+        EventRegistration probe = registrationRepository.findById(registrationId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "EventRegistration", "id", registrationId));
+        Event event = eventRepository.findByIdForUpdate(probe.getEventId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Event", "id", probe.getEventId()));
+
         EventRegistration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "EventRegistration", "id", registrationId));
@@ -146,9 +172,7 @@ public class EventBookingService {
             return registration;
         }
 
-        Event event = eventRepository.findByIdForUpdate(registration.getEventId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Event", "id", registration.getEventId()));
+
 
         // Capacity is checked at confirmation, not at request. If the event filled up while this
         // payment was in flight the payer is refunded rather than quietly overbooked.
@@ -160,24 +184,152 @@ public class EventBookingService {
                             + "held and the payment is refundable");
         }
 
-        Payment payment = registration.getPaymentId() == null ? null
-                : paymentRepository.findById(registration.getPaymentId()).orElse(null);
-        if (payment != null && !"COMPLETED".equals(payment.getStatus())) {
+        // A PAYMENT_PENDING registration must have a payment, and that payment must be COMPLETED.
+        // The earlier form of this check only refused when a payment existed and was not complete,
+        // so a registration with no linked payment fell straight through and was given a seat with
+        // nothing verified. Absence of evidence is not evidence of payment.
+        if (registration.getPaymentId() == null) {
+            throw new IllegalStateException(
+                    "This registration has no payment, so the seat cannot be confirmed");
+        }
+        Payment payment = paymentRepository.findById(registration.getPaymentId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "The payment for this registration no longer exists"));
+        if (!"COMPLETED".equals(payment.getStatus())) {
             throw new IllegalStateException(
                     "A seat is only confirmed once its payment is completed");
         }
 
-        // Snapshot what this attendee actually paid, so a later reprice cannot restate it.
-        if (payment != null) {
-            registration.setAmountPaid(payment.getAmount());
-        } else {
-            registration.setAmountPaid(event.getTicketPrice()
-                    .multiply(BigDecimal.valueOf(registration.getSeats())));
-        }
+        // Snapshot what was actually charged. Deliberately read from the payment and never from
+        // event.getTicketPrice(): repricing the event between booking and confirmation must not
+        // restate what this attendee was charged.
+        registration.setAmountPaid(payment.getAmount());
         registration.setStatus("REGISTERED");
         return registrationRepository.saveAndFlush(registration);
     }
 
+    /**
+     * The same eligibility rules the free registration path applies.
+     *
+     * <p>This check was missing when the paid path was added, which meant a learner could buy a
+     * place at an event they were not allowed to register for: a PRIVATE event reserved to its
+     * organizer, an event belonging to another institution, or one whose registration had
+     * already closed. Payment is not a way around access control - paying more must never buy
+     * more access than the free path grants.</p>
+     */
+    private void assertEligibleToBook(Event event, UUID attendeeUserId) {
+        User attendee = userRepository.findById(attendeeUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", attendeeUserId));
+
+        assertRegistrationIsOpen(event);
+        assertEventHasNotStarted(event);
+        assertAccessLevelAllowsBooking(event, attendee);
+    }
+
+    /**
+     * Lifecycle gate, mirroring the free registration path.
+     *
+     * <p>The paid path originally checked access level only. That let somebody buy a place at an
+     * event that had been cancelled, had filled up, or whose registration had closed - the very
+     * events the free path refuses - and it charged them for it. A closed event must be closed
+     * whoever is trying to pay.</p>
+     */
+    private void assertRegistrationIsOpen(Event event) {
+        EventStatus status = currentStatusOf(event);
+
+        if (REGISTRATION_BLOCKED_STATUSES.contains(status)) {
+            if (status == EventStatus.FULL) {
+                throw new IllegalStateException("This event is full - registration is closed");
+            }
+            throw new IllegalStateException("This event has been " + status.name().toLowerCase()
+                    + " - registration is not possible");
+        }
+        if (!REGISTRATION_OPEN_STATUSES.contains(status)) {
+            throw new IllegalArgumentException("This event is not available for registration");
+        }
+    }
+
+    /** Exact mirror of {@code EventServiceImpl.hasEventStarted}, timezone handling included. */
+    private void assertEventHasNotStarted(Event event) {
+        if (event.getStartsAt() == null) {
+            return;
+        }
+        boolean started;
+        String tz = event.getTimezone();
+        if (tz == null || tz.isBlank()) {
+            started = event.getStartsAt().isBefore(LocalDateTime.now());
+        } else {
+            try {
+                ZoneId zone = ZoneId.of(tz);
+                started = event.getStartsAt().isBefore(LocalDateTime.now(zone));
+            } catch (Exception ex) {
+                started = event.getStartsAt().isBefore(LocalDateTime.now());
+            }
+        }
+        if (started) {
+            throw new IllegalArgumentException("Cannot register for a past event");
+        }
+    }
+
+    /**
+     * Access level, matching {@code EventServiceImpl.assertCanRegister} rule for rule.
+     *
+     * <p>The institution-admin allowance for a private event is deliberately reproduced here. It was
+     * missing when the paid path was added, which meant an institution admin could register for a
+     * private event for nothing but was refused when trying to pay for the same place - the free
+     * path and the paid path disagreed about who is allowed in.</p>
+     */
+    private void assertAccessLevelAllowsBooking(Event event, User attendee) {
+        String level = (event.getAccessLevel() == null || event.getAccessLevel().isBlank())
+                ? "INSTITUTION" : event.getAccessLevel().trim().toUpperCase();
+
+        if ("PUBLIC".equals(level)) {
+            return;
+        }
+
+        if ("PRIVATE".equals(level)) {
+            if (attendee.getId() != null && attendee.getId().equals(event.getOrganizerId())) {
+                return;
+            }
+            if (isPlatformAdmin(attendee.getRole())
+                    || (attendee.getRole() == User.Role.INSTITUTION_ADMIN
+                        && sameInstitution(attendee, event))) {
+                return;
+            }
+            throw new ForbiddenException("This event is restricted to its organizer");
+        }
+
+        if (isPlatformAdmin(attendee.getRole())) {
+            return;
+        }
+        if (event.getInstitutionId() != null && attendee.getInstitutionId() != null
+                && !event.getInstitutionId().equals(attendee.getInstitutionId())) {
+            throw new IllegalArgumentException("This event is not available in your institution");
+        }
+    }
+
+    private static boolean sameInstitution(User user, Event event) {
+        return event.getInstitutionId() != null && user.getInstitutionId() != null
+                && event.getInstitutionId().equals(user.getInstitutionId());
+    }
+
+    private static EventStatus currentStatusOf(Event event) {
+        if (event.getEventStatus() != null) {
+            return event.getEventStatus();
+        }
+        if (event.getStatus() != null && !event.getStatus().isBlank()) {
+            try {
+                return EventStatus.fromString(event.getStatus());
+            } catch (IllegalArgumentException ex) {
+                return EventStatus.DRAFT;
+            }
+        }
+        return EventStatus.DRAFT;
+    }
+
+    private static boolean isPlatformAdmin(User.Role role) {
+        return role == User.Role.ADMIN || role == User.Role.NATIONAL_ADMIN;
+    }
     /** Releases a seat and records why. Cancellation stays separate from any refund. */
     @Transactional
     public void cancelSeat(UUID registrationId, UUID actorUserId, String reason) {

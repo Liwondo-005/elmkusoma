@@ -9,6 +9,7 @@ import org.springframework.test.context.TestPropertySource;
 import tz.elmkusoma.common.BaseEntity;
 import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.EventRegistration;
+import tz.elmkusoma.event.domain.EventStatus;
 import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.event.service.EventService;
@@ -58,6 +59,8 @@ class EventSeatCapacityConcurrencyTest {
     @Autowired private EventRegistrationRepository registrationRepository;
     @Autowired private tz.elmkusoma.shared.repository.UserRepository userRepository;
     @Autowired private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+    @Autowired private tz.elmkusoma.event.service.EventBookingService bookingService;
+    @Autowired private tz.elmkusoma.parent.repository.PaymentRepository paymentRepository;
 
     private Event singleSeatEvent;
     private final List<UUID> contenders = new ArrayList<>();
@@ -152,6 +155,98 @@ class EventSeatCapacityConcurrencyTest {
         long registered = registrationRepository
                 .countByEventIdAndStatusAndIsDeletedFalse(singleSeatEvent.getId(), "REGISTERED");
         assertEquals(SEATS, registered, "the database must hold no more registrations than there are seats");
+    }
+
+    /**
+     * The confirmation path must serialise too, not just the registration path.
+     *
+     * <p>Seats are consumed at confirmation, not at booking, so the registration race above is only
+     * half the problem: two people can both pay for the final seat, and if both confirmations read
+     * the seat count before either writes, both succeed and the event is oversold after the money
+     * has already been taken. The event row lock taken inside confirmSeat is what prevents that,
+     * and this is the test that would fail if it were removed.</p>
+     *
+     * <p>Two genuinely separate bookings are used rather than one booking confirmed twice,
+     * because a single row cannot be double-counted: the interesting race is two payers, two rows,
+     * one remaining seat.</p>
+     */
+    @Test
+    void concurrentConfirmations_neverOversellTheLastSeat() throws Exception {
+        // One seat, two separate paid bookings, both genuinely paid.
+        Event paid = Event.builder()
+                .title("Confirmation race " + UUID.randomUUID())
+                .description("paid confirmation concurrency probe")
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .organizerId(TestDataSeeder.TEACHER_USER_ID)
+                .accessLevel("PUBLIC")
+                .eventType("SEMINAR")
+                .startsAt(LocalDateTime.now().plusDays(2))
+                .endsAt(LocalDateTime.now().plusDays(2).plusHours(2))
+                .status("REGISTRATION_OPEN")
+                .eventStatus(EventStatus.REGISTRATION_OPEN)
+                .isFree(false)
+                .requiresApproval(false)
+                .maxParticipants(SEATS)
+                .currentRegistrations(0)
+                .ticketPrice(new java.math.BigDecimal("5000.00"))
+                .ticketCurrency("TZS")
+                .build();
+        paid = eventRepository.saveAndFlush(paid);
+
+        UUID firstUser = contenders.get(0);
+        UUID secondUser = contenders.get(1);
+        List<UUID> registrationIds = new ArrayList<>();
+        for (UUID attendee : List.of(firstUser, secondUser)) {
+            var booking = bookingService.book(paid.getId(), attendee, 1);
+            // Must set and save the SAME instance: findById outside a transaction returns a
+            // detached entity, so mutating one instance and persisting a second re-read is a
+            // silent no-op and leaves the payment PENDING.
+            var payment = paymentRepository.findById(booking.paymentId()).orElseThrow();
+            payment.setStatus("COMPLETED");
+            paymentRepository.saveAndFlush(payment);
+            registrationIds.add(booking.registrationId());
+        }
+        assertEquals(2, registrationIds.size());
+
+        int racers = 2;
+        ExecutorService pool = Executors.newFixedThreadPool(racers);
+        CountDownLatch ready = new CountDownLatch(racers);
+        CountDownLatch go = new CountDownLatch(1);
+        AtomicInteger confirmed = new AtomicInteger();
+        List<Future<?>> outcomes = new ArrayList<>();
+
+        try {
+            for (int i = 0; i < racers; i++) {
+                UUID registrationId = registrationIds.get(i);
+                outcomes.add(pool.submit(() -> {
+                    ready.countDown();
+                    try {
+                        go.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException("confirmer interrupted before the start signal", e);
+                    }
+                    try {
+                        bookingService.confirmSeat(registrationId);
+                        confirmed.incrementAndGet();
+                    } catch (RuntimeException refused) {
+                        // Expected for whoever loses the race for the final seat.
+                    }
+                }));
+            }
+            assertTrue(ready.await(15, TimeUnit.SECONDS), "confirmers should be ready");
+            go.countDown();
+            for (Future<?> outcome : outcomes) {
+                outcome.get(45, TimeUnit.SECONDS);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertEquals(SEATS, confirmed.get(),
+                "only one payer may take the final seat; both were confirmed and the event was oversold");
+        assertEquals(SEATS, registrationRepository.sumHeldSeats(paid.getId()),
+                "the database must hold no more confirmed seats than the event has");
     }
 
     /**

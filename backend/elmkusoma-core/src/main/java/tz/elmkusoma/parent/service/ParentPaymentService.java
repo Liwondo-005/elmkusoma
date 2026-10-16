@@ -42,6 +42,7 @@ public class ParentPaymentService {
     private final ReceiptService receiptService;
     private final tz.elmkusoma.finance.service.ReconciliationService reconciliationService;
     private final RefundService refundService;
+    private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
 
     /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
      * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
@@ -207,7 +208,11 @@ public class ParentPaymentService {
 
         payment = paymentRepository.save(payment);
 
-        grantEntitlement(payment);
+        Entitlement grantedEntitlement = grantEntitlement(payment);
+
+        // The entitlement says "access until X". The subscription is the auditable record of the
+        // period that was actually sold, and it is what cancellation and expiry act on.
+        openSubscriptionFor(payment, grantedEntitlement);
 
         // A receipt documents money that was actually received, so it is only issued here, once
         // the payment is confirmed. Idempotent: a duplicate callback returns the existing one.
@@ -242,7 +247,7 @@ public class ParentPaymentService {
         return payment;
     }
 
-    private void grantEntitlement(Payment payment) {
+    private Entitlement grantEntitlement(Payment payment) {
         LocalDateTime now = LocalDateTime.now();
         java.time.Duration granted = accessDurationFor(payment);
 
@@ -261,7 +266,7 @@ public class ParentPaymentService {
             existing.setExpiresAt(from.plus(granted));
             existing.setStatus("ACTIVE");
             existing.setPaymentId(payment.getId());
-            entitlementRepository.save(existing);
+            return entitlementRepository.save(existing);
         } else {
             Entitlement entitlement = Entitlement.builder()
                     .userId(payment.getParentId())
@@ -274,7 +279,42 @@ public class ParentPaymentService {
                     .startsAt(now)
                     .expiresAt(now.plus(granted))
                     .build();
-            entitlementRepository.save(entitlement);
+            return entitlementRepository.save(entitlement);
+        }
+    }
+
+    /**
+     * Opens the auditable {@code Subscription} record for a subscription-tier payment.
+     *
+     * <p>{@link SubscriptionService} was fully implemented but nothing ever called it: a learner
+     * paid for a month, an {@code Entitlement} was granted, and no subscription row existed at
+     * all. That left the period actually sold to be reconstructible only from the entitlement, and
+     * left cancellation and expiry with nothing to act on.
+     *
+     * <p>Only subscription tiers reach this. A single-service purchase such as an event ticket has
+     * no recurring period, and {@code SubscriptionService} would rightly refuse it for carrying no
+     * approved access duration - so it is not offered one.
+     *
+     * <p>A failure here never rolls back the payment. The money really was collected and the
+     * entitlement really was granted; losing a confirmed payment because a derived reporting record
+     * could not be written would be far worse than the missing row, so the failure is logged and
+     * surfaced for reconciliation instead.</p>
+     */
+    private void openSubscriptionFor(Payment payment, Entitlement entitlement) {
+        String serviceType = payment.getServiceType();
+        if (serviceType == null || serviceType.isBlank()) {
+            return;
+        }
+        if (!ACCESS_DURATIONS.containsKey(serviceType.trim().toUpperCase())) {
+            return;
+        }
+        try {
+            subscriptionService.activateFromVerifiedPayment(payment, entitlement);
+        } catch (RuntimeException ex) {
+            log.error("Subscription activation failed for completed payment {} (serviceType={}); "
+                            + "payment is NOT rolled back and the entitlement stands",
+                    payment.getId(), serviceType, ex);
+            reconciliationService.raiseReceiptFailure(payment, ex);
         }
     }
 
