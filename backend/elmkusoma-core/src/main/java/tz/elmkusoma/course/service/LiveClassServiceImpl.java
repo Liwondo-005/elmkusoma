@@ -201,6 +201,13 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .publicationStatus(LiveClass.PublicationStatus.DRAFT.name())
                 .build();
         liveClass.setInstitutionId(institutionId);
+        // An institution-less (independent) teacher declares no school scope: INSTITUTION would
+        // name no audience at all, so the honest scope for their session is PUBLIC — which still
+        // keeps the existing DRAFT → Platform Admin review → publish workflow before anyone can
+        // discover or join it. Publication, not access level, remains the editorial gate.
+        if (institutionId == null && LiveClass.AccessLevel.INSTITUTION.name().equals(liveClass.getAccessLevel())) {
+            liveClass.setAccessLevel(LiveClass.AccessLevel.PUBLIC.name());
+        }
 
         // Lesson ↔ Live Class: validate ownership/scope + duplicate prevention (§11)
         if (request.getLessonId() != null) {
@@ -294,6 +301,29 @@ public class LiveClassServiceImpl implements LiveClassService {
                 liveClass.setAccessLevel(requested);
                 materialChange = true;
             }
+        }
+
+        // Detaching the class audience (school-wide / open learning) is an explicit request:
+        // a lesson link belongs to a class, so it leaves with the class — otherwise an open
+        // session would keep advertising school material through its public representation.
+        if (Boolean.TRUE.equals(request.getClearClassGroupId())) {
+            if (liveClass.getClassGroupId() != null) {
+                liveClass.setClassGroupId(null);
+                materialChange = true;
+            }
+            if (liveClass.getLessonId() != null) {
+                liveClass.setLessonId(null);
+                materialChange = true;
+            }
+        }
+
+        // Independent teachers declare no school: an INSTITUTION audience on a school-less
+        // class is meaningless (no institution's members could be "inside" it), so the honest
+        // audience stays PUBLIC — the same normalisation create performs.
+        if (liveClass.getInstitutionId() == null
+                && LiveClass.AccessLevel.INSTITUTION.name().equals(liveClass.getAccessLevel())) {
+            liveClass.setAccessLevel(LiveClass.AccessLevel.PUBLIC.name());
+            materialChange = true;
         }
 
         if (materialChange && LiveClass.PublicationStatus.PUBLISHED.name().equals(liveClass.getPublicationStatus())) {
@@ -1055,6 +1085,8 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .startedAt(liveClass.getStartedAt() != null ? liveClass.getStartedAt().toString() : null)
                 .durationMinutes(liveClass.getDurationMinutes())
                 .status(liveClass.getStatus())
+                .accessLevel(liveClass.getAccessLevel())
+                .publicationStatus(liveClass.getPublicationStatus())
                 .maxParticipants(liveClass.getMaxParticipants())
                 .subjectName(subjectName)
                 .teacherName(teacherName)

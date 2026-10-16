@@ -61,7 +61,7 @@ public class LiveSessionController {
     @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Join a live class session and receive LiveKit token")
     public ResponseEntity<ApiResponse<LiveSessionJoinResponse>> joinSession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId) {
 
@@ -72,7 +72,12 @@ public class LiveSessionController {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
 
-        if (!liveClass.getInstitutionId().equals(institutionId)) {
+        // An open learning session (PUBLISHED + PUBLIC + no declared class audience) is joinable
+        // across institutions and by institution-less learners by design — that combination IS
+        // two deliberate decisions already taken (Platform Admin publication + PUBLIC audience).
+        // Every other class keeps the strict same-tenant match, null-safe on both sides.
+        boolean openSession = liveClass.isOpenLearningSession();
+        if (!openSession && !java.util.Objects.equals(liveClass.getInstitutionId(), institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Not authorized for this class"));
         }
 
@@ -82,9 +87,11 @@ public class LiveSessionController {
             return ResponseEntity.status(400).body(ApiResponse.error("Live class is not currently in session"));
         }
 
-        boolean isMember = membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, institutionId);
-        if (!isMember) {
-            return ResponseEntity.status(403).body(ApiResponse.error("You are not a member of this institution"));
+        if (!openSession) {
+            boolean isMember = membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, institutionId);
+            if (!isMember) {
+                return ResponseEntity.status(403).body(ApiResponse.error("You are not a member of this institution"));
+            }
         }
 
         User user = userRepository.findById(userId).orElse(null);
@@ -92,7 +99,16 @@ public class LiveSessionController {
             return ResponseEntity.status(404).body(ApiResponse.error("User not found"));
         }
 
-        boolean isTeacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId).isPresent();
+        boolean isTeacher;
+        if (institutionId != null) {
+            isTeacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId).isPresent();
+        } else {
+            // Institution-less caller: only the class's own teacher counts as the teacher.
+            isTeacher = liveClass.getTeacherId() != null
+                    && (liveClass.getTeacherId().equals(userId)
+                    || teacherRepository.findFirstByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                            .map(t -> liveClass.getTeacherId().equals(t.getId())).orElse(false));
+        }
 
         // Class-scoped session (classGroupId set): learners must prove membership of
         // the target class via the existing union model (student_class_assignments ∪
@@ -188,7 +204,7 @@ public class LiveSessionController {
     @Operation(summary = "Promote or demote a live class participant role (§30)")
     public ResponseEntity<ApiResponse<ParticipantInfo>> updateParticipantRole(
             @RequestAttribute("userId") UUID actorId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @PathVariable UUID classId,
             @Valid @RequestBody ParticipantRoleRequest request) {
 
@@ -198,14 +214,23 @@ public class LiveSessionController {
         if (liveClass == null) {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
-        if (!liveClass.getInstitutionId().equals(institutionId)) {
+        if (!java.util.Objects.equals(liveClass.getInstitutionId(), institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
-        boolean isActorTeacher = teacherRepository.findByUserIdAndInstitutionId(actorId, institutionId)
-                .map(t -> liveClass.getTeacherId() != null
-                        && (liveClass.getTeacherId().equals(t.getId()) || liveClass.getTeacherId().equals(actorId)))
-                .orElse(liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(actorId));
+        boolean isActorTeacher;
+        if (institutionId != null) {
+            isActorTeacher = teacherRepository.findByUserIdAndInstitutionId(actorId, institutionId)
+                    .map(t -> liveClass.getTeacherId() != null
+                            && (liveClass.getTeacherId().equals(t.getId()) || liveClass.getTeacherId().equals(actorId)))
+                    .orElse(liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(actorId));
+        } else {
+            // Institution-less caller: only the class's own teacher moderates it.
+            isActorTeacher = liveClass.getTeacherId() != null
+                    && (liveClass.getTeacherId().equals(actorId)
+                    || teacherRepository.findFirstByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(actorId)
+                            .map(t -> liveClass.getTeacherId().equals(t.getId())).orElse(false));
+        }
         User actor = userRepository.findById(actorId).orElse(null);
         boolean isAdmin = actor != null
                 && (actor.getRole() == User.Role.ADMIN || actor.getRole() == User.Role.INSTITUTION_ADMIN);
@@ -374,13 +399,13 @@ public class LiveSessionController {
     public ResponseEntity<ApiResponse<Map<String, String>>> startRecording(
             @PathVariable UUID classId,
             @RequestAttribute UUID userId,
-            @RequestAttribute UUID institutionId) {
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
 
         LiveClass liveClass = liveClassRepository.findById(classId).orElse(null);
         if (liveClass == null) {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
-        if (!liveClass.getInstitutionId().equals(institutionId)) {
+        if (!java.util.Objects.equals(liveClass.getInstitutionId(), institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
@@ -450,13 +475,13 @@ public class LiveSessionController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> stopRecording(
             @PathVariable UUID classId,
             @RequestAttribute UUID userId,
-            @RequestAttribute UUID institutionId) {
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
 
         LiveClass liveClass = liveClassRepository.findById(classId).orElse(null);
         if (liveClass == null) {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
-        if (!liveClass.getInstitutionId().equals(institutionId)) {
+        if (!java.util.Objects.equals(liveClass.getInstitutionId(), institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
@@ -586,7 +611,11 @@ public class LiveSessionController {
             @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId,
             @PathVariable UUID classId) {
 
-        // §41/§60/§98: institution + ownership check before any recording data is revealed
+        // §41/§60/§98: institution + ownership check before any recording data is revealed.
+        // An open learning session is the deliberate exception: its recording follows the same
+        // PUBLISHED + PUBLIC + no-class-audience rule that already lets outsiders join it, so
+        // cross-institution and institution-less learners may replay it — everything else keeps
+        // the strict same-tenant 403 (null-safe on both sides, never leaking existence).
         UUID callerInstitutionId = institutionId != null ? institutionId : headerInstitutionId;
 
         LiveClass liveClass = liveClassRepository.findById(classId)
@@ -596,9 +625,12 @@ public class LiveSessionController {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
 
-        if (callerInstitutionId == null || !liveClass.getInstitutionId().equals(callerInstitutionId)) {
-            // Cross-institution ID manipulation: deny without leaking existence (403)
-            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        if (callerInstitutionId == null
+                || !java.util.Objects.equals(liveClass.getInstitutionId(), callerInstitutionId)) {
+            if (!liveClass.isOpenLearningSession()) {
+                // Cross-institution ID manipulation: deny without leaking existence (403)
+                return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+            }
         }
 
         if (userId == null) {
@@ -659,9 +691,14 @@ public class LiveSessionController {
         if (liveClass == null) {
             return ResponseEntity.notFound().build();
         }
-        if (callerInstitutionId == null || !liveClass.getInstitutionId().equals(callerInstitutionId)) {
-            // Cross-institution ID manipulation: deny without leaking existence.
-            return ResponseEntity.status(403).build();
+        // Same rule as the download endpoint: only a genuine open learning session reaches a
+        // caller outside the class's institution; everything else is a plain 403.
+        if (callerInstitutionId == null
+                || !java.util.Objects.equals(liveClass.getInstitutionId(), callerInstitutionId)) {
+            if (!liveClass.isOpenLearningSession()) {
+                // Cross-institution ID manipulation: deny without leaking existence.
+                return ResponseEntity.status(403).build();
+            }
         }
         if (userId == null) {
             return ResponseEntity.status(401).build();
@@ -702,7 +739,7 @@ public class LiveSessionController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getHostState(
             @PathVariable UUID classId,
             @RequestAttribute UUID userId,
-            @RequestAttribute UUID institutionId) {
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
 
         LiveClass liveClass = liveClassRepository.findById(classId)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
@@ -710,7 +747,11 @@ public class LiveSessionController {
         if (liveClass == null) {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
-        if (!liveClass.getInstitutionId().equals(institutionId)) {
+        // Tenant boundary, null-safe: a class WITH an institution must match the caller's
+        // resolved scope exactly (an independent caller resolves none → denied); an
+        // institution-less open session declares no tenant and falls through to the host check.
+        if (liveClass.getInstitutionId() != null
+                && !liveClass.getInstitutionId().equals(institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         if (!isClassHostOrAdmin(liveClass, userId, institutionId)) {

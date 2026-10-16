@@ -111,7 +111,7 @@ export default function TeacherDashboardPage() {
     { className: string; subjectName: string; classGroupId?: string }[]
   >([])
   const [todayLiveClasses, setTodayLiveClasses] = useState<
-    { title: string; scheduledAt: string; status: string }[]
+    { title: string; scheduledAt: string; status: string; accessLevel?: string }[]
   >([])
   const [recentActivity, setRecentActivity] = useState<
     { type: string; title: string; description: string; timestamp: string }[]
@@ -200,7 +200,7 @@ export default function TeacherDashboardPage() {
 
         try {
           const liveClasses = await teacherFetch<
-            { title: string; scheduledAt: string; status: string }[]
+            { title: string; scheduledAt: string; status: string; accessLevel?: string }[]
           >("/v1/teachers/me/live-classes").catch(() => [])
           const today = new Date().toISOString().split("T")[0]
           setTodayLiveClasses(
@@ -368,7 +368,12 @@ export default function TeacherDashboardPage() {
         {dashboard && (
           <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
             <School className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-            <span>{dashboard.institutionName ?? tc("noSchool")}</span>
+            <span>
+              {/* Affiliated teachers keep their school name. An account with no school says
+                  so plainly — it is never given someone else's name to fill the gap. */}
+              {dashboard.institutionName ??
+                (dashboard.institutionId ? tc("noSchool") : tc("independentTeacher"))}
+            </span>
           </p>
         )}
       </div>
@@ -578,6 +583,18 @@ export default function TeacherDashboardPage() {
                     })}
                   </p>
                 </div>
+                {/* Official (school) vs open learning is visible at a glance, never inferred. */}
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    lc.accessLevel === "PUBLIC"
+                      ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {lc.accessLevel === "PUBLIC"
+                    ? t("dashboard.badgeOpenSession")
+                    : t("dashboard.badgeSchoolSession")}
+                </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                     lc.status === "IN_PROGRESS"

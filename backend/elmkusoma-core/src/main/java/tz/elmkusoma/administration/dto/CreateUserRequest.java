@@ -35,4 +35,10 @@ public class CreateUserRequest {
     private User.Role role;
     
     private UUID institutionId;
+
+    /**
+     * Provision an independent (school-less) teacher. Only honoured for {@code TEACHER};
+     * every other organisation-scoped role still requires {@code institutionId}.
+     */
+    private Boolean independentTeacher;
 }

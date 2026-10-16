@@ -301,18 +301,29 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional
     public Teacher getOrCreateTeacherByUserId(UUID userId, UUID institutionId) {
+        if (institutionId == null) {
+            // Unaffiliated (independent) teachers have no institution to scope by — reuse their
+            // single profile row rather than attempting an institution-less lookup. This also
+            // covers an affiliated teacher who merely omitted the X-Institution-Id header: their
+            // real, school-bound row is found instead of a second, duplicate profile being
+            // created beside it.
+            return teacherRepository.findFirstByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                    .orElseGet(() -> createTeacherProfile(userId, null));
+        }
         return teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseGet(() -> {
-                    User user = userRepository.findById(userId)
-                            .filter(u -> !Boolean.TRUE.equals(u.getIsDeleted()))
-                            .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
-                    Teacher teacher = Teacher.builder()
-                            .userId(userId)
-                            .status(TeacherStatus.ACTIVE)
-                            .build();
-                    teacher.setInstitutionId(institutionId);
-                    return teacherRepository.save(teacher);
-                });
+                .orElseGet(() -> createTeacherProfile(userId, institutionId));
+    }
+
+    private Teacher createTeacherProfile(UUID userId, UUID institutionId) {
+        User user = userRepository.findById(userId)
+                .filter(u -> !Boolean.TRUE.equals(u.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        Teacher teacher = Teacher.builder()
+                .userId(userId)
+                .status(TeacherStatus.ACTIVE)
+                .build();
+        teacher.setInstitutionId(institutionId);
+        return teacherRepository.save(teacher);
     }
 
     @Override

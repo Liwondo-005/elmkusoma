@@ -29,12 +29,16 @@ export function isApiError(error: unknown, status: number): boolean {
 export async function appFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
   const user = getStoredUser()
-  const institutionId = user?.institutionId || "a0000000-0000-0000-0000-000000000001"
+  const institutionId = user?.institutionId
   const res = await fetch(path, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "X-Institution-Id": institutionId,
+      // Institution context is OPTIONAL: an independent teacher/learner has no school and
+      // must never be sent a fabricated one (the old hardcoded HQ fallback made their
+      // requests look school-affiliated). Without the header the server resolves context
+      // from the account's own membership instead.
+      ...(institutionId ? { "X-Institution-Id": institutionId } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },

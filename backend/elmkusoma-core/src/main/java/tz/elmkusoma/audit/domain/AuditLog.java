@@ -16,7 +16,9 @@ public class AuditLog {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "institution_id", nullable = false)
+    // Nullable: institution-less actors (independent teachers since V173, platform reviewers)
+    // produce legitimate audit rows — V174 dropped the NOT NULL for the same reason.
+    @Column(name = "institution_id")
     private UUID institutionId;
 
     @Column(name = "user_id")

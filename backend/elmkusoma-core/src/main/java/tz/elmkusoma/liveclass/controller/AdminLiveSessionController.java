@@ -118,7 +118,7 @@ public class AdminLiveSessionController {
         LiveClass liveClass = liveClassRepository.findById(classId)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
                 .orElse(null);
-        if (liveClass == null || !liveClass.getInstitutionId().equals(institutionId)) {
+        if (liveClass == null || !java.util.Objects.equals(liveClass.getInstitutionId(), institutionId)) {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
 

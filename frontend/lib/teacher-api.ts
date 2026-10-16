@@ -12,12 +12,13 @@ export async function teacherFetch<T>(path: string, options?: RequestInit): Prom
       }
     } catch {}
   }
-  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "X-Institution-Id": institutionId,
+      // Independent teachers have no school: omit the header rather than fabricate the
+      // HQ institution. The server resolves context from the account's own membership.
+      ...(institutionId ? { "X-Institution-Id": institutionId } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
@@ -331,9 +332,8 @@ function authInstitutionHeaders(): Record<string, string> {
       }
     } catch {}
   }
-  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
   return {
-    "X-Institution-Id": institutionId,
+    ...(institutionId ? { "X-Institution-Id": institutionId } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
 }
@@ -412,7 +412,6 @@ export async function uploadFileToPresignedUrl(
       }
     } catch {}
   }
-  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
 
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -435,7 +434,9 @@ export async function uploadFileToPresignedUrl(
     if (token) {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`)
     }
-    xhr.setRequestHeader("X-Institution-Id", institutionId)
+    if (institutionId) {
+      xhr.setRequestHeader("X-Institution-Id", institutionId)
+    }
     xhr.send(file)
   })
 }

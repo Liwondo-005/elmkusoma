@@ -123,6 +123,23 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT lc FROM LiveClass lc WHERE lc.id = :id")
     Optional<LiveClass> findByIdForUpdate(@Param("id") UUID id);
+
+    /**
+     * Open learning sessions for authenticated learner dashboards: the same two decisions as
+     * public discovery (PUBLISHED + PUBLIC) plus the audience condition that the session declares
+     * no private class scope. School-enrolled and independent learners discover exactly this set
+     * — never an institution-scoped or unpublished session.
+     */
+    @Query("""
+            SELECT lc FROM LiveClass lc
+            WHERE lc.isDeleted = false
+              AND lc.publicationStatus = 'PUBLISHED'
+              AND lc.accessLevel = 'PUBLIC'
+              AND lc.classGroupId IS NULL
+            ORDER BY lc.scheduledAt DESC, lc.id ASC
+            """)
+    List<LiveClass> findOpenLearningSessions();
+
     // ── public discovery (V157) ─────────────────────────────────────────────────────────────
     //
     // Public eligibility is decided here rather than in the service, so there is no input a
