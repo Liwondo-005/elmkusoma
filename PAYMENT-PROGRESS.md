@@ -48,6 +48,32 @@ An earlier pass reported this as MISSING. That was wrong. Verified by inspection
 No fabricated totals were found; the page loads through the real API. `authority-sidebar`
 has **no** finance/earnings entry.
 
+### V179 -- beneficiary attribution (schema, rehearsed)
+
+Per-persona earnings could not be derived because no payment recorded a
+beneficiary. The money split existed (``commission_amount``,
+``provider_share_amount``, policy version) but ``CommissionService.allocate``
+was always called with ``providerId = null``, so no payment named the person who
+earned the provider share.
+
+V179 adds ``beneficiary_id`` + ``beneficiary_type`` to ``payments``, forward-only.
+
+Deliberately **not backfilled**. Historical payments were confirmed allocated
+against a null provider, so NULL is the only truthful value for them. Backfilling
+from a current profile would fabricate earnings for money that was genuinely
+unattributed and would restate history already reported on. They stay
+unattributed and visible to reconciliation instead.
+
+Rehearsed on a disposable database seeded to match production:
+- applies twice with exit 0 (re-runnable, as the V175 reconciliation needs)
+- invalid ``beneficiary_type`` rejected by ``payments_beneficiary_type_ck``
+- half-populated id/type pair rejected by ``payments_beneficiary_pair_ck``
+- valid pair accepted
+- legacy-style row left with ``beneficiary_id`` NULL, confirming no backfill
+- ``elmkusoma`` read-only throughout; its V175 record still 222681029
+
+**Status: schema DONE, population PENDING.** ``EventBookingService`` records the
+organiser for event tickets next, followed by a per-beneficiary earnings endpoint.
 ## 1c. Per-persona earnings — confirmed PARTIAL
 
 - Backend: `EarningsService.summaryFor(UUID institutionId, ...)` — **institution-scoped only**.
