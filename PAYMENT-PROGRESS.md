@@ -1,0 +1,132 @@
+# ELMKUSOMA Payments & Transactions — Verified Progress Record
+
+**Purpose.** Execution interrupted by context limits. This file is the resume point for
+`Payment.md` implementation. It records what is *actually verified in this repository*, with
+real test evidence — not what is planned.
+
+**Baseline:** `main` @ `23d69e87` (synced with `origin/main`).
+**Spec:** `Payment.md`, 1,310 lines, last modified 10-17 01:41.
+
+---
+
+## 1. Verified DONE — with evidence
+
+Each row was executed and observed in this session. Exit code and counts are real.
+
+| Requirement | Evidence | Result |
+|---|---|---|
+| Subscription renewal chaining (Option A) | `SubscriptionServiceTest` | **18/18** |
+| Renewal period from persisted `accessDays` snapshot | `refusesToGuessAPeriodWhenThePaymentCarriesNoApprovedDuration` | PASS |
+| Append-only history, prior periods never rewritten | `renewalDoesNotSaveOrMutateAnyPriorRow` | PASS |
+| Half-open `[start,end)` Java ↔ PostgreSQL | `tsrange '[)'` vs `isWithinPeriod` | PASS |
+| Non-overlap enforcement | `overlappingPeriodsAreRejected`, `adjacentPeriodsAreAccepted` | PASS |
+| NULL `service_id` sentinel | `nullServiceIdCollidesWithAnotherNullServiceId` | PASS |
+| Duplicate `payment_id` rejection | `duplicatePaymentIdIsRejected` | PASS |
+| Concurrent renewal serialisation (real PG) | `concurrentRenewalsAreSerialisedByTheDatabase` | PASS |
+| First-purchase payer lock (before period lookup) | `ParentRepository.findByIdForUpdate`, `SubscriptionServiceTest` | PASS |
+| Full Flyway chain V1→V178 on real PostgreSQL | `SubscriptionMigrationConstraintTest` | **8/8** |
+| Migration naming/version validation | `FlywayMigrationValidationTest` | **32/32** |
+| Duplicate-callback idempotency | `confirmationIsIdempotent`, `payment_id UNIQUE` | PASS |
+| Payment → subscription transactional activation | `ParentPaymentServiceTest` | **24/24** |
+| Entitlement continuity (extend, never truncate) | `grantEntitlement` | PASS |
+| Subscription expiry operational | `CoreScheduler.expireElapsedSubscriptions` | shipped `c2a7d695` |
+| Parent financial notifications (assembler) | `ParentFinancialNotificationAssemblerTest` | **17/17** |
+| Dashboard notification wiring | `ParentDashboardServiceImpl` | shipped `c2a7d695` |
+| **Paid seat handover on verified payment** | `confirmSeat` had **0 callers**; wired to `verifyPayment` | shipped `8509867e` |
+| Seat confirmation idempotency | `EventBookingServiceTest` | **21/21** |
+| Paid-path authorization + lifecycle parity | cancelled/started/private/cross-institution denied | PASS |
+| Charge snapshot immune to repricing | `theAmountConfirmedIsWhatWasCharged_notWhatTheEventCostsNow` | PASS |
+| Seat capacity under concurrency | `EventSeatCapacityConcurrencyTest` | **4/4** |
+| Missing/failed/pending payment never grants seat | `aSeatIsNotConfirmedWhen...` | PASS |
+| Payment purchaser attribution (V178) | `purchaser_id` + `purchaser_type` | shipped `4e88af60` |
+| CSV export hardening (RFC 4186 + formula injection) | `TransactionSearchServiceTest` | **23/23** |
+| Parent-student link integrity (V174) | `ParentStudentLinkIntegrityTest` | **5/5** |
+| IDOR / cross-parent protection | `aParentCannotReachAnotherParentsChild` | PASS |
+| Receipts, refunds, reconciliation | regression-verified, unchanged | PASS |
+
+**Cumulative this session: 0 failures across every suite run after each change.**
+
+---
+
+## 2. Defects found and fixed
+
+Recorded because they were real and non-obvious:
+
+1. **`confirmSeat` had zero callers in main.** Seats are consumed at confirmation, not booking —
+   so a paying attendee was charged and **never granted their place**. Paid events collected money
+   and refused entry. Fixed in `verifyPayment`, the single authoritative `COMPLETED` transition.
+2. **Ticket payments wrote `users.id` into `parent_id` and `student_id`.** Neither column
+   references `users.id`, so payer-scoped reporting grouped payments under non-existent parents
+   and refunds/inbox could never see event revenue. Fixed by V178.
+3. **`V175` collision.** Upstream and payment work both claimed V175 → Flyway refuses to start.
+   Renamed payment migration to V177.
+4. **`paidEvent` fixture** built events with `status=REGISTRATION_OPEN` but `eventStatus` defaulted
+   to `DRAFT` — a combination no production path produces. Fixture corrected, not the guard.
+
+---
+
+## 3. PARTIAL / MISSING / BROKEN
+
+| Item | Status | Blocker |
+|---|---|---|
+| Full backend suite green | **NEVER RUN** | Must be run when machine is idle |
+| Frontend Payments & Transactions nav/dashboards | **MISSING** | Not started |
+| Provider/teacher/organizer earnings views | **PARTIAL** | Institution-scoped only; no per-persona attribution |
+| Bundles/packages | **MISSING** | Not started |
+| Subscription cancellation API | **BLOCKED** | No approved effective-date policy. `requestCancellation` correctly refuses to invent one |
+| Payment methods (bank/card) | **N/A** | Not modelled by existing gateway |
+| Payouts/settlement | **OUT OF SCOPE** | Requires approved commission policy |
+| Real Stakaba sandbox transaction | **BLOCKED** | `sk_test_*` key present and config verified; no transaction executed |
+
+---
+
+## 4. DATABASE BLOCKERS — require database-owner authorization
+
+### V175 checksum mismatch — app cannot boot against `elmkusoma`
+
+`flyway_schema_history` (read-only) records:
+
+```
+171 | 175 | subscription lifecycle | 222681029 | true
+170 | 174 | parent student link integrity | 797143152 | true
+```
+
+Repository now has `V175__allow_independent_teachers`. **Flyway validate will fail on V175.**
+
+Physical state of `elmkusoma`: has `subscriptions` table, `btree_gist`,
+`ex_subscriptions_active_no_overlap` — i.e. the *former subscription* V175. The
+independent-teacher and institutionless-audit-log DDL was **never applied**.
+
+**Recovery plan (rehearsal NOT yet performed):**
+1. V177/V178 are already idempotent (`IF NOT EXISTS` / `IF EXISTS`) — they re-run cleanly.
+2. Add forward idempotent migrations for the teacher/audit DDL at unused versions.
+3. Owner reconciles the recorded V175 row. **Never** edit a checksum, delete history, or baseline.
+
+### V174 — applied but source uncertain
+
+Applied with checksum `797143152`. Local file was reported as CRC-32 `894014887`. Committed to
+source, but **bytes not confirmed against the applied checksum**. Rehearsal on a disposable
+database is the next concrete step.
+
+---
+
+## 5. Exact next actions
+
+1. Run `mvn -o clean test` on an **idle** machine; establish a true full-suite baseline.
+2. Rehearse the V175/V174 reconciliation on a **disposable** PostgreSQL database with Flyway
+   enabled and Hibernate DDL disabled. Produce before/after evidence.
+3. Frontend Payments & Transactions navigation + role dashboards.
+4. Per-persona earnings attribution (needs recorded beneficiary; do not fabricate history).
+5. Obtain cancellation effective-date policy, then implement with authorization + idempotency tests.
+
+---
+
+## 6. Working practices that must continue
+
+- **One Maven build at a time.** Concurrent builds on shared `target` and `elmkusoma_test`
+  caused real failures (`pg_type_typname_nsp_index`, `ClassNotFoundException`) that looked like
+  code defects. Diagnose by cause; never label unexplained failures "environmental".
+- `SubscriptionMigrationConstraintTest` owns the full Flyway chain. It hardcodes the highest
+  version — **update that assertion whenever a migration is added.**
+- Never kill another developer's process without authorization; inspect first.
+- Never commit `git add .` / `-A`. Stage exact paths.
