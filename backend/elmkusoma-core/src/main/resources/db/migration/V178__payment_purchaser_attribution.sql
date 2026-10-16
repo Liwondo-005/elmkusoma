@@ -52,6 +52,11 @@ UPDATE payments
    AND parent_id IS NOT NULL;
 
 -- Payments owned by an institution rather than a person (bulk/corporate enrolment).
+-- PostgreSQL has no ADD CONSTRAINT IF NOT EXISTS, so the constraint is dropped and recreated.
+-- That keeps the whole migration re-runnable, which matters: this file may be applied to a
+-- database that already carries part of the attribution work during reconciliation, and a
+-- migration that fails on its second run cannot be safely replayed there.
+ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_purchaser_type_ck;
 ALTER TABLE payments ADD CONSTRAINT payments_purchaser_type_ck
     CHECK (purchaser_type IS NULL OR purchaser_type IN ('USER', 'PARENT', 'INSTITUTION'));
 

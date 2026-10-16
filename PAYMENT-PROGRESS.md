@@ -9,6 +9,27 @@ real test evidence — not what is planned.
 
 ---
 
+## 1a. Full-suite baseline (VERIFIED)
+
+```
+Command : mvn -o clean test
+Config  : JAVA_HOME=jdk-21.0.12.1, DB_PASSWORD=5050, application-test.properties
+Precond : 0 Java processes, 0 connections to elmkusoma_test (verified before launch)
+Exit    : 0
+Result  : Tests run: 2303, Failures: 0, Errors: 0, Skipped: 5  — BUILD SUCCESS
+```
+
+This is the first genuine full-suite baseline of the engagement. Every earlier result was
+targeted only. Payment-relevant suites confirmed present and green in the same run:
+`EventBookingServiceTest`, `EventSeatCapacityConcurrencyTest`, `ParentPaymentServiceTest`,
+`ParentFinancialNotificationAssemblerTest`, `ParentStudentLinkIntegrityTest`,
+`PaymentGatewayServiceTest`, `PaymentRefundIntegrityTest`, `ParentAuthorizationServiceTest`,
+`TransactionSearchServiceTest`, `EarningsServiceTest`, `FinancialReportingServiceTest`,
+`ReconciliationServiceTest`, `FlywayMigrationValidationTest`,
+`SubscriptionServiceTest`, `SubscriptionMigrationConstraintTest`.
+
+---
+
 ## 1. Verified DONE — with evidence
 
 Each row was executed and observed in this session. Exit code and counts are real.
@@ -69,7 +90,7 @@ Recorded because they were real and non-obvious:
 
 | Item | Status | Blocker |
 |---|---|---|
-| Full backend suite green | **NEVER RUN** | Must be run when machine is idle |
+| Full backend suite green | **DONE** | `mvn -o clean test` — see §1a | **2303/0/0/5** |
 | Frontend Payments & Transactions nav/dashboards | **MISSING** | Not started |
 | Provider/teacher/organizer earnings views | **PARTIAL** | Institution-scoped only; no per-persona attribution |
 | Bundles/packages | **MISSING** | Not started |
@@ -97,12 +118,27 @@ Physical state of `elmkusoma`: has `subscriptions` table, `btree_gist`,
 `ex_subscriptions_active_no_overlap` — i.e. the *former subscription* V175. The
 independent-teacher and institutionless-audit-log DDL was **never applied**.
 
-**Recovery plan (rehearsal NOT yet performed):**
+**Recovery plan (rehearsed on a disposable database; result below):**
 1. V177/V178 are already idempotent (`IF NOT EXISTS` / `IF EXISTS`) — they re-run cleanly.
 2. Add forward idempotent migrations for the teacher/audit DDL at unused versions.
 3. Owner reconciles the recorded V175 row. **Never** edit a checksum, delete history, or baseline.
 
-### V174 — applied but source uncertain
+### V178 rehearsal result (disposable database)
+
+V178 was applied repeatedly to a disposable database seeded to match production
+(NOT NULL parent_id/student_id). **This found a real defect:** the
+payments_purchaser_type_ck CHECK constraint had no guard, so a second run failed
+with "constraint already exists". That matters precisely because the V175
+reconciliation path may replay migrations on a database that already carries part
+of the attribution work.
+
+Fixed with DROP CONSTRAINT IF EXISTS + ADD CONSTRAINT. Re-verified: repeat runs
+exit 0, the constraint exists exactly once, and an invalid purchaser_type is
+rejected by the database itself. Full chain still applies
+(SubscriptionMigrationConstraintTest 8/8). The rehearsal database was dropped;
+elmkusoma and elmkusoma_test were read-only throughout and were not modified.
+
+### V174 -- applied but source uncertain
 
 Applied with checksum `797143152`. Local file was reported as CRC-32 `894014887`. Committed to
 source, but **bytes not confirmed against the applied checksum**. Rehearsal on a disposable
