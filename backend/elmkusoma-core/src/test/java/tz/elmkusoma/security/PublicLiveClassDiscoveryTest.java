@@ -21,6 +21,7 @@ import tz.elmkusoma.testutil.TestDataSeeder;
 import tz.elmkusoma.testutil.TestTokens;
 
 import java.time.LocalDate;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -388,6 +389,16 @@ class PublicLiveClassDiscoveryTest {
         lc.setRecordingUrl("https://private-bucket.example/rec.mp4");
         lc.setEndedAt(LocalDateTime.now().minusMinutes(30));
         liveClassRepository.save(lc);
+        // Compared against what was actually stored, not against "today". The seed is two hours
+        // back, so between midnight and 02:00 it lands on yesterday and an equality against
+        // LocalDate.now() fails for no reason but the clock - which is the kind of failure that
+        // gets retried until it passes and then hides a real break. Asserting the value round-trips
+        // is both deterministic and a stronger statement about archiving preserving the schedule.
+        // Tolerance rather than truncation: PostgreSQL rounds the fractional seconds it is given, so
+        // truncation in Java and rounding in the database can disagree by one microsecond, and
+        // truncating to a coarser unit still has a boundary where they disagree. A stated
+        // tolerance has no boundary to fall on.
+        LocalDateTime scheduledBeforeArchive = lc.getScheduledAt();
 
         mockMvc.perform(post("/v1/platform-admin/live-classes/governance/" + lc.getId() + "/archive")
                         .header("Authorization", "Bearer " + platformToken)
@@ -399,8 +410,9 @@ class PublicLiveClassDiscoveryTest {
         assertTrue(Boolean.TRUE.equals(after.getIsDeleted()), "archiving is a soft delete");
         assertEquals("https://private-bucket.example/rec.mp4", after.getRecordingUrl(),
                 "archiving must never destroy recording metadata");
-        assertTrue(after.getScheduledAt().toLocalDate().equals(LocalDate.now().plusDays(0)),
-                "the schedule is academic record too");
+        Duration scheduleDrift = Duration.between(scheduledBeforeArchive, after.getScheduledAt());
+        assertTrue(Math.abs(scheduleDrift.toNanos()) < 1_000_000L,
+                "the schedule is academic record too, but it moved by " + scheduleDrift);
 
         assertEquals(0, publicCount("/v1/public/live-classes/past"));
     }

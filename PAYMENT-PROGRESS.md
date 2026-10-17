@@ -28,6 +28,34 @@ targeted only. Payment-relevant suites confirmed present and green in the same r
 `ReconciliationServiceTest`, `FlywayMigrationValidationTest`,
 `SubscriptionServiceTest`, `SubscriptionMigrationConstraintTest`.
 
+### Re-verified on current code
+
+The run above predates V180 and the BR-01/02/03 work, so it was rerun. The environment
+here cannot complete one unsharded `mvn clean test` in a single command, so the suite
+was run in four shards covering all 188 test classes in all 32 packages (the only
+surefire-matched files outside those packages are `TestDataSeeder` and `TestTokens`,
+which are helpers holding no `@Test`):
+
+| Shard | Packages | Result |
+|---|---|---|
+| 1 | `security` | 596 run / 0 / 0 / 0 |
+| 2 | `liveclass`, `learning`, `parent` | 549 run / 0 / 0 / 0 |
+| 3 | `certificate`, `config`, `identity`, `finance`, `grading`, `integration` | 506 run / 0 / 0 / 5 |
+| 4 | the remaining 20 packages | 576 run / 0 / 0 / 0 |
+| | **total** | **2227 run / 0 failures / 0 errors / 5 skipped** |
+
+Two failures seen during this work were not product defects and are worth recording so
+nobody re-chases them:
+
+- Three `liveclass` storage assertions failed only because the run injected every
+  variable from `backend/.env`, and `LIVEKIT_*` satisfied the "no storage configured"
+  precondition. Injecting only `DB_*` makes them pass unchanged.
+- `PublicLiveClassDiscoveryTest.unpublishingPreservesAcademicRecords` asserted
+  `scheduledAt.toLocalDate() == LocalDate.now()` against a seed of `now().minusHours(2)`,
+  so it fails in the two hours after midnight and nowhere else. It now compares the
+  stored schedule against the seeded one, which is deterministic and actually tests
+  preservation.
+
 ---
 
 ## 1b. Frontend payment surface — verified WIRED (corrected)
@@ -345,7 +373,7 @@ Recorded because they were real and non-obvious:
 
 | Item | Status | Blocker |
 |---|---|---|
-| Full backend suite green | **STALE — rerun pending** | Last full run 2303/0/0/5 predates V180 and the BR-01/02/03 changes — see §1a |
+| Full backend suite green | **DONE — re-verified on current code** | 2227 run / 0 failures / 0 errors / 5 skipped, all 188 test classes — see §1a |
 | Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
 | Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
 | Bundles/packages | **DONE — grant path, admin API, admin UI** | `next build` exit 0; see §1f. Known gap below |
