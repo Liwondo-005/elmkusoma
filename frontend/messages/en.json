@@ -1,4 +1,23 @@
 {
+  "earnings": {
+    "title": "My earnings",
+    "subtitle": "Money recorded as yours from completed payments.",
+    "loading": "Loading your earnings...",
+    "retry": "Try again",
+    "errorTitle": "We could not load your earnings",
+    "loadFailed": "We could not load your earnings. Please try again.",
+    "emptyTitle": "No earnings recorded yet",
+    "emptyBody": "No completed payment has been recorded as yours so far.",
+    "emptyHistoricalNote": "Older payments were confirmed without recording who they belonged to, so they are left unattributed rather than shown here.",
+    "grossCollected": "Gross collected",
+    "providerShare": "Your share",
+    "refunded": "Refunded",
+    "unresolvedHint": "No approved policy produced this amount",
+    "unallocatedTitle": "Not allocated",
+    "unallocatedDefault": "Some payments had no approved commission policy.",
+    "profitTitle": "Profit",
+    "profitDefault": "Profit is not available: it requires processing fees, taxes, operating expenses and a settlement date that this system does not record."
+  },
   "ai": {
     "notConfigured": "AI is not configured in this deployment",
     "notConfiguredTitle": "AI unavailable"

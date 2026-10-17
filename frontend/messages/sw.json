@@ -1,4 +1,23 @@
 {
+  "earnings": {
+    "title": "Mapato Yangu",
+    "subtitle": "Fedha zilizorekodiwa kama zako kutoka malipayaliyokamilika.",
+    "loading": "Inapakia mapato yako...",
+    "retry": "Jaribu tena",
+    "errorTitle": "Imeshindikana kupakia mapato yako",
+    "loadFailed": "Imeshindikana kupakia mapato yako. Tafadhali jaribu tena.",
+    "emptyTitle": "Hakuna mapato bado yaliyorekodiwa",
+    "emptyBody": "Hakuna malipo yaliyokamilika ambayo yameandikwa kama yako kwa sasa.",
+    "emptyHistoricalNote": "Malipo ya zamani yalithibitishwa bila kurekodiwa ni mtu aliyeweka, kwa hivyo hayakuwekewa kwa mtu yeyote.",
+    "grossCollected": "Mapato jumla",
+    "providerShare": "Sehemu yako",
+    "refunded": "Imerejeshwa",
+    "unresolvedHint": "Hakuna sera iliyoidhinishwa iliyotengeneza kiasi hiki",
+    "unallocatedTitle": "Hawezi kusambambwa",
+    "unallocatedDefault": "Baadhi ya malipo hayakuwa na sera ya ada iliyoidhinishwa.",
+    "profitTitle": "Faida",
+    "profitDefault": "Faida haieleweki bila madaraja ya uendeshaji, kodi, gharama za uendeshaji na tarehe ya malipo ambayo mfumo huu haurekodi."
+  },
   "ai": {
     "notConfigured": "AI haijaanzishwa katika envieri hii",
     "notConfiguredTitle": "AI haipatikani"
