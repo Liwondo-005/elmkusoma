@@ -95,6 +95,49 @@ beneficiary; one beneficiary can never see another's; payments with no beneficia
 are never attributed to anyone; null beneficiary refused.
 
 **Remaining:** no frontend page consumes `/v1/earnings/me` yet.
+## 1e. Bundles / packages — audited, NOT started
+
+### Audit findings (do not re-derive these)
+
+- **No bundle or package concept exists anywhere in the backend.** Searched all of
+  `tz.elmkusoma`: zero files matching `Bundle` or `Package`. This is a genuinely new
+  domain, not an unfinished one.
+- **`Entitlement` is the correct grant mechanism and needs no change.**
+  `EntitlementRepository` keys on `(studentId, serviceType, serviceId, status)`, which
+  is exactly the shape a bundle item grant needs. Granting a bundle should write one
+  `Entitlement` per item through the existing path, not a parallel system.
+  Note `service_id` is NOT NULL, so every bundle item must name a real service.
+- **Pricing must go through `PricingService.resolvePrice(serviceType, ...)`.** A bundle is
+  just another service type. Prices must never be a column on the bundle row, or pricing
+  governance stops applying to them.
+- **Publication state is required.** `Payment` has no notion of a purchasable object, so
+  the bundle row itself must carry DRAFT / PUBLISHED / SUSPENDED and be checked at
+  purchase time. Suspended or draft bundles must refuse the purchase, not just be hidden.
+- **Granting must reuse `ParentPaymentService.verifyPayment`.** That is the single
+  authoritative COMPLETED transition. Bundles get entitlements from there, exactly like
+  subscriptions and event seats do now, so duplicate-callback idempotency comes for free.
+
+### Minimum coherent design
+
+1. `bundles` - institution, name, description, `service_type` (the pricing key),
+   `status` (DRAFT/PUBLISHED/SUSPENDED), access_days. **No price column.**
+2. `bundle_items` - bundle_id, service_type, service_id, position. Reject an item
+   pointing at something that is not a real service.
+3. On verified payment with a bundle service type: resolve each item and grant an
+   `Entitlement` through the existing grant path. Idempotent - a retried webhook must
+   not double-grant, and must not extend an entitlement twice.
+4. Refuse purchase when the bundle is not PUBLISHED. Refuse an empty bundle.
+5. Admin CRUD, publication and suspension behind `@PreAuthorize` scoped to the institution.
+6. Entitlement revocation on refund must follow the established refund policy - do not
+   invent one.
+
+### Open decisions needing the owner
+
+- **Bundle refund allocation.** A bundle costs one price but contains several services.
+  A partial refund has no defined split, and inventing one would move money that policy
+  has not allocated. Blocked until a rule is approved.
+- **Whether a bundle may overlap an entitlement the learner already holds.** Granting is
+  idempotent, so this is currently a no-op rather than a top-up. Needs a decision.
 ## 1c. Per-persona earnings — confirmed PARTIAL
 
 - Backend: `EarningsService.summaryFor(UUID institutionId, ...)` — **institution-scoped only**.
