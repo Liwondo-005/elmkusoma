@@ -159,6 +159,58 @@ private LocalDateTime resolvePeriodStart(Payment payment, Entitlement entitlemen
     }
 
     /**
+     * Cancels a subscription under the approved policy BR-01.
+     *
+     * <p>Cancellation prevents the next renewal. It does NOT revoke access immediately and does
+     * NOT trigger a refund: access is decided from the paid period's boundary rather than from
+     * this status, so a cancelled subscription whose period has not ended still grants access
+     * until it does, which is exactly what the payer paid for. A refund is a separate, explicitly
+     * requested operation.
+     *
+     * <p>The effective date is therefore the end of the already-paid period. That is a decision,
+     * not a default: "immediately" would cut off access that was paid for, and a fixed offset
+     * would invent a commercial term nobody approved.
+     *
+     * <p>Idempotent. A repeated request returns the same subscription with the same effective
+     * date rather than failing - refusing the second attempt would tell the payer their
+     * cancellation had failed when it had already succeeded.
+     *
+     * <p>Only this period is affected. A later chained period is a separate row and is untouched.
+     */
+    @Transactional
+    public Subscription cancelAtPeriodEnd(UUID subscriptionId, String reason) {
+        Subscription subscription = subscriptionRepository.findByIdForUpdate(subscriptionId)
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException(
+                        "Subscription", "id", subscriptionId));
+
+        String previousStatus = subscription.getStatus();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (subscription.isPeriodElapsed(now)) {
+            // Nothing left to cancel: the paid period has already run out, so recording a
+            // cancellation now would assert an event that never affected access or money.
+            throw new IllegalStateException(
+                    "This subscription's paid period already ended at " + subscription.getPeriodEnd()
+                            + ", so there is nothing left to cancel");
+        }
+
+        subscription.requestCancellation(subscription.getPeriodEnd(), reason);
+        Subscription saved = subscriptionRepository.save(subscription);
+
+        if (!Subscription.STATUS_CANCELLED.equals(previousStatus)) {
+            audit(saved, "Subscription Cancelled",
+                    java.util.Map.of("status", previousStatus),
+                    java.util.Map.of("status", saved.getStatus(),
+                            "cancelledAt", String.valueOf(saved.getCancelledAt()),
+                            "periodEnd", String.valueOf(saved.getPeriodEnd()),
+                            "reason", reason == null ? "" : reason));
+            log.info("Subscription {} cancelled effective {} (its period end); access continues "
+                    + "until then and no refund was issued", saved.getId(), saved.getCancelledAt());
+        }
+        return saved;
+    }
+
+    /**
      * Cancels a subscription.
      *
      * <p>{@code effectiveAt} must come from the approved cancellation policy.

@@ -145,6 +145,14 @@ public class Subscription extends BaseEntity {
                     "A cancellation effective date must be supplied by the approved policy; "
                             + "this service does not choose one");
         }
+        // Idempotent. A learner who taps cancel twice, or a retried request, must get the same
+        // outcome rather than an error - refusing the second attempt would tell them the
+        // cancellation had failed when it had already succeeded. The original effective date and
+        // reason are kept, because moving the date on a repeated call would silently extend or
+        // shorten a period somebody already paid for.
+        if (STATUS_CANCELLED.equals(this.status)) {
+            return;
+        }
         if (!canTransitionTo(STATUS_CANCELLED)) {
             throw new IllegalStateException(
                     "A subscription in status " + status + " cannot be cancelled");
@@ -152,5 +160,20 @@ public class Subscription extends BaseEntity {
         this.status = STATUS_CANCELLED;
         this.cancelledAt = effectiveAt;
         this.cancellationReason = reason;
+    }
+
+    /**
+     * Whether this subscription may still renew after {@code now}.
+     *
+     * <p>BR-01: cancelling prevents the NEXT renewal. Access itself is unaffected, because it is
+     * decided from the period boundary rather than from this status - a cancelled subscription
+     * whose paid period has not ended still grants access until it does, which is exactly what the
+     * payer paid for.
+     *
+     * <p>Only the final period is cancelled. When several periods are chained, cancelling must
+     * suppress the next renewal without touching any later one.
+     */
+    public boolean preventsRenewalAfter(LocalDateTime now) {
+        return STATUS_CANCELLED.equals(this.status);
     }
 }
