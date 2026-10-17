@@ -134,6 +134,18 @@ class BundleRefundPolicyTest {
     }
 
     @Test
+    void aRealSpringAuthorityIsRecognised() {
+        // Spring Security reports granted authorities as ROLE_ADMIN. The earlier check compared
+        // against the bare name, which would have refused every genuine Platform Admin.
+        Payment p = paidBundle(new BigDecimal("100000.00"), new BigDecimal("10000.00"), BigDecimal.ZERO);
+
+        var request = bundleRefundService.requestPartialRefund(
+                p.getId(), new BigDecimal("1000.00"), UUID.randomUUID(), "probe", "ROLE_ADMIN");
+
+        assertTrue(request != null, "ROLE_ADMIN must be recognised as a Platform Admin");
+    }
+
+    @Test
     void aPlatformAdminRequestProducesARequestInTheEstablishedLifecycle() {
         Payment p = paidBundle(new BigDecimal("100000.00"), new BigDecimal("10000.00"), BigDecimal.ZERO);
 
