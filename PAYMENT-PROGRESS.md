@@ -95,7 +95,7 @@ beneficiary; one beneficiary can never see another's; payments with no beneficia
 are never attributed to anyone; null beneficiary refused.
 
 **Remaining:** no frontend page consumes `/v1/earnings/me` yet.
-## 1e. Bundles / packages - DONE (domain, admin, catalog, purchase, top-up)
+## 1e. Bundles / packages - DONE (domain, admin API, catalog, purchase, top-up, admin UI)
 
 ### Audit findings (do not re-derive these)
 
@@ -211,6 +211,24 @@ Each row was executed and observed in this session. Exit code and counts are rea
 ---
 
 ## 1f. Approved business policies - BR-01, BR-02, BR-03
+
+
+
+Bundle **admin UI** is done too: `app/dashboard/admin/bundles/page.tsx` lists this
+institution's bundles with their status, publishes drafts and suspends published ones,
+linked from the admin sidebar. No price field exists on it by design - a bundle's price comes
+from the approved pricing policy, so accepting one here would create a second, ungoverned
+way to change what a learner pays. There is no delete button either: a bundle that has been
+bought cannot be unbought, so suspension is the way to stop it being sold.
+
+The UI mirrors what the server enforces but is not the rule: hiding a button is presentation
+and `BundleAdminController` refuses the call regardless. Server refusals are shown
+verbatim, because "a bundle needs an access duration" is more useful than anything
+invented client-side.
+
+Creation and item editing are still backend-only (POST/PUT on `/v1/institution/bundles`).
+
+tsc 0 errors; i18n exit 0.
 
 ### BR-01 subscription cancellation - DONE
 

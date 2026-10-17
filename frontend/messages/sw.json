@@ -1,4 +1,28 @@
 {
+  "bundlesAdmin": {
+    "title": "Vifurushi",
+    "subtitle": "Tengeneza bidhaa zinauzwa na taasisi hii. Bei hutoka kwa sera ya bei iliyoidhinishwa, si hapa.",
+    "loading": "Inapakia vifurushi...",
+    "retry": "Jaribu tena",
+    "loadFailed": "Imeshindikana kupakia vifurushi vyako. Tafadhali jaribu tena.",
+    "actionFailed": "Kitendo hiki hakuweza kukamilishwa.",
+    "emptyTitle": "Hakuna vifurushi bado",
+    "emptyBody": "Hakuna kimeundwa kwa taasisi hii.",
+    "serviceType": "Aina ya huduma",
+    "duration": "Ufikiaji",
+    "days": "{count, plural, one {siku 1} other {siku #}}",
+    "durationUnset": "hakuna muda wa ufikiaji - haiwezi kuchapishwa",
+    "publish": "Chapisha",
+    "suspend": "Sitisha",
+    "working": "Inafanya kazi...",
+    "published": "{name} imechapishwa na sasa inanunulika.",
+    "suspended": "{name} imesitishwa. Haipatikanani tena; ufikiaji uliopo haukubadilishwa.",
+    "status": {
+      "DRAFT": "Rasimu",
+      "PUBLISHED": "Imechapishwa",
+      "SUSPENDED": "Imesitishwa"
+    }
+  },
   "bundles": {
     "title": "Vifurushi",
     "subtitle": "Ununuzi mmoja unaotoa huduma nyingi.",

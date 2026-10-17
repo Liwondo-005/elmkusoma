@@ -519,6 +519,7 @@ const adminNavGroups: AdminNavGroup[] = [
       { label: "Organization", labelKey: "organization", href: "/dashboard/admin/profile", icon: School },
       { label: "Institutions", labelKey: "institutions", href: "/dashboard/admin/institutions", icon: School },
       { label: "Data Import", labelKey: "dataImport", href: "/dashboard/admin/import", icon: FileText },
+      { label: "Bundles", labelKey: "bundles", href: "/dashboard/admin/bundles", icon: Receipt },
     ],
   },
   {

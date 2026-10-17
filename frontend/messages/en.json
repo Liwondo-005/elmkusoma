@@ -1,4 +1,28 @@
 {
+  "bundlesAdmin": {
+    "title": "Bundles",
+    "subtitle": "Author what this institution sells. Prices come from the approved pricing policy, not from here.",
+    "loading": "Loading bundles...",
+    "retry": "Try again",
+    "loadFailed": "We could not load your bundles. Please try again.",
+    "actionFailed": "That action could not be completed.",
+    "emptyTitle": "No bundles yet",
+    "emptyBody": "Nothing has been created for this institution.",
+    "serviceType": "Service type",
+    "duration": "Access",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "durationUnset": "no duration set - it cannot be published",
+    "publish": "Publish",
+    "suspend": "Suspend",
+    "working": "Working...",
+    "published": "{name} is now published and purchasable.",
+    "suspended": "{name} is suspended. It can no longer be bought; existing access is untouched.",
+    "status": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published",
+      "SUSPENDED": "Suspended"
+    }
+  },
   "bundles": {
     "title": "Bundles",
     "subtitle": "One purchase that grants several services.",
