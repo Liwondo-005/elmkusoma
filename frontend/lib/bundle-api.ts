@@ -88,3 +88,44 @@ export async function suspendBundle(bundleId: string): Promise<Bundle> {
   if (!response.data) throw new Error("Bundle was not suspended")
   return response.data
 }
+export type TopUpLine = {
+  item: BundleItem
+  covered: boolean
+  price: number | null
+  currency: string | null
+  policyKey: string | null
+  policyVersion: number | null
+}
+
+/**
+ * BR-03 quote for one learner.
+ *
+ * `covered` items are already granted and are not charged. The total is therefore what this
+ * learner actually owes, which may be less than the bundle's headline price - or zero.
+ */
+export type TopUpQuote = {
+  lines: TopUpLine[]
+  total: number
+  currency: string | null
+  fullyCovered: boolean
+  chargeableCount: number
+  coveredCount: number
+}
+
+/**
+ * Prices a bundle for a specific child.
+ *
+ * The catalog's headline price is deliberately not used for checkout. A learner who already holds
+ * part of a bundle must not be charged for it again, and only the server knows which parts they
+ * hold.
+ */
+export async function quoteBundle(bundleId: string, studentId: string): Promise<TopUpQuote> {
+  const response = await api.get<TopUpQuote>(
+    `/v1/bundles/${bundleId}/quote`,
+    { studentId }
+  )
+  if (!response.data) {
+    throw new Error("No price is available for this bundle yet")
+  }
+  return response.data
+}

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { listBundles, getBundle, type Bundle, type BundleItem } from "@/lib/bundle-api"
-import { parentApi, MOBILE_MONEY_NETWORKS, type PricingQuote, type MobileMoneyNetwork } from "@/lib/parent-api"
+import { listBundles, getBundle, quoteBundle, type Bundle, type BundleItem, type TopUpQuote } from "@/lib/bundle-api"
+import { parentApi, MOBILE_MONEY_NETWORKS, type MobileMoneyNetwork } from "@/lib/parent-api"
 import { formatMoney } from "@/lib/money"
 
 /**
@@ -19,11 +19,11 @@ import { formatMoney } from "@/lib/money"
  * set of rules, and the whole point of reusing the existing one is that there is not.
  */
 
-type Quote = PricingQuote
+
 type Checkout = {
   bundle: Bundle
   items: BundleItem[]
-  quote: Quote
+  quote: TopUpQuote | null
   studentId: string
   msisdn: string
   network: MobileMoneyNetwork
@@ -62,12 +62,14 @@ export default function BundlesPage() {
     setError(null)
     try {
       const detail = await getBundle(bundle.id)
-      // The quote is the authoritative figure. Nothing here computes a price.
-      const quote = await parentApi.getPricingQuote(bundle.serviceType)
+      // No price is fetched yet, deliberately. The honest figure depends on which child is being
+      // bought for and what that child already holds, so it is requested once a child is chosen.
+      // Quoting the bundle's headline price here and charging it later is exactly how a learner
+      // who already owns part of a bundle gets billed twice for it.
       setCheckout({
         bundle: detail.bundle,
         items: detail.items,
-        quote,
+        quote: null,
         studentId: "",
         msisdn: "",
         network: MOBILE_MONEY_NETWORKS[0].value,
@@ -80,18 +82,35 @@ export default function BundlesPage() {
     }
   }
 
+  /** Re-prices for the chosen child. Only the server knows what that child already holds. */
+  async function requote(current: Checkout, studentId: string): Promise<Checkout> {
+    if (!studentId) return { ...current, quote: null }
+    try {
+      return { ...current, studentId, quote: await quoteBundle(current.bundle.id, studentId) }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("loadFailed"))
+      return { ...current, studentId, quote: null }
+    }
+  }
+
   async function submit(current: Checkout) {
     // One submission at a time. A second click while a purchase is in flight would create a
     // second payment for the same bundle; the idempotency key makes a retry safe, but the guard
     // means the duplicate is never created in the first place.
     if (current.status === "initiating" || current.status === "awaiting") return
+    // Refuse to send a charge without a server quote. Sending the headline bundle price because a
+    // quote was missing would double-charge a learner who already holds part of the bundle.
+    if (!current.quote) {
+      setCheckout({ ...current, status: "failed", message: t("priceUnavailable") })
+      return
+    }
     setError(null)
     try {
       setCheckout({ ...current, status: "initiating", message: null })
 
       const initiated = await parentApi.initiatePayment({
         studentId: current.studentId,
-        amount: current.quote.amount,
+        amount: current.quote!.total,
         serviceType: current.bundle.serviceType,
         serviceId: current.bundle.id,
         idempotencyKey: `bundle-${current.bundle.id}-${current.studentId}`,
@@ -237,15 +256,20 @@ export default function BundlesPage() {
           </div>
 
           <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">{t("price")}</span>
+            <span className="text-sm text-muted-foreground">
+              {checkout.quote ? t("price") : t("selectChildFirst")}
+            </span>
             <span className="text-lg font-semibold text-foreground">
-              {formatMoney(checkout.quote.amount, checkout.quote.currency)}
+              {checkout.quote
+                ? formatMoney(checkout.quote.total, checkout.quote.currency ?? "TZS")
+                : ""}
             </span>
           </div>
-          {!checkout.quote.policyKey && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("priceUnresolved")}
-            </p>
+          {checkout.quote && checkout.quote.coveredCount > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">{t("alreadyCovered", { count: checkout.quote.coveredCount })}</p>
+          )}
+          {checkout.quote?.fullyCovered && (
+            <p className="mt-2 text-sm text-muted-foreground">{t("fullyCovered")}</p>
           )}
 
           {checkout.message && (
