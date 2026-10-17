@@ -36,6 +36,7 @@ class BundleGrantServiceTest {
     @Autowired private BundleRepository bundleRepository;
     @Autowired private BundleItemRepository bundleItemRepository;
     @Autowired private EntitlementRepository entitlementRepository;
+    @Autowired private tz.elmkusoma.parent.repository.PaymentRepository paymentRepository;
 
     private UUID serviceA;
     private UUID serviceB;
@@ -169,6 +170,55 @@ class BundleGrantServiceTest {
                                     studentId, "COURSE_ACCESS", serviceId, "ACTIVE"),
                     "a " + status + " bundle must not produce an entitlement");
         }
+    }
+
+@Test
+    void theDurationIsTheOneSnapshottedOnThePaymentNotTheBundle() {
+        // The payer bought a specific number of days. If the bundle is later edited, that figure
+        // is what this payment promised, so the grant must follow the payment.
+        String serviceType = "BUNDLE_SNAPSHOT_" + UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID serviceId = UUID.randomUUID();
+        Bundle b = bundle(serviceType, Bundle.STATUS_PUBLISHED);
+        item(b, serviceId, 0);
+
+        Payment payment = completedPayment(serviceType, studentId);
+        payment.setAccessDays(7);
+        payment = paymentRepository.saveAndFlush(payment);
+
+        assertEquals(1, bundleGrantService.grantFor(payment));
+        Entitlement granted = entitlementRepository
+                .findByStudentIdAndIsDeletedFalse(studentId).stream()
+                .filter(e -> serviceId.equals(e.getServiceId()))
+                .findFirst().orElseThrow();
+
+        long days = java.time.Duration.between(granted.getStartsAt(), granted.getExpiresAt()).toDays();
+        assertEquals(7L, days,
+                "access must run for the days the payer bought, not the days the bundle happens "
+                        + "to say now");
+    }
+
+    @Test
+    void noDurationIsInventedWhenNeitherSourceHasOne() {
+        // A published bundle always carries a duration, so this state needs a bad row to reach.
+        // It is reachable by a direct write, and the answer must not be a guess: granting access of
+        // an invented length is a promise the platform cannot keep and nobody paid for.
+        String serviceType = "BUNDLE_NODURATION_" + UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID serviceId = UUID.randomUUID();
+        Bundle b = bundle(serviceType, Bundle.STATUS_PUBLISHED);
+        b.setAccessDays(null);
+        bundleRepository.saveAndFlush(b);
+        item(b, serviceId, 0);
+
+        Payment payment = completedPayment(serviceType, studentId);
+        payment.setAccessDays(null);
+        payment = paymentRepository.saveAndFlush(payment);
+
+        assertEquals(0, bundleGrantService.grantFor(payment),
+                "with no recorded duration the grant must be refused, not defaulted");
+        assertEquals(0, entitlementRepository.findByStudentIdAndIsDeletedFalse(studentId).size(),
+                "a payment with no known period must leave no entitlement behind");
     }
 
     @Test

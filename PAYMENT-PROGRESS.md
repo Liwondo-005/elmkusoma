@@ -248,6 +248,17 @@ invented client-side.
 `BundleTopUpServiceTest` 6/6; `BundleRefundPolicyTest` 9/9; tsc 0 errors; i18n exit 0;
 `next build` exit 0.
 
+The grant path no longer invents an access period. It previously fell back to
+the bundle's duration and then to a literal `30` days when the payment carried
+no snapshot, which meant a paid grant could run for a length nobody sold and
+which would differ by environment depending on which branch executed first. It
+now uses the payment's snapshot, then the bundle's authored duration, and refuses
+the grant when neither exists. Publishing already refuses a bundle with no
+duration, so the refusal is a backstop rather than a live path.
+
+`BundleGrantServiceTest` 7/7, including `theDurationIsTheOneSnapshottedOnThePaymentNotTheBundle`
+and `noDurationIsInventedWhenNeitherSourceHasOne`.
+
 ### BR-01 subscription cancellation - DONE
 
 `SubscriptionService.cancelAtPeriodEnd(subscriptionId, reason)`.

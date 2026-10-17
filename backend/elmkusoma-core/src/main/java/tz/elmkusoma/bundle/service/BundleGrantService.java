@@ -79,10 +79,22 @@ public class BundleGrantService {
         }
 
         // The duration is snapshotted on the payment at initiation, so a later edit to the
-        // bundle cannot restate the period this payer already bought.
-        int accessDays = payment.getAccessDays() != null && payment.getAccessDays() > 0
-                ? payment.getAccessDays()
-                : (bundle.getAccessDays() != null ? bundle.getAccessDays() : 30);
+        // bundle cannot restate the period this payer already bought. The bundle's own authored
+        // duration is real recorded data and is an acceptable second source, but a literal default
+        // is not: inventing "30 days" would silently promise access nobody sold and nobody paid
+        // for, and it would differ per environment depending on which branch ran first. If neither
+        // source exists the payment is refused instead, because granting access of an unknown
+        // length is not a smaller mistake than granting none.
+        Integer snapshot = payment.getAccessDays();
+        int accessDays = snapshot != null && snapshot > 0
+                ? snapshot
+                : (bundle.getAccessDays() != null ? bundle.getAccessDays() : 0);
+        if (accessDays <= 0) {
+            log.error("Bundle {} ({}) has no recorded access duration and payment {} has none "
+                            + "snapshotted; no access was granted",
+                    bundle.getId(), bundle.getServiceType(), payment.getId());
+            return 0;
+        }
 
         LocalDateTime now = LocalDateTime.now();
         int granted = 0;

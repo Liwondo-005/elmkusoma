@@ -11,11 +11,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -145,17 +148,35 @@ Flyway flyway = Flyway.configure()
                         + "migration - recover the original source instead.");
     }
 
-    @Test
-    @DisplayName("V180 applies through the real Flyway chain")
+@Test
+    @DisplayName("The real Flyway chain reaches V180 with no gap in between")
     void theRealMigrationChainCompletes() throws Exception {
+        List<Integer> versions = new ArrayList<>();
         try (Connection c = open(); PreparedStatement ps = c.prepareStatement(
                 "SELECT version FROM flyway_schema_history WHERE success "
-                        + "ORDER BY installed_rank DESC LIMIT 1");
+                        + "AND version ~ '^[0-9]+$' ORDER BY installed_rank");
              ResultSet rs = ps.executeQuery()) {
-                assertTrue(rs.next(), "the chain must have recorded something");
-                assertEquals("180", rs.getString(1),
-                        "the chain must reach V180, not stop earlier or skip it");
+            while (rs.next()) {
+                versions.add(Integer.parseInt(rs.getString(1)));
             }
+        }
+        assertFalse(versions.isEmpty(), "the chain must have recorded something");
+
+        int latest = versions.get(versions.size() - 1);
+        assertTrue(latest >= 180,
+                "the bundles migration V180 must be applied; the chain stopped at V" + latest);
+
+        // Spelled as "no gap" rather than "the newest version is exactly 180" on purpose. Every new
+        // migration otherwise breaks this assertion for a reason that has nothing to do with the
+        // subscription constraints, and a test like that gets edited or deleted instead of read.
+        //
+        // Scoped to V170 onwards because the chain genuinely does have older holes - V128, V129,
+        // V130 and V140 do not exist in the repository and never did. Pretending otherwise would
+        // make this test fail for history nobody can fix, which is how a check stops being read.
+        for (int expected = 170; expected <= latest; expected++) {
+            assertTrue(versions.contains(expected),
+                    "V" + expected + " was never applied but the chain continued past it");
+        }
     }
 
     @Test
