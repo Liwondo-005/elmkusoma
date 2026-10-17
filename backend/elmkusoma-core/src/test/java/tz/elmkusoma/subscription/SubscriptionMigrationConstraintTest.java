@@ -121,15 +121,40 @@ Flyway flyway = Flyway.configure()
     }
 
     @Test
-    @DisplayName("V177 applies through the real Flyway chain")
+    void theCommittedV174SourceMatchesTheChecksumAlreadyAppliedInTheSharedDatabase() throws Exception {
+        // V174 was applied to the shared development database before its source was committed to
+        // Git, so there was a period where the database had executed a migration the repository did
+        // not contain. If the committed file were not the file that was applied, every environment
+        // would fail Flyway validation on V174, and it would only surface at startup.
+        //
+        // 797143152 is the checksum recorded for V174 in elmkusoma's flyway_schema_history. The
+        // chain is applied here from the repository's own files with no Hibernate involved, so
+        // comparing the two proves the committed source is the source that was applied.
+        int applied;
+        try (Connection c = open();
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT checksum FROM flyway_schema_history WHERE version = '174'");
+             ResultSet rs = ps.executeQuery()) {
+            assertTrue(rs.next(), "V174 must be recorded in the chain");
+            applied = rs.getInt(1);
+        }
+        assertEquals(797143152, applied,
+                "the committed V174 source no longer matches the checksum already applied in "
+                        + "elmkusoma. Either the file was edited after being applied, or the "
+                        + "recorded checksum belongs to different SQL. Do not edit an applied "
+                        + "migration - recover the original source instead.");
+    }
+
+    @Test
+    @DisplayName("V179 applies through the real Flyway chain")
     void theRealMigrationChainCompletes() throws Exception {
         try (Connection c = open(); PreparedStatement ps = c.prepareStatement(
                 "SELECT version FROM flyway_schema_history WHERE success "
                         + "ORDER BY installed_rank DESC LIMIT 1");
              ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "the chain must have recorded something");
-                assertEquals("178", rs.getString(1),
-                        "the chain must reach V178, not stop earlier or skip it");
+                assertEquals("179", rs.getString(1),
+                        "the chain must reach V179, not stop earlier or skip it");
             }
     }
 

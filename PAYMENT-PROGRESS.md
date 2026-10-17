@@ -213,7 +213,24 @@ rejected by the database itself. Full chain still applies
 (SubscriptionMigrationConstraintTest 8/8). The rehearsal database was dropped;
 elmkusoma and elmkusoma_test were read-only throughout and were not modified.
 
-### V174 -- applied but source uncertain
+### V174 -- source VERIFIED correct
+
+The committed source **is** the source that was applied. A new test applies the
+repository's own migration chain to a disposable database with Flyway enabled and
+no Hibernate involved, then compares the computed V174 checksum against
+797143152, the value recorded in `elmkusoma`'s `flyway_schema_history`. They match.
+
+This closes a standing risk: V174 had been applied to the shared database before its
+source reached Git, so the database had executed a migration the repository did not
+contain. If the committed file had drifted, every environment would have failed
+Flyway validation at startup and the mismatch would only appear on a developer's
+machine. It is now caught by a test instead.
+
+Guard added permanently as
+`theCommittedV174SourceMatchesTheChecksumAlreadyAppliedInTheSharedDatabase`.
+Do not remove it; if an applied migration is ever edited, this test fails loudly
+instead of the failure surfacing at deploy time.
+
 
 Applied with checksum `797143152`. Local file was reported as CRC-32 `894014887`. Committed to
 source, but **bytes not confirmed against the applied checksum**. Rehearsal on a disposable
