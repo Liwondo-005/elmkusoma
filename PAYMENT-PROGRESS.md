@@ -74,7 +74,7 @@ Rehearsed on a disposable database seeded to match production:
 
 **Status: schema DONE, population PENDING.** ``EventBookingService`` records the
 organiser for event tickets next, followed by a per-beneficiary earnings endpoint.
-## 1d. Per-beneficiary earnings — endpoint DONE, UI pending
+## 1d. Per-beneficiary earnings - DONE (endpoint, page, sidebar, en/sw)
 
 `EarningsService.summaryForBeneficiary(beneficiaryId, from, to)` and
 `GET /v1/earnings/me` (`BeneficiaryEarningsController`).
@@ -95,7 +95,7 @@ beneficiary; one beneficiary can never see another's; payments with no beneficia
 are never attributed to anyone; null beneficiary refused.
 
 **Remaining:** no frontend page consumes `/v1/earnings/me` yet.
-## 1e. Bundles / packages — grant path DONE; admin CRUD + UI pending
+## 1e. Bundles / packages - DONE (domain, admin, catalog, purchase, top-up)
 
 ### Audit findings (do not re-derive these)
 
@@ -210,6 +210,73 @@ Each row was executed and observed in this session. Exit code and counts are rea
 
 ---
 
+## 1f. Approved business policies - BR-01, BR-02, BR-03
+
+### BR-01 subscription cancellation - DONE
+
+`SubscriptionService.cancelAtPeriodEnd(subscriptionId, reason)`.
+
+Prevents the next renewal. Does NOT revoke access immediately and does NOT refund: access is
+derived from the paid period's boundary rather than the status, so a cancelled subscription whose
+period has not ended still grants access until it does. The effective date is the period end -
+the approved decision, not a default.
+
+`requestCancellation` is idempotent: a repeat returns the same effective date and keeps the
+original reason rather than failing. An elapsed period is refused. Only the cancelled period is
+touched - a later chained period is a separate row. Audit written on first cancellation only.
+
+`SubscriptionCancellationPolicyTest` 5/5.
+
+### BR-02 partial bundle refunds - DONE
+
+`BundleRefundCalculator` + `BundleRefundService` + `BundleRefundController` at
+`/v1/platform-admin/bundles` (`GET .../refundable`, `POST .../refunds`).
+
+Deliberately **not a component valuation** - that is an unapproved commercial decision. The
+calculation bounds and apportions using figures the approved policy already produced and that were
+snapshotted onto the payment: eligible = discount-adjusted net collected minus what is already
+refunded; commission reversed = a proportion of the RECORDED commission; provider share = the
+remainder, so the two always sum to exactly the refunded amount. Recorded figures are used so
+today's policy cannot rewrite the history of a past sale. No clock, no randomness, no policy
+lookup, so the result is reproducible.
+
+No new refund machinery: a request enters the existing lifecycle as REQUESTED and travels
+REQUESTED -> UNDER_REVIEW -> APPROVED -> PROCESSING -> COMPLETED.
+
+Authorization is `@PreAuthorize("hasRole('ADMIN')")` plus a service-level re-check using the real
+granted authorities from the SecurityContext, never a client-supplied value. The bound is checked
+before any write, so an over-refund cannot be recorded even as a pending request.
+
+**A bug this exposed in my own code:** Spring Security reports authorities as `ROLE_ADMIN` and the
+service compared against the bare name `ADMIN`, which would have refused every genuine Platform
+Admin. Fixed, and `aRealSpringAuthorityIsRecognised` now pins the prefixed form - a security check
+with no test can quietly stop working.
+
+`BundleRefundPolicyTest` 9/9, `PaymentRefundIntegrityTest` 6/6.
+
+### BR-03 bundle overlap and top-up - DONE, and wired end to end
+
+`BundleTopUpService.quote(...)` + `GET /v1/bundles/{bundleId}/quote?studentId=...`.
+
+A service covered by a CURRENTLY VALID entitlement is not charged again. Expired, revoked and
+not-yet-started grants are NOT coverage, because treating them as coverage would silently withhold
+a charge the learner owes. Service identity is (studentId, serviceType, serviceId) and nothing
+else.
+
+Each remaining item is priced individually through `PricingService.resolvePrice` (ACTIVE approved
+policy). No bundle-level price and no discount spread across components; an item with no approved
+policy fails the quote rather than making the arithmetic work.
+
+Wiring this closed a real defect: the bundles page previously fetched the bundle's HEADLINE price
+before a child was chosen and sent it as the charge amount - exactly how a learner who already
+owns part of a bundle gets billed twice. Now no price is fetched on open, the server re-prices
+when a child is chosen, submission refuses to proceed without a server quote, and Pay is disabled
+when the bundle is fully covered.
+
+`BundleTopUpServiceTest` 6/6; tsc 0 errors; i18n exit 0.
+
+Documented rather than decided: whether an expired entitlement should have a grace period, and how
+incompatible access levels are treated.
 ## 2. Defects found and fixed
 
 Recorded because they were real and non-obvious:
