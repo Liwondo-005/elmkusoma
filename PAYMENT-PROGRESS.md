@@ -348,7 +348,36 @@ owns part of a bundle gets billed twice. Now no price is fetched on open, the se
 when a child is chosen, submission refuses to proceed without a server quote, and Pay is disabled
 when the bundle is fully covered.
 
-`BundleTopUpServiceTest` 6/6; tsc 0 errors; i18n exit 0.
+`BundleTopUpServiceTest` 7/7; tsc 0 errors; i18n exit 0.
+
+**The purchase path was still broken, and only the display side was fixed.** With the frontend
+correctly sending the top-up total, `initiatePayment` validated that figure against the bundle's
+HEADLINE policy price and refused it. So the feature failed for exactly the learners it exists
+for — anyone who already holds part of the bundle — with "amount does not match the authoritative
+price from policy ...", where the "authoritative" policy was the thing that had produced the
+correct figure. The earlier "wired end to end" claim above was true of the quote and false of the
+charge, and it should not have been written before the charge was exercised.
+
+The authoritative amount for a bundle is now the server-side top-up quote, recomputed inside
+`initiatePayment` rather than trusted from the client. Recomputing is also what closes the
+quote-to-pay gap: a learner who gains coverage between being quoted and paying is charged the
+smaller correct amount rather than the larger displayed one. A fully covered learner is refused
+outright, because taking money for access already held is not a purchase. A bundle-level discount
+is not applied on top, since its total is already the sum of per-item policy prices and
+distributing a discount across components is still unapproved.
+
+The caller still cannot name the figure: a bundle purchase is checked against the server's quote
+just as anything else is checked against its policy.
+
+`ParentPaymentServiceTest` 27/27 including `aBundleIsChargedTheTopUpTotalNotTheHeadlinePrice`,
+`aBundlePurchaseCannotBeInitiatedWhenNothingIsLeftToBuy`, and
+`aBundlePurchaseStillCannotBeUnderpaidByNamingAnAmount`. Wider payment regression across
+`bundle`, `parent`, `payments`, `refund`, `subscription`, `pricing`, `finance`, `event`:
+353 run / 0 failures / 0 errors.
+
+Also fixed here: `BundleTopUpService.quote(...)` accepted a moment and then ignored it,
+resolving coverage against `LocalDateTime.now()` internally. The caller could not pin an answer,
+which made the parameter a lie in the signature.
 
 Documented rather than decided: whether an expired entitlement should have a grace period, and how
 incompatible access levels are treated.

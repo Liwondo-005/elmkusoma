@@ -46,6 +46,7 @@ public class ParentPaymentService {
     private final tz.elmkusoma.event.service.EventBookingService eventBookingService;
     private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
     private final tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
+    private final tz.elmkusoma.bundle.service.BundleTopUpService bundleTopUpService;
 
     /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
      * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
@@ -110,12 +111,43 @@ public class ParentPaymentService {
         // against this already-tainted stored amount. A caller figure that disagrees with the
         // authoritative one is refused rather than used.
         PricingService.ResolvedPrice resolved = pricingService.resolvePrice(serviceType, null);
-        pricingService.requireAmountMatches(amount, resolved);
+
+        // BR-03. A bundle a learner partly already holds is not worth its headline price, so the
+        // authoritative amount for a bundle is the server-side top-up quote, recomputed here at the
+        // moment of purchase. Comparing the caller against the headline policy price instead is what
+        // made partial top-ups impossible: the correct figure was rejected as a mismatch with the
+        // very policy that produced it. Recomputing rather than trusting the quote the client saw
+        // is also what closes the gap between quoting and paying - a learner who gains coverage
+        // between the two is charged the smaller correct amount, not the larger displayed one.
+        BigDecimal authoritativeAmount = resolved.amount();
+        boolean bundlePurchase = bundleGrantService.isBundleServiceType(serviceType);
+        if (bundlePurchase) {
+            tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote topUp =
+                    bundleTopUpService.quoteByServiceType(serviceType, studentId, LocalDateTime.now());
+            if (topUp.fullyCovered()) {
+                // Nothing to buy. Charging anyway would take money for access the learner has.
+                throw new IllegalStateException(
+                        "This learner already holds every service in this bundle; there is nothing "
+                                + "left to pay for");
+            }
+            authoritativeAmount = topUp.total();
+        }
+        if (bundlePurchase) {
+            pricingService.requireAmountMatches(amount, authoritativeAmount,
+                    "the bundle top-up quote for this learner");
+        } else {
+            pricingService.requireAmountMatches(amount, resolved);
+        }
 
         // An approved discount, if one applies. Derived server-side from the catalogue price, so
         // a client cannot name its own discount any more than it can name its own price.
-        DiscountService.ResolvedDiscount discount = discountService.resolve(serviceType, resolved.amount());
-        BigDecimal net = resolved.amount().subtract(discount.amount());
+        // Not applied to a bundle: its total is already the sum of per-item policy prices, and
+        // spreading a bundle-level discount across those components is a commercial decision that
+        // has not been approved.
+        DiscountService.ResolvedDiscount discount = bundlePurchase
+                ? DiscountService.ResolvedDiscount.none()
+                : discountService.resolve(serviceType, resolved.amount());
+        BigDecimal net = authoritativeAmount.subtract(discount.amount());
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<Payment> replayed = paymentRepository

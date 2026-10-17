@@ -138,6 +138,29 @@ class BundleTopUpServiceTest {
     }
 
     @Test
+    void theSuppliedMomentIsTheOneThatDecidesCoverage() {
+        // quote(...) takes a moment so the answer is decided by the caller, not by whenever the
+        // method happened to run. A grant that is valid now but has elapsed by that moment must be
+        // chargeable there, and one that has not started yet must not suppress a charge either.
+        Bundle b = publishedBundle();
+        UUID studentId = UUID.randomUUID();
+        UUID service = UUID.randomUUID();
+        activatePolicy("PREMIUM_ACCESS", "50000.00");
+        item(b, "PREMIUM_ACCESS", service);
+
+        LocalDateTime now = LocalDateTime.now();
+        grant(studentId, "PREMIUM_ACCESS", service,
+                now.minusDays(40), now.minusDays(1), "ACTIVE");
+
+        var quote = bundleTopUpService.quote(b.getId(), studentId, now);
+
+        assertFalse(quote.fullyCovered(),
+                "the moment passed in must decide coverage; ignoring it would make the answer "
+                        + "depend on the clock instead of the caller");
+        assertEquals(1, quote.chargeableCount());
+    }
+
+    @Test
     void anInactiveOrFutureGrantIsNotCoverage() {
         Bundle b1 = publishedBundle();
         UUID studentId = UUID.randomUUID();

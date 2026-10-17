@@ -130,6 +130,22 @@ public class BundleTopUpService {
     }
 
     /**
+     * The same quote, resolved from the pricing key the payment carries.
+     *
+     * <p>Needed at purchase time, where the caller knows a service type and a student but not a
+     * bundle id. Resolving the bundle here rather than in the caller keeps bundle lookup inside the
+     * bundle service, so the purchase path cannot accidentally price against a bundle the buyer did
+     * not choose.
+     */
+    @Transactional
+    public TopUpQuote quoteByServiceType(String serviceType, UUID studentId, LocalDateTime now) {
+        Bundle bundle = bundleRepository.findByServiceTypeAndIsDeletedFalse(serviceType)
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException(
+                        "Bundle", "serviceType", serviceType));
+        return quote(bundle.getId(), studentId, now);
+    }
+
+    /**
      * Whether a valid entitlement already grants this exact service.
      *
      * <p>Identity is (studentId, serviceType, serviceId). A different service type is not
@@ -143,12 +159,11 @@ public class BundleTopUpService {
         return entitlementRepository
                 .findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
                         studentId, item.getServiceType(), item.getServiceId())
-                .filter(this::currentlyValid)
+                .filter(e -> currentlyValid(e, now))
                 .isPresent();
     }
 
-    private boolean currentlyValid(Entitlement entitlement) {
-        LocalDateTime now = LocalDateTime.now();
+    private boolean currentlyValid(Entitlement entitlement, LocalDateTime now) {
         if (!"ACTIVE".equals(entitlement.getStatus())) {
             return false;
         }

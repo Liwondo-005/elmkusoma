@@ -43,6 +43,7 @@ class ParentPaymentServiceTest {
     @Mock private tz.elmkusoma.event.service.EventBookingService eventBookingService;
     @Mock private tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
     @Mock private tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
+    @Mock private tz.elmkusoma.bundle.service.BundleTopUpService bundleTopUpService;
 
     @InjectMocks
     private ParentPaymentService paymentService;
@@ -132,6 +133,83 @@ class ParentPaymentServiceTest {
         assertEquals(0, new BigDecimal("100000").compareTo(result.getNetAmount()));
         assertEquals(30, result.getAccessDays());
         verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    void aBundleIsChargedTheTopUpTotalNotTheHeadlinePrice() {
+        // BR-03 end to end. The bundle's policy price is 100000, but this learner already holds one
+        // of its two services, so the authoritative figure is the other service alone. Validating
+        // the caller against the headline price is what made the feature unusable: the correct
+        // amount was rejected as a mismatch with the very policy that produced it.
+        when(bundleGrantService.isBundleServiceType("TERM_BUNDLE")).thenReturn(true);
+        when(pricingService.resolvePrice("TERM_BUNDLE", null))
+                .thenReturn(new PricingService.ResolvedPrice(
+                        new BigDecimal("100000"), "TZS", 1, "SERVICE_DEFAULT_PRICE", 30));
+        when(bundleTopUpService.quoteByServiceType(
+                org.mockito.ArgumentMatchers.eq("TERM_BUNDLE"),
+                org.mockito.ArgumentMatchers.eq(STUDENT_ID),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote(
+                        List.of(), new BigDecimal("60000"), "TZS", false, 1, 1));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment pay = invocation.getArgument(0);
+            pay.setId(UUID.randomUUID());
+            return pay;
+        });
+
+        Payment result = paymentService.initiatePayment(PARENT_ID, STUDENT_ID, INSTITUTION_ID,
+                new BigDecimal("60000"), "TERM_BUNDLE", null, "Top up");
+
+        assertEquals(0, new BigDecimal("60000").compareTo(result.getAmount()),
+                "the stored amount must be what this learner actually owes, not the bundle price");
+        assertEquals(30, result.getAccessDays(), "terms are still snapshotted from the policy");
+        verify(discountService, org.mockito.Mockito.never()).resolve(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void aBundlePurchaseCannotBeInitiatedWhenNothingIsLeftToBuy() {
+        when(bundleGrantService.isBundleServiceType("TERM_BUNDLE")).thenReturn(true);
+        when(pricingService.resolvePrice("TERM_BUNDLE", null))
+                .thenReturn(new PricingService.ResolvedPrice(
+                        new BigDecimal("100000"), "TZS", 1, "SERVICE_DEFAULT_PRICE", 30));
+        when(bundleTopUpService.quoteByServiceType(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote(
+                        List.of(), BigDecimal.ZERO, "TZS", true, 0, 2));
+
+        assertThrows(IllegalStateException.class, () -> paymentService.initiatePayment(
+                        PARENT_ID, STUDENT_ID, INSTITUTION_ID, BigDecimal.ZERO,
+                        "TERM_BUNDLE", null, "Already covered"),
+                "taking money for access the learner already holds is not a purchase");
+        verify(paymentRepository, org.mockito.Mockito.never()).save(any(Payment.class));
+    }
+
+    @Test
+    void aBundlePurchaseStillCannotBeUnderpaidByNamingAnAmount() {
+        // The quote being server-side must not become a hole. Whether the caller sends the right
+        // figure or a cheap one, what gets stored is the server's top-up total - the caller's
+        // number is never the one that reaches the gateway.
+        when(bundleGrantService.isBundleServiceType("TERM_BUNDLE")).thenReturn(true);
+        when(pricingService.resolvePrice("TERM_BUNDLE", null))
+                .thenReturn(new PricingService.ResolvedPrice(
+                        new BigDecimal("100000"), "TZS", 1, "SERVICE_DEFAULT_PRICE", 30));
+        when(bundleTopUpService.quoteByServiceType(anyString(), any(), any()))
+                .thenReturn(new tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote(
+                        List.of(), new BigDecimal("60000"), "TZS", false, 1, 1));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment pay = invocation.getArgument(0);
+            pay.setId(UUID.randomUUID());
+            return pay;
+        });
+
+        Payment result = paymentService.initiatePayment(PARENT_ID, STUDENT_ID, INSTITUTION_ID,
+                new BigDecimal("1"), "TERM_BUNDLE", null, "Cheap bundle");
+
+        assertEquals(0, new BigDecimal("60000").compareTo(result.getAmount()),
+                "a caller naming TZS 1 must not become the stored amount");
     }
 
     @Test
