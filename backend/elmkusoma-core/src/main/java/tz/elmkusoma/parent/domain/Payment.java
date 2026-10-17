@@ -50,6 +50,30 @@ public class Payment extends BaseEntity {
     @Column(name = "purchaser_type", length = 32)
     private String purchaserType;
 
+    /**
+     * Who earned the provider share on this payment.
+     *
+     * <p>Populated since V179. The money split (commission and provider share) was always recorded,
+     * but the identity on the other end of it was not, so per-persona earnings could not be derived
+     * and only an institution total could be stated.
+     *
+     * <p>Null on historical rows, and that is the honest value: those payments were confirmed
+     * allocated against a null provider, so who earned them is genuinely unknown. They stay
+     * unattributed for reconciliation rather than being guessed from a current profile.
+     *
+     * <p>Read with {@link #beneficiaryType}. The database rejects a half-populated pair.
+     */
+    @Column(name = "beneficiary_id")
+    private UUID beneficiaryId;
+
+    /**
+     * Which identifier space {@link #beneficiaryId} belongs to: USER, PROVIDER, TEACHER, TRAINER,
+     * ORGANIZER or INSTITUTION. Constrained by the database so a user id can never be recorded as
+     * if it were an organiser id.
+     */
+    @Column(name = "beneficiary_type", length = 32)
+    private String beneficiaryType;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 

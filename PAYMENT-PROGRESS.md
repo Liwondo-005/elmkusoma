@@ -74,6 +74,27 @@ Rehearsed on a disposable database seeded to match production:
 
 **Status: schema DONE, population PENDING.** ``EventBookingService`` records the
 organiser for event tickets next, followed by a per-beneficiary earnings endpoint.
+## 1d. Per-beneficiary earnings — endpoint DONE, UI pending
+
+`EarningsService.summaryForBeneficiary(beneficiaryId, from, to)` and
+`GET /v1/earnings/me` (`BeneficiaryEarningsController`).
+
+**No beneficiary id parameter exists on the endpoint.** The beneficiary is taken from the
+authenticated principal, so a caller can only ever read their own earnings. Accepting the id
+from the request would have been a plain IDOR - changing one id in a URL exposes another
+person's revenue.
+
+- The beneficiary filter is applied in the query, never in Java, matching the existing
+  institution scope discipline.
+- `null` beneficiary is refused rather than treated as "no filter", which would return
+  everything.
+- Only payments with a recorded beneficiary are visible; historical rows stay unattributed.
+
+`BeneficiaryEarningsTest` 4/4 covers: earnings stated only for the recorded
+beneficiary; one beneficiary can never see another's; payments with no beneficiary
+are never attributed to anyone; null beneficiary refused.
+
+**Remaining:** no frontend page consumes `/v1/earnings/me` yet.
 ## 1c. Per-persona earnings — confirmed PARTIAL
 
 - Backend: `EarningsService.summaryFor(UUID institutionId, ...)` — **institution-scoped only**.
@@ -146,7 +167,7 @@ Recorded because they were real and non-obvious:
 |---|---|---|
 | Full backend suite green | **DONE** | `mvn -o clean test` — see §1a | **2303/0/0/5** |
 | Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
-| Provider/teacher/organizer earnings views | **PARTIAL** | Institution-scoped only; no per-persona attribution — see §1c |
+| Provider/teacher/organizer earnings views | **PARTIAL** | Per-beneficiary endpoint DONE; no UI yet — see §1d |
 | Bundles/packages | **MISSING** | Not started |
 | Subscription cancellation API | **BLOCKED** | No approved effective-date policy. `requestCancellation` correctly refuses to invent one |
 | Payment methods (bank/card) | **N/A** | Not modelled by existing gateway |

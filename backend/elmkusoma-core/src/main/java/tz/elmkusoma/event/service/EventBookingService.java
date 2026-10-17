@@ -55,6 +55,9 @@ public class EventBookingService {
     /** Recorded in {@code Payment.purchaserType} when the attendee pays for themselves. */
     public static final String PURCHASER_TYPE_USER = "USER";
 
+    /** Recorded in {@code Payment.beneficiaryType} when an event organiser earns the ticket. */
+    public static final String BENEFICIARY_TYPE_ORGANIZER = "ORGANIZER";
+
     /**
      * The parent who pays for this attendee, or {@code null} when nobody is linked.
      *
@@ -185,6 +188,12 @@ public class EventBookingService {
                 // attach the payment to a person who does not exist.
                 .parentId(payingParent == null ? null : payingParent.getId())
                 .studentId(attendee == null ? null : attendee.getId())
+                // Who earns this. The organiser is the authoritative owner of the event and is
+                // recorded here at creation, where the event is known. Without it a ticket payment
+                // named no beneficiary at all, so an organiser's earnings could not be stated
+                // without guessing from their current profile.
+                .beneficiaryId(event.getOrganizerId())
+                .beneficiaryType(BENEFICIARY_TYPE_ORGANIZER)
                 .serviceType(SERVICE_TYPE)
                 .serviceId(eventId)
                 .amount(total)
