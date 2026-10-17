@@ -1,4 +1,25 @@
 {
+  "bundles": {
+    "title": "Vifurushi",
+    "subtitle": "Ununuzi mmoja unaotoa huduma nyingi.",
+    "loading": "Inapakia vifurushi...",
+    "retry": "Jaribu tena",
+    "loadFailed": "Imeshindikana kupakia vifurushi. Tafadhali jaribu tena.",
+    "emptyTitle": "Hakuna vifurushi vinavyopatikana",
+    "emptyBody": "Hakuna kifurushi kilichochapishwa kwa sasa.",
+    "view": "Ona maudhui",
+    "close": "Funga",
+    "includes": "Kinachojumuisha",
+    "child": "Mtoto",
+    "msisdn": "Namba ya simu",
+    "network": "Mtandao",
+    "price": "Bei",
+    "priceUnresolved": "Hakuna sera ya bei iliyo idhinishwa ambayo bado haijatengeneza bei ya kifurushi hiki.",
+    "pay": "Lipa",
+    "submitting": "Inatuma...",
+    "awaitingConfirmation": "Inasubiri malipo kuthibitishwa.Ufikiaji hujitokea baada ya malipo kuthibitishwa.",
+    "purchaseFailed": "Malipo hayakuweza kuanzishwa."
+  },
   "earnings": {
     "title": "Mapato Yangu",
     "subtitle": "Fedha zilizorekodiwa kama zako kutoka malipayaliyokamilika.",

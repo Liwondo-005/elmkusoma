@@ -1,4 +1,25 @@
 {
+  "bundles": {
+    "title": "Bundles",
+    "subtitle": "One purchase that grants several services.",
+    "loading": "Loading bundles...",
+    "retry": "Try again",
+    "loadFailed": "We could not load bundles. Please try again.",
+    "emptyTitle": "No bundles available",
+    "emptyBody": "There are no published bundles right now.",
+    "view": "View contents",
+    "close": "Close",
+    "includes": "What is included",
+    "child": "Child",
+    "msisdn": "Mobile number",
+    "network": "Network",
+    "price": "Price",
+    "priceUnresolved": "No approved pricing policy has produced a price for this bundle yet.",
+    "pay": "Pay",
+    "submitting": "Submitting...",
+    "awaitingConfirmation": "Waiting for the payment to be confirmed. Access appears once the payment is verified.",
+    "purchaseFailed": "The payment could not be started."
+  },
   "earnings": {
     "title": "My earnings",
     "subtitle": "Money recorded as yours from completed payments.",
