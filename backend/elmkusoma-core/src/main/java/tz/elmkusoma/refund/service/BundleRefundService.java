@@ -84,8 +84,16 @@ public class BundleRefundService {
         }
         for (String role : callerRoles.split(",")) {
             String trimmed = role.trim().toUpperCase(java.util.Locale.ROOT);
-            if (AUTHORISED_ROLES.contains(trimmed)) {
-                return;
+            // Spring Security reports granted authorities as ROLE_ADMIN; some callers pass the bare
+            // name. Both are accepted, and anything else is refused. Matching on the bare name
+            // alone would silently reject a real administrator.
+            if (trimmed.startsWith("ROLE_")) {
+                trimmed = trimmed.substring("ROLE_".length());
+            }
+            for (String permitted : new String[] {"ADMIN", "NATIONAL_ADMIN"}) {
+                if (permitted.equals(trimmed)) {
+                    return;
+                }
             }
         }
         throw new ForbiddenException(
