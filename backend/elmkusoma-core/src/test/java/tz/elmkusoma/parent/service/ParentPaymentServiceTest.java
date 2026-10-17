@@ -42,6 +42,7 @@ class ParentPaymentServiceTest {
     @Mock private tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
     @Mock private tz.elmkusoma.event.service.EventBookingService eventBookingService;
     @Mock private tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
+    @Mock private tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
 
     @InjectMocks
     private ParentPaymentService paymentService;

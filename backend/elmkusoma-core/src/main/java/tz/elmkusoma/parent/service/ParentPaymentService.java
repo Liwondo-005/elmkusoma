@@ -45,6 +45,7 @@ public class ParentPaymentService {
     private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
     private final tz.elmkusoma.event.service.EventBookingService eventBookingService;
     private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
+    private final tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
 
     /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
      * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
@@ -222,6 +223,20 @@ public class ParentPaymentService {
         // and a paying attendee was charged and still refused entry. The verified, persisted payment
         // is the authority for the seat, so the handover happens here and only here.
         confirmEventSeatsFor(payment);
+
+        // A bundle grants several services. Same authoritative entry point, so the duplicate-callback
+        // protection the payment already has applies here too.
+        try {
+            int granted = bundleGrantService.grantFor(payment);
+            if (granted > 0) {
+                log.info("Granted {} bundle entitlement(s) for payment {}", granted, payment.getId());
+            }
+        } catch (RuntimeException ex) {
+            // Never roll back a confirmed payment for a derived grant. The money arrived; the
+            // learner keeps a refundable payment and operators get a visible reconciliation task.
+            log.error("Bundle grant failed for payment {}; payment stands", payment.getId(), ex);
+            reconciliationService.raiseReceiptFailure(payment, ex);
+        }
 
         // A receipt documents money that was actually received, so it is only issued here, once
         // the payment is confirmed. Idempotent: a duplicate callback returns the existing one.

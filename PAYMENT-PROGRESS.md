@@ -95,7 +95,7 @@ beneficiary; one beneficiary can never see another's; payments with no beneficia
 are never attributed to anyone; null beneficiary refused.
 
 **Remaining:** no frontend page consumes `/v1/earnings/me` yet.
-## 1e. Bundles / packages — audited, NOT started
+## 1e. Bundles / packages — grant path DONE; admin CRUD + UI pending
 
 ### Audit findings (do not re-derive these)
 
@@ -116,6 +116,29 @@ are never attributed to anyone; null beneficiary refused.
 - **Granting must reuse `ParentPaymentService.verifyPayment`.** That is the single
   authoritative COMPLETED transition. Bundles get entitlements from there, exactly like
   subscriptions and event seats do now, so duplicate-callback idempotency comes for free.
+
+### Delivered
+
+`V180` bundles + bundle_items, `Bundle` / `BundleItem` entities, both repositories, and
+`BundleGrantService`, wired into `ParentPaymentService.verifyPayment` so a bundle shares the
+single authoritative COMPLETED transition. One `Entitlement` per item is granted through the
+existing grant path rather than a parallel access system.
+
+`BundleGrantServiceTest` 5/5: every item granted; a repeated callback grants nothing twice;
+a service already held is not re-created or silently extended; DRAFT and SUSPENDED bundles
+grant nothing and produce no entitlement; an unverified payment grants nothing.
+
+Two real defects were caught by the tests while building this:
+
+1. **Non-published bundles granted access.** `isPurchasable()` existed on the entity but was
+   never enforced in the grant path, so a payment raised against a suspended bundle would
+   still have delivered every item in it. Now refused in `grantFor`.
+2. **`created_by` / `updated_by` were written as `uuid`.** `BaseEntity` declares them as
+   `String` and the project convention is `varchar(255)`. Caught by the existing
+   `FlywayMigrationValidationTest.auditedActorColumns_AreCharacterTypesInMigrations`.
+
+Still to do: admin CRUD and publication endpoints, discovery endpoint, frontend page, and
+the two policy decisions above.
 
 ### Minimum coherent design
 
@@ -211,7 +234,7 @@ Recorded because they were real and non-obvious:
 | Full backend suite green | **DONE** | `mvn -o clean test` — see §1a | **2303/0/0/5** |
 | Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
 | Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
-| Bundles/packages | **MISSING** | Not started |
+| Bundles/packages | **PARTIAL — grant path DONE, admin CRUD + UI pending** | Not started |
 | Subscription cancellation API | **BLOCKED** | No approved effective-date policy. `requestCancellation` correctly refuses to invent one |
 | Payment methods (bank/card) | **N/A** | Not modelled by existing gateway |
 | Payouts/settlement | **OUT OF SCOPE** | Requires approved commission policy |

@@ -146,15 +146,15 @@ Flyway flyway = Flyway.configure()
     }
 
     @Test
-    @DisplayName("V179 applies through the real Flyway chain")
+    @DisplayName("V180 applies through the real Flyway chain")
     void theRealMigrationChainCompletes() throws Exception {
         try (Connection c = open(); PreparedStatement ps = c.prepareStatement(
                 "SELECT version FROM flyway_schema_history WHERE success "
                         + "ORDER BY installed_rank DESC LIMIT 1");
              ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "the chain must have recorded something");
-                assertEquals("179", rs.getString(1),
-                        "the chain must reach V179, not stop earlier or skip it");
+                assertEquals("180", rs.getString(1),
+                        "the chain must reach V180, not stop earlier or skip it");
             }
     }
 
