@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Re: your Elmkusoma enquiry</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            background-color: #1a5276;
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            color: #2c3e50;
+            font-size: 16px;
+            margin: 0 0 20px 0;
+        }
+        .field {
+            margin-bottom: 20px;
+        }
+        .field-label {
+            color: #5d6d7e;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .field-value {
+            color: #2c3e50;
+            font-size: 15px;
+            word-break: break-word;
+        }
+        .message-body {
+            background-color: #f8f9f9;
+            border-left: 4px solid #1a5276;
+            padding: 15px;
+            color: #2c3e50;
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .footer {
+            background-color: #fafafa;
+            padding: 20px;
+            text-align: center;
+            color: #95a5a6;
+            font-size: 12px;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+            }
+            .content {
+                padding: 20px 15px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!--
+      Recipient: the person who submitted the enquiry (their own address).
+      Variables match ContactMessageService.publishReply exactly:
+      reference, name, message. No variable is invented here; anything else would
+      render as an empty field. The reply text is rendered with th:text, which
+      HTML-escapes it, so quoted visitor content cannot inject markup.
+    -->
+    <div class="header">
+        <h1>Re: Your Enquiry</h1>
+    </div>
+
+    <div class="content">
+        <p class="greeting">Dear <span th:text="${name}">there</span>,</p>
+
+        <div class="field">
+            <div class="field-label">Your reference</div>
+            <div class="field-value" th:text="${reference}">REF-0000</div>
+        </div>
+
+        <div class="field">
+            <div class="field-label">Our reply</div>
+            <div class="message-body" th:text="${message}">Reply text</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Elmkusoma &middot; You are receiving this because you contacted us.
+    </div>
+</div>
+</body>
+</html>

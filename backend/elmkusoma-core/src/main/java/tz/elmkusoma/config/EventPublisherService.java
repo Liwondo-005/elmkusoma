@@ -16,10 +16,10 @@ public class EventPublisherService {
 
     private final RabbitTemplate rabbitTemplate;
 
-    private static final String EXCHANGE_NAME = "elmkusoma.exchange";
+    public static final String EXCHANGE_NAME = "elmkusoma.exchange";
     private static final String NOTIFICATION_ROUTING_KEY = "elmkusoma.notification";
     private static final String CERTIFICATE_ROUTING_KEY = "elmkusoma.certificate";
-    private static final String EMAIL_ROUTING_KEY = "elmkusoma.email";
+    public static final String EMAIL_ROUTING_KEY = "elmkusoma.email";
     private static final String PRESENCE_ROUTING_KEY = "elmkusoma.presence.realtime";
 
     // RabbitMQ is optional (documented in .env): publishing must never break the caller
@@ -62,7 +62,21 @@ public class EventPublisherService {
         publishSafely(CERTIFICATE_ROUTING_KEY, event, "certificate event for " + certificateId);
     }
 
-    public void publishEmailEvent(String toEmail, String subject, String templateName,
+    /**
+     * Publishes an email event and reports whether the broker accepted it.
+     *
+     * <p>Unlike {@link #publishSafely}, this never converts a failure into a silent
+     * no-op: a caller is told the truth so it can record an accurate state instead of
+     * claiming mail was queued when nothing reached the broker.</p>
+     *
+     * <p><b>This is not proof of delivery.</b> {@code true} means only that
+     * {@code convertAndSend} completed without throwing, i.e. the broker took the
+     * message. Rendering and SMTP delivery happen later, in the workers module, and
+     * can still fail there.</p>
+     *
+     * @return {@code true} when the broker accepted the event without a synchronous error
+     */
+    public boolean publishEmailEvent(String toEmail, String subject, String templateName,
                                    Map<String, Object> templateVariables, UUID institutionId) {
         Map<String, Object> event = new HashMap<>();
         event.put("toEmail", toEmail);
@@ -73,7 +87,17 @@ public class EventPublisherService {
         event.put("institutionId", institutionId != null ? institutionId.toString() : null);
         event.put("timestamp", System.currentTimeMillis());
 
-        publishSafely(EMAIL_ROUTING_KEY, event, "email event to " + toEmail);
+        try {
+            rabbitTemplate.convertAndSend(EXCHANGE_NAME, EMAIL_ROUTING_KEY, event);
+            log.debug("Published email event to {}", toEmail);
+            return true;
+        } catch (Exception e) {
+            // No recipient address or message body is logged, and the reason is kept
+            // so an operator can distinguish a broker outage from a bad payload.
+            log.warn("Email event publish failed for template {}: {}",
+                    templateName, e.getClass().getSimpleName() + ": " + e.getMessage());
+            return false;
+        }
     }
 
     public void publishPresenceEvent(UUID userId, UUID institutionId, String status) {

@@ -79,6 +79,10 @@ spring:
           connectiontimeout: ${SPRING_MAIL_CONN_TIMEOUT:3000}
           timeout: ${SPRING_MAIL_TIMEOUT:3000}
           writetimeout: ${SPRING_MAIL_WRITE_TIMEOUT:3000}
+          # Gmail on 587 authenticates only after STARTTLS is negotiated. Stated
+          # explicitly rather than left to spring.mail.username implying it, so core
+          # and elmkusoma-workers (which sets auth: true) behave identically.
+          auth: true
           starttls.enable: ${SPRING_MAIL_STARTTLS:false}
 
   jackson:
