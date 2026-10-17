@@ -26,6 +26,7 @@ import tz.elmkusoma.bundle.domain.BundleItem;
 import tz.elmkusoma.bundle.repository.BundleItemRepository;
 import tz.elmkusoma.bundle.repository.BundleRepository;
 import tz.elmkusoma.bundle.service.BundleAdminService;
+import tz.elmkusoma.bundle.service.BundleAdminService.BundleDetail;
 
 import java.util.List;
 import java.util.UUID;
@@ -76,6 +77,18 @@ public class BundleAdminController {
         bundleAdminService.requireScope(userId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(
                 bundleAdminService.listForInstitution(institutionId)));
+    }
+
+    @GetMapping("/{bundleId}")
+    @Operation(summary = "One bundle in this institution and the services it contains, "
+            + "including unpublished ones.")
+    public ResponseEntity<ApiResponse<BundleDetail>> detail(
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID bundleId) {
+        bundleAdminService.requireScope(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(
+                bundleAdminService.detail(institutionId, bundleId)));
     }
 
     @PostMapping

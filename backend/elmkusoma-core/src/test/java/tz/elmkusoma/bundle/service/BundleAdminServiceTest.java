@@ -133,6 +133,48 @@ class BundleAdminServiceTest {
     }
 
     @Test
+    void editingADraftLoadsTheItemsItActuallyContains() {
+        // The admin editor opens a bundle and then saves the whole item set back. If detail did
+        // not return the items, every save would delete them and the bundle would sell nothing,
+        // so this is the contract that makes editing safe at all.
+        BundleRequest r = request(45, 3);
+        Bundle created = bundleAdminService.create(
+                TestDataSeeder.INSTITUTION_ID, UUID.randomUUID(), r);
+
+        BundleAdminService.BundleDetail detail = bundleAdminService.detail(
+                TestDataSeeder.INSTITUTION_ID, created.getId());
+
+        assertEquals(created.getId(), detail.bundle().getId());
+        assertEquals(Bundle.STATUS_DRAFT, detail.bundle().getStatus(),
+                "an administrator must be able to open a draft; the public catalog refuses one on "
+                        + "purpose, so this is the only way to see what a draft holds");
+        assertEquals(3, detail.items().size(),
+                "every authored item must be returned, or saving the editor would erase them");
+        for (int i = 0; i < 3; i++) {
+            assertEquals(r.getItems().get(i).getServiceType(), detail.items().get(i).getServiceType());
+            assertEquals(r.getItems().get(i).getServiceId(), detail.items().get(i).getServiceId());
+            assertEquals(i, detail.items().get(i).getPosition(),
+                    "items keep their authored order so the editor does not reshuffle the bundle");
+        }
+    }
+
+    @Test
+    void editingADraftDoesNotReturnRemovedItems() {
+        Bundle created = bundleAdminService.create(
+                TestDataSeeder.INSTITUTION_ID, UUID.randomUUID(), request(30, 2));
+        BundleItem toRemove = bundleItemRepository
+                .findAllByBundleIdAndIsDeletedFalseOrderByPositionAsc(created.getId())
+                .get(0);
+        bundleAdminService.removeItem(
+                TestDataSeeder.INSTITUTION_ID, created.getId(), toRemove.getId());
+
+        assertEquals(1, bundleAdminService.detail(
+                        TestDataSeeder.INSTITUTION_ID, created.getId()).items().size(),
+                "a soft-deleted item must not be offered to the editor as if it were still there; "
+                        + "saving the editor would otherwise write it back");
+    }
+
+    @Test
     void aBundleInAnotherInstitutionDoesNotResolve() {
         Bundle foreign = bundleAdminService.create(
                 UUID.randomUUID(), UUID.randomUUID(), request(30, 1));

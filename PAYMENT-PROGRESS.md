@@ -226,9 +226,27 @@ and `BundleAdminController` refuses the call regardless. Server refusals are sho
 verbatim, because "a bundle needs an access duration" is more useful than anything
 invented client-side.
 
-Creation and item editing are still backend-only (POST/PUT on `/v1/institution/bundles`).
+Creation and item editing are done as well. The page creates a draft, edits one, publishes and
+suspends, and lists this institution's bundles. No price field exists on it by design - a bundle's
+price comes from the approved pricing policy, so accepting one here would create a second,
+ungoverned way to change what a learner pays.
 
-tsc 0 errors; i18n exit 0.
+Editing needed one thing the admin list could not supply. `update` replaces the bundle's whole
+item set, so an editor that opened without the items would delete every service in the bundle
+simply by saving, and the public `GET /v1/bundles/{id}` cannot help because it refuses drafts on
+purpose. So there is now `GET /v1/institution/bundles/{bundleId}`, institution-scoped through the
+same `ownedBundle` check as every other admin call, returning the draft and its items in authored
+order. The editor loads that before opening and will not open at all if the load fails, rather
+than opening an editor it cannot fill in correctly.
+
+The UI mirrors what the server enforces but is not the rule: hiding a button is presentation
+and `BundleAdminController` refuses the call regardless. Server refusals are shown
+verbatim, because "a bundle needs an access duration" is more useful than anything
+invented client-side.
+
+`BundleAdminServiceTest` 10/10; `BundleCatalogControllerTest` 4/4; `BundleGrantServiceTest` 5/5;
+`BundleTopUpServiceTest` 6/6; `BundleRefundPolicyTest` 9/9; tsc 0 errors; i18n exit 0;
+`next build` exit 0.
 
 ### BR-01 subscription cancellation - DONE
 
@@ -316,11 +334,11 @@ Recorded because they were real and non-obvious:
 
 | Item | Status | Blocker |
 |---|---|---|
-| Full backend suite green | **DONE** | `mvn -o clean test` — see §1a | **2303/0/0/5** |
+| Full backend suite green | **STALE — rerun pending** | Last full run 2303/0/0/5 predates V180 and the BR-01/02/03 changes — see §1a |
 | Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
 | Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
-| Bundles/packages | **PARTIAL — grant path DONE, admin CRUD + UI pending** | Not started |
-| Subscription cancellation API | **BLOCKED** | No approved effective-date policy. `requestCancellation` correctly refuses to invent one |
+| Bundles/packages | **DONE — grant path, admin API, admin UI** | `next build` exit 0; see §1f. Known gap below |
+| Subscription cancellation API | **PARTIAL** | BR-01 service method DONE and tested; no authorized HTTP/UI path yet |
 | Payment methods (bank/card) | **N/A** | Not modelled by existing gateway |
 | Payouts/settlement | **OUT OF SCOPE** | Requires approved commission policy |
 | Real Stakaba sandbox transaction | **BLOCKED** | `sk_test_*` key present and config verified; no transaction executed |

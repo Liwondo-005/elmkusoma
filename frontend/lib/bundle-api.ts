@@ -65,6 +65,20 @@ export async function listInstitutionBundles(): Promise<Bundle[]> {
   return (await api.get<Bundle[]>("/v1/institution/bundles")).data ?? []
 }
 
+/**
+ * Administration detail for one bundle, including unpublished ones.
+ *
+ * The public `getBundle` deliberately 404s a draft, so the admin editor cannot use it: it would
+ * have to load a bundle whose contents it cannot see. This is the institution-scoped equivalent.
+ */
+export async function getInstitutionBundle(bundleId: string): Promise<BundleDetail> {
+  const response = await api.get<BundleDetail>(`/v1/institution/bundles/${bundleId}`)
+  if (!response.data) {
+    throw new Error("Bundle not found")
+  }
+  return response.data
+}
+
 export async function createBundle(body: BundleRequest): Promise<Bundle> {
   const response = await api.post<Bundle>("/v1/institution/bundles", body)
   if (!response.data) throw new Error("Bundle was not created")

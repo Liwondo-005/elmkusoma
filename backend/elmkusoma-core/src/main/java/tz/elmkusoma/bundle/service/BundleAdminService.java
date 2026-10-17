@@ -46,6 +46,27 @@ public class BundleAdminService {
         return bundleRepository.findAllByInstitutionIdAndIsDeletedFalseOrderByNameAsc(institutionId);
     }
 
+    /**
+     * One bundle with the services it contains, resolved inside the caller's institution.
+     *
+     * <p>Drafts are included deliberately. An administrator has to be able to see what is inside a
+     * draft before deciding to publish it, and the public catalog refuses drafts on purpose - so
+     * without this the editor would be editing a bundle whose contents it cannot see. Every bundle
+     * item is inherited from a specific target, so getting the item list wrong is not cosmetic:
+     * {@code update} replaces the whole set, which means an editor that could not load the items
+     * would delete them by saving.
+     */
+    @Transactional(readOnly = true)
+    public BundleDetail detail(UUID institutionId, UUID bundleId) {
+        Bundle bundle = ownedBundle(institutionId, bundleId);
+        return new BundleDetail(bundle, bundleItemRepository
+                .findAllByBundleIdAndIsDeletedFalseOrderByPositionAsc(bundle.getId()));
+    }
+
+    /** A bundle plus its contents, in the order they were authored. */
+    public record BundleDetail(Bundle bundle, List<BundleItem> items) {
+    }
+
     @Transactional
     public Bundle create(UUID institutionId, UUID userId, BundleRequest request) {
         // A bundle with nothing in it can never grant access. Refusing at creation is better than
