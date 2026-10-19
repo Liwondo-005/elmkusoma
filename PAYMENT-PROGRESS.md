@@ -399,6 +399,19 @@ Recorded because they were real and non-obvious:
    Renamed payment migration to V177.
 4. **`paidEvent` fixture** built events with `status=REGISTRATION_OPEN` but `eventStatus` defaulted
    to `DRAFT` — a combination no production path produces. Fixture corrected, not the guard.
+5. **`BundleGrantService` could double-grant under concurrent purchases (B-09).** `grantOne`
+   checked whether the learner already held a service and then inserted, with nothing between the
+   two. Two simultaneous purchases for the same learner both read "not held" and both inserted, so
+   the learner held the same paid access twice. A row lock was the obvious remedy and is wrong
+   here: when no entitlement row exists yet there is nothing for `SELECT ... FOR UPDATE` to lock,
+   which is exactly the case where the race happens. Replaced with a transaction-scoped advisory
+   lock keyed on (learner, serviceType, serviceId), taken *before* the coverage check inside the
+   existing transaction. It serialises instead of rejecting, so a legitimate second purchase still
+   proceeds; it is database-scoped, so it holds across application instances rather than per JVM;
+   and a hash collision costs only needless waiting, never a merged grant.
+
+   Evidence that the test is real rather than decorative: with the lock removed the same test
+   fails with `expected: <1> but was: <2>` — two grants committed. With it in place it passes.
 
 ---
 
@@ -476,7 +489,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | B-06 | No price column / no price field in UI | `V180` schema + admin UI | migration test | DONE |
 | B-07 | Entitlement only after confirmed payment | `BundleGrantService` | `BundleGrantServiceTest` 7/7 | DONE |
 | B-08 | Overlap/top-up policy | `BundleTopUpService` | `BundleTopUpServiceTest` 7/7 | DONE |
-| B-09 | Concurrent purchase / duplicate grant protection | check-then-insert, no lock or unique constraint | — | **PARTIAL** — a race can double-grant; needs serialisation |
+| B-09 | Concurrent purchase / duplicate grant protection | transaction-scoped advisory lock in `BundleGrantService.grantOne`, taken before the coverage check | `BundleGrantServiceTest` `twoConcurrentPurchasesCannotGrantTheSameServiceTwice` (fails with 2 grants when the lock is removed) | DONE |
 | B-10 | Bundle item must point at a real service | service id accepted as typed UUID, not resolved | — | **PARTIAL** — no service-catalogue exists to validate against |
 
 ### Events and bookings (spec §53–55)
@@ -622,9 +635,20 @@ database is the next concrete step.
 
 Ordered by what blocks a controlled test, not by what is easiest.
 
-1. **Bundle purchase concurrency (B-09).** `BundleGrantService` checks coverage and then inserts.
-   Two simultaneous purchases can both pass the check. Needs a row lock on the student's
-   entitlement scope or a unique constraint the database enforces, plus a concurrency test.
+1. **Charge without grant on repurchase after expiry (new finding, B-09 investigation).**
+   Nothing ever sets an entitlement's `status` to `EXPIRED` — the only `setStatus("EXPIRED")` in
+   the codebase is `CoreScheduler.expireDelegations`, which is for delegations, and there is no
+   bulk `UPDATE Entitlement`. An elapsed entitlement therefore stays `ACTIVE` forever. The two
+   sides disagree about what that means:
+   - `BundleTopUpService.currentlyValid` reads elapsed as **not coverage**, so the parent is
+     charged for the repurchase (`BundleTopUpService.java:166-177`).
+   - `BundleGrantService.grantOne` reads `existsBy...Status="ACTIVE"` as **already held**, so the
+     grant is declined (`BundleGrantService.java:136-141`).
+
+   Net effect: a legitimate repurchase after expiry is charged in full and grants nothing. Not
+   caused by the B-09 lock, and not fixed by it. Untouched deliberately because deciding whether
+   repurchase should extend, re-grant, or apply a grace window is a commercial decision, not a
+   bug-local edit. Needs an approved rule before it can be closed.
 2. **Dashboard notification integration (P-05).** `ParentFinancialNotificationAssembler` has its
    own test but nothing observes it inside `ParentDashboardServiceImpl.getChildNotifications`.
 3. **Subscription expiry scheduler (S-09).** The sweep exists and is exercised through the

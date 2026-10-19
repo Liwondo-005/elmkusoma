@@ -39,6 +39,17 @@ public class BundleGrantService {
     private final EntitlementRepository entitlementRepository;
 
     /**
+     * Test seam, invoked in the window between the coverage check and the insert. Package-private
+     * on purpose: a public setter would let anything reconfigure grant behaviour at runtime.
+     */
+    private volatile java.util.function.BiConsumer<UUID, BundleItem> beforeInsert =
+            (student, item) -> { };
+
+    void setBeforeInsertHook(java.util.function.BiConsumer<UUID, BundleItem> hook) {
+        this.beforeInsert = hook == null ? (student, item) -> { } : hook;
+    }
+
+    /**
      * Grants every item in the bundle this payment bought.
      *
      * <p>A payment whose service type is not a bundle is ignored, so this is safe to call for every
@@ -117,12 +128,22 @@ public class BundleGrantService {
         if (payment.getStudentId() == null) {
             return false;
         }
+        // Taken before the coverage check, and inside the same transaction as the insert below.
+        // Ordering matters: a lock acquired after the check would let both transactions read
+        // "not held" before either held anything, which is the race this exists to close.
+        entitlementRepository.lockGrantKey(
+                payment.getStudentId() + ":" + item.getServiceType() + ":" + item.getServiceId());
         boolean alreadyHeld = entitlementRepository
                 .existsByStudentIdAndServiceTypeAndServiceIdAndStatusAndIsDeletedFalse(
                         payment.getStudentId(), item.getServiceType(), item.getServiceId(), "ACTIVE");
         if (alreadyHeld) {
             return false;
         }
+        // Seam for the concurrency test. It sits in the exact window the race lives in - after the
+        // coverage check, before the insert - so a test can hold both transactions inside the
+        // window and make the interleaving deterministic instead of hoping timing lines up. It is
+        // package-private and defaults to doing nothing, and no production path can reach it.
+        beforeInsert.accept(payment.getStudentId(), item);
         entitlementRepository.save(Entitlement.builder()
                 .userId(payment.getPurchaserId() != null
                         ? payment.getPurchaserId() : payment.getParentId())
