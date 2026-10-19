@@ -6654,7 +6654,31 @@
       "status": "Status",
       "serviceType": "Service Type",
       "date": "Date",
-      "prev": "Prev"
+      "prev": "Prev",
+      "refunds": {
+        "actions": "Refund",
+        "requestAction": "Request refund",
+        "title": "Request a partial refund",
+        "close": "Close",
+        "reference": "Payment reference: {id}",
+        "requestOnlyNotice": "This records a refund REQUEST. It does not move money. The request enters the normal refund lifecycle and is only paid once it is separately approved and executed.",
+        "amountLabel": "Amount to refund",
+        "loadingBalance": "Checking what is still refundable...",
+        "remaining": "Still refundable: {amount} {currency}",
+        "amountHelp": "Cannot be more than the refundable balance. The server checks this again.",
+        "reasonLabel": "Reason",
+        "reasonPlaceholder": "Why is this being refunded?",
+        "reasonHelp": "Recorded on the request and kept as part of the financial audit history.",
+        "submit": "Record request",
+        "submitting": "Recording...",
+        "cancel": "Cancel",
+        "done": "Close",
+        "requestedTitle": "Refund request recorded",
+        "requestedBody": "Request {id} has been created with status REQUESTED.",
+        "notYetPaid": "No money has been returned to the payer yet. Approval and execution are separate steps.",
+        "balanceFailed": "Could not read the refundable balance for this payment.",
+        "requestFailed": "That refund request could not be recorded."
+      }
     },
     "providers": {
       "unlimited": "{p0} / unlimited",

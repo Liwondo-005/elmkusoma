@@ -6654,7 +6654,31 @@
       "status": "Hali",
       "serviceType": "Huduma Type",
       "date": "Date",
-      "prev": "Prev"
+      "prev": "Prev",
+      "refunds": {
+        "actions": "Refund",
+        "requestAction": "Omba refund",
+        "title": "Omba sehemu ya refund",
+        "close": "Funga",
+        "reference": "Kumbukumbu ya malipo: {id}",
+        "requestOnlyNotice": "Hii inarekodi OMBI la refund. Haikusisizi pesa. Ombi linaingia katika mzunguko wa kawaida wa refund na pesa hutiliwa pale tu limeidhinishwa na kutekelezwa hatua tofauti.",
+        "amountLabel": "Kiasi cha kurudishwa",
+        "loadingBalance": "Inakagua kilichobaki cha kurudishwa...",
+        "remaining": "Kilichobaki kurudishwa: {amount} {currency}",
+        "amountHelp": "Hikiwezi kuzidi salio linaloweza kurudishwa. Server inakagua tena.",
+        "reasonLabel": "Sababu",
+        "reasonPlaceholder": "Kwa nini hii inarudishwa?",
+        "reasonHelp": "Inarekodiwa kwenye ombi na huhifadhiwa kama sehemu ya historia ya ukaguzi wa kifedha.",
+        "submit": "Rekodi ombi",
+        "submitting": "Inarekodi...",
+        "cancel": "Ghairi",
+        "done": "Funga",
+        "requestedTitle": "Ombi la refund limerekodiwa",
+        "requestedBody": "Ombi {id} limeundwa na hali ya REQUESTED.",
+        "notYetPaid": "Hakuna pesa bado imerudiwa kwa mlipaji. Idhini na utekelezaji ni hatua tofauti.",
+        "balanceFailed": "Imeshindwa kusoma salio linaloweza kurudishwa kwa malipo haya.",
+        "requestFailed": "Ombi la refund halikuweza kurekodiwa."
+      }
     },
     "providers": {
       "unlimited": "{p0} / isiyo na kikomo",
