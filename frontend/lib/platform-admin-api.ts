@@ -263,6 +263,13 @@ export interface UserCreatePayload {
   password?: string
   role: string
   institutionId?: string
+  /**
+   * Provision an independent (school-less) teacher. The server honours it only for
+   * `role: "TEACHER"`; every other organization-scoped role still requires `institutionId`.
+   * Omit `institutionId` together with this flag — that combination is what creates an
+   * account with no school and no membership; nothing is ever invented for the admin.
+   */
+  independentTeacher?: boolean
 }
 
 export interface UserUpdatePayload {

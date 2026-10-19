@@ -1,0 +1,14 @@
+-- E2E gate finding (2026-10-19): V18 declared security_events.institution_id NOT NULL,
+-- but school-less actors are first-class (independent teachers provisioned by the
+-- Platform Admin, platform-scoped learners) and SecurityEvent.institutionId has always
+-- been mapped as nullable — the JPA/test schema allows what the dev Flyway schema
+-- rejects. The mismatch made a SUCCESSFUL login by a school-less user abort with a
+-- data-integrity error (HTTP 500): the LOGIN_SUCCESS audit insert carries
+-- institution_id = NULL, the constraint fires, and the exception propagates out of
+-- AuthServiceImpl after authentication already succeeded.
+--
+-- Dropping the nullability is additive and non-destructive: existing rows are untouched
+-- and the foreign key (fk_security_events_institution) keeps guarding every value that
+-- IS set. This mirrors V176, which already made the platform audit logs tolerant of
+-- institution-less actors.
+ALTER TABLE security_events ALTER COLUMN institution_id DROP NOT NULL;

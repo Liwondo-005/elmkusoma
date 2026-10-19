@@ -93,6 +93,11 @@ const [error, setError] = useState<string | null>(null)
   // Audit B-02: the organization is now selectable at provisioning time.
   const [institutions, setInstitutions] = useState<{ id: string; name: string; type?: string }[]>([])
   const [institutionsError, setInstitutionsError] = useState<string | null>(null)
+  // Independent-teacher option: create mode, direct-password mode, TEACHER role only. Held
+  // outside `form` because the server honours the flag (CreateUserRequest.independentTeacher)
+  // only for TEACHER and only when creating — an existing account's affiliation is not a
+  // form edit (UserUpdatePayload carries no such field), so edit mode never shows it.
+  const [independentTeacher, setIndependentTeacher] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -117,6 +122,7 @@ const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     if (!open) return
     setError(null)
+    setIndependentTeacher(false)
     if (user) {
       setForm({
         firstName: user.firstName ?? "",
@@ -151,6 +157,14 @@ const [error, setError] = useState<string | null>(null)
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
+  // A school-less teacher can only be provisioned directly (invitations always belong to a
+  // school, enforced server-side too), and only for the TEACHER role. When the box is on,
+  // the organization stops being required for this account — and only this account: every
+  // other organization-scoped role keeps its school requirement untouched.
+  const canBeIndependent = !isEdit && !inviteMode && form.role === "TEACHER"
+  const isIndependentCreate = canBeIndependent && independentTeacher
+  const institutionRequired = ORG_SCOPED_ROLES.has(form.role) && !isIndependentCreate
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const firstName = form.firstName.trim()
@@ -170,7 +184,9 @@ const [error, setError] = useState<string | null>(null)
       return
     }
     // Audit B-02: block submission rather than creating an account that cannot resolve a scope.
-    if (!isEdit && ORG_SCOPED_ROLES.has(form.role) && !form.institutionId) {
+    // The one documented exception is an independent TEACHER: school-less by design, waived
+    // by the server exactly for that role (never silently for any other).
+    if (!isEdit && institutionRequired && !form.institutionId) {
       setError(t("userForm.errInstitutionRequired"))
       return
     }
@@ -184,7 +200,12 @@ const [error, setError] = useState<string | null>(null)
         phone: form.phone?.trim() || undefined,
         password: form.password || undefined,
         role: form.role,
-        institutionId: form.institutionId || undefined,
+        // An independent teacher has no school by definition: the field stays undefined so
+        // the server creates no organization membership for them. With the box unchecked,
+        // normal school-affiliated teacher creation is untouched — and still required for
+        // every organization-scoped role by the validation above.
+        institutionId: isIndependentCreate ? undefined : form.institutionId || undefined,
+        ...(isIndependentCreate ? { independentTeacher: true } : {}),
         isActive: form.isActive,
         isEmailVerified: form.isEmailVerified,
         isPhoneVerified: false,
@@ -303,11 +324,36 @@ const [error, setError] = useState<string | null>(null)
             </div>
           </div>
 
+          {/* Independent teacher: TEACHER-only, direct-creation-only. Checking it clears any
+              school already chosen so no membership can be attached by accident — the server
+              receives the flag with no organizationId and creates no membership at all. */}
+          {canBeIndependent && (
+            <div className="rounded-xl border border-border bg-muted/40 p-3">
+              <label className="flex items-start gap-2 text-xs text-foreground">
+                <input
+                  type="checkbox"
+                  checked={independentTeacher}
+                  onChange={(e) => {
+                    setIndependentTeacher(e.target.checked)
+                    if (e.target.checked) setForm((p) => ({ ...p, institutionId: "" }))
+                  }}
+                  className="mt-0.5 accent-primary"
+                />
+                <span>
+                  <span className="font-medium">{t("userForm.independentTeacherLabel")}</span>
+                  <span className="mt-0.5 block text-muted-foreground">
+                    {t("userForm.independentTeacherHint")}
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
+
           {/* Audit B-02: the organization an org-scoped account belongs to. */}
           <div>
             <label className={labelClass} htmlFor="user-form-institution">
               {t("userForm.labelInstitution")}
-              {ORG_SCOPED_ROLES.has(form.role) && (
+              {institutionRequired && (
                 <span className="ml-1 text-destructive">*</span>
               )}
             </label>
@@ -320,8 +366,8 @@ const [error, setError] = useState<string | null>(null)
                 id="user-form-institution"
                 value={form.institutionId}
                 onChange={(e) => setForm((p) => ({ ...p, institutionId: e.target.value }))}
-                required={ORG_SCOPED_ROLES.has(form.role)}
-                disabled={institutions.length === 0}
+                required={institutionRequired}
+                disabled={institutions.length === 0 || isIndependentCreate}
                 className={selectClass}
               >
                 <option value="">
@@ -337,6 +383,13 @@ const [error, setError] = useState<string | null>(null)
               </select>
             )}
             <p className="mt-1 text-xs text-muted-foreground">{t("userForm.hintInstitution")}</p>
+            {/* Edit mode reflects the persisted account state honestly: a TEACHER row with no
+                organization IS an independent teacher, whether or not this screen created it. */}
+            {isEdit && form.role === "TEACHER" && !form.institutionId && (
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
+                {t("userForm.independentTeacherEditHint")}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
