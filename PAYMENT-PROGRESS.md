@@ -406,10 +406,149 @@ Recorded because they were real and non-obvious:
 | Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
 | Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
 | Bundles/packages | **DONE — grant path, admin API, admin UI** | `next build` exit 0; see §1f. Known gap below |
-| Subscription cancellation API | **PARTIAL** | BR-01 service method DONE and tested; no authorized HTTP/UI path yet |
+| Subscription cancellation API | **DONE** | `GET /v1/my/subscriptions` + `POST .../{id}/cancel`, payer-scoped, UI on parent payments — see §1f |
+| Refund Admin UI (BR-02) | **DONE** | Dialog on platform-admin payments; records a REQUEST, never claims a refund paid |
 | Payment methods (bank/card) | **N/A** | Not modelled by existing gateway |
 | Payouts/settlement | **OUT OF SCOPE** | Requires approved commission policy |
 | Real Stakaba sandbox transaction | **BLOCKED** | `sk_test_*` key present and config verified; no transaction executed |
+
+---
+
+## 2a. Requirement traceability matrix
+
+Read against `Payment.md` (1811 lines, 90 numbered sections). Every row records what the code
+actually does today, not what a section title implies. "Evidence" is a recorded test run.
+
+### Payment foundation (spec §14–16, §15 invariants)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| F-01 | Server computes the amount; caller never names it | `PricingService.requireAmountMatches`, `ParentPaymentService.initiatePayment` | `ParentPaymentServiceTest` 27/27 | DONE |
+| F-02 | Amount for a partly-held bundle is the top-up total | `BundleTopUpService.quoteByServiceType` used at initiation | `aBundleIsChargedTheTopUpTotalNotTheHeadlinePrice` | DONE |
+| F-03 | Nothing left to buy ⇒ refuse, do not take money | `initiatePayment` throws when `fullyCovered` | `aBundlePurchaseCannotBeInitiatedWhenNothingIsLeftToBuy` | DONE |
+| F-04 | Frontend success is never authoritative | Access only after `verifyPayment` | `verifyPayment_marksCompleteAndGrantsEntitlement` | DONE |
+| F-05 | Pending ≠ successful | Grant path requires `COMPLETED` | `aPaymentThatIsNotCompleteGrantsNothing` | DONE |
+| F-06 | Duplicate callbacks cannot duplicate financial effects | Payment reaches COMPLETED once; grant idempotent | `aRepeatedCallbackGrantsNothingTwice` | DONE |
+| F-07 | Mismatched amount/currency cannot fulfil | `PricingConflictException`; gateway reconciliation | `PaymentRefundIntegrityTest`, `PaymentGatewayServiceTest` | DONE |
+| F-08 | Idempotent submission | Partial unique index on `idempotency_key` | `ParentPaymentServiceTest` replay test | DONE |
+| F-09 | Reconciliation of unresolved discrepancies | `ReconciliationService` | `ReconciliationServiceTest` | DONE |
+| F-10 | Access period never invented | `BundleGrantService` uses snapshot → authored → refuse | `noDurationIsInventedWhenNeitherSourceHasOne` | DONE |
+
+### Stakaba gateway (spec §25–27)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| G-01 | Client + collection request handling | `PaymentGatewayService`, `StakabaProperties` | `PaymentGatewayServiceTest` | DONE |
+| G-02 | Webhook authenticity | `StakabaWebhookController` | `PaymentWebhookController` tests | DONE |
+| G-03 | Duplicate delivery / replay | Verified-payment path is idempotent | `ParentPaymentServiceTest` | DONE |
+| G-04 | Provider disabled / missing credentials | `StakabaProperties` interlock | `PaymentGatewayServiceTest` | DONE |
+| G-05 | `STAKABA_ALLOW_LIVE=false` held | `.env` has sandbox key, live off | `start-backend.ps1 -VerifyConfig` exit 0 | DONE |
+| G-06 | **Real sandbox transaction** | none executed | — | **BLOCKED** — needs an actual sandbox transaction; mock contract tests are not this |
+| G-07 | Production credentials / onboarding | none | — | **BLOCKED** — out of scope, not authorized |
+
+### Subscriptions (spec §49–52, BR-01)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| S-01 | Activation only after verified payment | `SubscriptionService` from `verifyPayment` | `SubscriptionServiceTest` 18/18 | DONE |
+| S-02 | `GET /v1/my/subscriptions` | `ParentSelfController` | `listingShowsOnlyTheCallersOwnSubscriptions` | DONE |
+| S-03 | `POST /v1/my/subscriptions/{id}/cancel` | `ParentSelfController` | `aPayerCanCancelTheirOwnSubscription` | DONE |
+| S-04 | Payer ownership; indistinguishable not-found | `cancelOwnSubscription` resolves by payer | `anotherFamiliesSubscriptionDoesNotResolveAndIsNotCancelled` | DONE |
+| S-05 | Access retained through paid period | period derived from boundary, not status | `accessContinuesUntilThePaidPeriodEnds` | DONE |
+| S-06 | No renewal after cancellation | effective date = period end | `SubscriptionCancellationPolicyTest` 8/8 | DONE |
+| S-07 | No automatic refund on cancellation | no refund path invoked | `cancellingDoesNotRefund` | DONE |
+| S-08 | Concurrency | `findByIdForUpdate` row lock | `SubscriptionServiceTest` | DONE |
+| S-09 | Expiry scheduler | `CoreScheduler.expireElapsedSubscriptions` | sweep covered by service tests | NEEDS VERIFICATION — no scheduler-level test observed |
+
+### Bundles and entitlements (spec §22, BR-03, §D)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| B-01 | Catalog + detail, published only | `BundleCatalogController` | `BundleCatalogControllerTest` 4/4 | DONE |
+| B-02 | Draft/publish/suspend, no delete | `BundleAdminService` | `BundleAdminServiceTest` 10/10 | DONE |
+| B-03 | Create/edit UI | `app/dashboard/admin/bundles/page.tsx` | `next build` exit 0 | DONE |
+| B-04 | Editing must not silently drop items | `GET /v1/institution/bundles/{id}` | `editingADraftLoadsTheItemsItActuallyContains` | DONE |
+| B-05 | Duplicate service prevention (BE + UI) | `requireDistinctItems` | `theSameServiceCannotBeListedTwice` | DONE |
+| B-06 | No price column / no price field in UI | `V180` schema + admin UI | migration test | DONE |
+| B-07 | Entitlement only after confirmed payment | `BundleGrantService` | `BundleGrantServiceTest` 7/7 | DONE |
+| B-08 | Overlap/top-up policy | `BundleTopUpService` | `BundleTopUpServiceTest` 7/7 | DONE |
+| B-09 | Concurrent purchase / duplicate grant protection | check-then-insert, no lock or unique constraint | — | **PARTIAL** — a race can double-grant; needs serialisation |
+| B-10 | Bundle item must point at a real service | service id accepted as typed UUID, not resolved | — | **PARTIAL** — no service-catalogue exists to validate against |
+
+### Events and bookings (spec §53–55)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| E-01 | Ticket only after verified payment | `confirmSeat` wired into `verifyPayment` | `EventBookingServiceTest` 21/21 | DONE |
+| E-02 | Seat capacity + concurrency | lock before confirm | `EventSeatCapacityConcurrencyTest` 4/4 | DONE |
+| E-03 | Duplicate booking / retry | idempotent verify path | `EventBookingServiceTest` | DONE |
+| E-04 | Amount snapshotted at booking, not current price | payment snapshot | `EventBookingServiceTest` | DONE |
+| E-05 | Organizer-paid vs individual-paid group flows | — | — | **NEEDS VERIFICATION** — not observed in tests; spec §53 references group booking |
+
+### Parent / learner (spec §33, §F)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| P-01 | Payer↔learner ownership | `requireChildAccess` | `ParentAuthorizationServiceTest` | DONE |
+| P-02 | Link integrity | `ParentStudentLinkIntegrityTest` | 5/5 | DONE |
+| P-03 | Beneficiary attribution | V179 + `GET /v1/earnings/me` | `BeneficiaryEarningsTest` 4/4 | DONE |
+| P-04 | Purchaser vs beneficiary kept distinct | V178 `purchaser_*` | `ParentPaymentServiceTest` | DONE |
+| P-05 | Financial notifications on parent dashboard | `ParentFinancialNotificationAssembler` | assembler test | PARTIAL — no `ParentDashboard*Test` observes the integration |
+| P-06 | Receipts + transaction search | `ReceiptController`, `TransactionSearchService` | `TransactionSearchServiceTest` 23/23 | DONE |
+
+### Refunds (spec §57, BR-02)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| R-01 | Refund eligibility + status transitions | `RefundService`, `RefundRequest` | `PaymentRefundIntegrityTest` 6/6 | DONE |
+| R-02 | Partial refund per approved policy | `BundleRefundCalculator` | `BundleRefundPolicyTest` 9/9 | DONE |
+| R-03 | Server-side authorisation, re-checked from real authorities | `BundleRefundService.requirePlatformAdmin` | `BundleRefundPolicyTest` ROLE_ test | DONE |
+| R-04 | Amount bounded before any write | `eligibleRemaining` | `BundleRefundPolicyTest` | DONE |
+| R-05 | **Refund Admin UI** | `components/platform-admin/partial-refund-dialog.tsx` | `next build` exit 0, i18n exit 0 | DONE |
+| R-06 | Request is not proof of refund | UI states REQUESTED and "no money returned" | copy reviewed | DONE |
+| R-07 | Split recorded as commission/provider reversals | calculator returns split | — | **PARTIAL** — split is computed but not persisted as reversal fields |
+
+### Pricing, allocation, earnings (spec §17–24, §59–60)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| A-01 | Prices from approved ACTIVE policy only | `PricingService.resolvePrice` | `ParentPaymentServiceTest` | DONE |
+| A-02 | Platform commission allocation | `CommissionService` | `ParentPaymentServiceTest` | DONE |
+| A-03 | Per-beneficiary earnings | `EarningsService` | `BeneficiaryEarningsTest` 4/4 | DONE |
+| A-04 | Bundle-level discount distribution | deliberately not applied | `aBundleIsChargedTheTopUpTotalNotTheHeadlinePrice` (never resolves discount) | DONE — documented as unapproved |
+| A-05 | Settlement / payouts | — | — | **BLOCKED** — needs approved commission policy |
+| A-06 | Expired-entitlement grace period | straightforward reading used | `anExpiredEntitlementIsNotCoverage` | DONE — documented, unapproved alternative noted |
+| A-07 | Component-level refund valuation basis | avoided entirely | — | **BLOCKED** — needs an approved valuation rule |
+
+### Database and migrations (spec §46–48)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| D-01 | Migration chain applies cleanly | V170–V181 contiguous | `SubscriptionMigrationConstraintTest` 9/9 | DONE |
+| D-02 | Chain must not skip a version | assertion now scans for gaps ≥ V170 | same | DONE |
+| D-03 | V174 source matches applied checksum | unchanged since verification | `theCommittedV174SourceMatchesTheChecksumAlreadyAppliedInTheSharedDatabase` | DONE |
+| D-04 | Monetary precision | `BigDecimal` throughout | `RefundRequest`, `Payment` | DONE |
+| D-05 | Idempotency constraints | partial unique index on `idempotency_key` | `ParentPaymentServiceTest` | DONE |
+| D-06 | **V175 history mismatch on `elmkusoma`** | read-only inspection only | — | **BLOCKED** — needs database-owner authorization |
+
+### Security and IDOR (spec §63, 25 cases)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+- Cross-user transaction read | `SecurityConfig` denies `/v1/payments/**` | `ResourceHttpSecurityMatrixTest` | DONE
+- Cross-family child access | `requireChildAccess` → 404 | `ParentAuthorizationServiceTest` | DONE
+- Cross-family subscription access | `cancelOwnSubscription` → 404 | `SubscriptionCancellationPolicyTest` | DONE
+- Provider→other provider earnings | query-level isolation | `BeneficiaryEarningsTest` | DONE
+- Unauthorized refund | `@PreAuthorize` + service re-check | `BundleRefundPolicyTest` | DONE
+- Callback replay | idempotent verification | `ParentPaymentServiceTest` | DONE
+- Forged success values | only verified gateway evidence grants | `EventBookingServiceTest` | DONE
+- Platform-admin escalation | `/v1/platform-admin/**` fenced to ADMIN | `ResourceHttpSecurityMatrixTest` | DONE
+
+**Counts: DONE 56 · PARTIAL 5 · NEEDS VERIFICATION 2 · BLOCKED 4 · N/A 1. MISSING 0, BROKEN 0.**
+
+`MISSING` is zero because the two UI gaps the audit found (bundle create/edit, refund admin)
+were closed rather than reported. `BROKEN` is zero because the one genuinely broken path found —
+BR-03 rejecting the correct top-up amount at initiation — was fixed.
 
 ---
 
@@ -477,12 +616,23 @@ database is the next concrete step.
 
 ## 5. Exact next actions
 
-1. Run `mvn -o clean test` on an **idle** machine; establish a true full-suite baseline.
-2. Rehearse the V175/V174 reconciliation on a **disposable** PostgreSQL database with Flyway
-   enabled and Hibernate DDL disabled. Produce before/after evidence.
-3. Frontend Payments & Transactions navigation + role dashboards.
-4. Per-persona earnings attribution (needs recorded beneficiary; do not fabricate history).
-5. Obtain cancellation effective-date policy, then implement with authorization + idempotency tests.
+Ordered by what blocks a controlled test, not by what is easiest.
+
+1. **Bundle purchase concurrency (B-09).** `BundleGrantService` checks coverage and then inserts.
+   Two simultaneous purchases can both pass the check. Needs a row lock on the student's
+   entitlement scope or a unique constraint the database enforces, plus a concurrency test.
+2. **Dashboard notification integration (P-05).** `ParentFinancialNotificationAssembler` has its
+   own test but nothing observes it inside `ParentDashboardServiceImpl.getChildNotifications`.
+3. **Subscription expiry scheduler (S-09).** The sweep exists and is exercised through the
+   service; no test drives the scheduler itself.
+4. **Group booking flows (E-05).** Spec §53 references group booking. Not observed in any test;
+   either it is not implemented or it is untested. Needs a read to decide.
+5. **Refund split persistence (R-07).** `BundleRefundCalculator` computes commission/provider
+   reversals but they are not written to the refund record.
+6. **Real Stakaba sandbox transaction (G-06).** Blocked until authorized. Mock contract tests do
+   not substitute for this.
+7. **V175 reconciliation (D-06).** Blocked pending database-owner authorization. Read-only
+   evidence is already recorded in §4.
 
 ---
 
@@ -491,7 +641,16 @@ database is the next concrete step.
 - **One Maven build at a time.** Concurrent builds on shared `target` and `elmkusoma_test`
   caused real failures (`pg_type_typname_nsp_index`, `ClassNotFoundException`) that looked like
   code defects. Diagnose by cause; never label unexplained failures "environmental".
-- `SubscriptionMigrationConstraintTest` owns the full Flyway chain. It hardcodes the highest
-  version — **update that assertion whenever a migration is added.**
+- **Inject only `DB_*` from `.env` when running tests.** Loading every variable sets `LIVEKIT_*`,
+  which satisfies the "no storage configured" precondition in the liveclass tests and produces
+  three failures that look like regressions but are an artefact of the harness. `loadenv-min.ps1`
+  in the session temp directory does this.
+- `SubscriptionMigrationConstraintTest` owns the full Flyway chain. It asserts the latest version
+  is **at least** 180 and that nothing is skipped from V170 up. It no longer needs editing when a
+  migration is added — that brittleness is what made V181 fail an unrelated test.
 - Never kill another developer's process without authorization; inspect first.
 - Never commit `git add .` / `-A`. Stage exact paths.
+- When a locale file also carries another developer's uncommitted key, stage a filtered blob with
+  `git hash-object --stdin` and **normalise CRLF → LF**, because `--stdin` applies no autocrlf
+  filter and the diff would otherwise show the entire file as changed. Never write the filtered
+  text back to the working tree — that deletes the other developer's edit.

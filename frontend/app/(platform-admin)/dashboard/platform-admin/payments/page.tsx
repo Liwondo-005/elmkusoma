@@ -7,6 +7,7 @@ import { CreditCard, Loader2, DollarSign } from "lucide-react"
 import { platformAdminApi, type PaymentSummary, type PageResponse } from "@/lib/platform-admin-api"
 import { formatDate as fmtDate } from "@/lib/format-date"
 import { useLocale } from "@/hooks/use-locale"
+import PartialRefundDialog from "@/components/platform-admin/partial-refund-dialog"
 
 const STATUS_OPTIONS = ["", "PENDING", "COMPLETED", "FAILED", "REFUNDED"]
 const PAGE_SIZE = 20
@@ -20,6 +21,9 @@ export default function PaymentsPage() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [status, setStatus] = useState("")
+  // The payment a partial refund is being requested against, or null. Held as an id rather than a
+  // row so the dialog always re-reads the eligible balance instead of trusting list state.
+  const [refundTarget, setRefundTarget] = useState<PaymentSummary | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -100,6 +104,7 @@ export default function PaymentsPage() {
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("payments.status")}</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("payments.serviceType")}</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("payments.date")}</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">{t("payments.refunds.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,6 +119,20 @@ export default function PaymentsPage() {
                     <td className="px-5 py-3.5">{getStatusBadge(payment.status)}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">{payment.serviceType}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">{formatDate(payment.createdAt)}</td>
+                    <td className="px-5 py-3.5 text-right">
+                      {/* Only a settled payment is offered. Requesting a refund against a PENDING or
+                          FAILED one has no money to return, and letting an operator try teaches them
+                          that the control is not authoritative. */}
+                      {payment.status === "COMPLETED" && (
+                        <button
+                          type="button"
+                          onClick={() => setRefundTarget(payment)}
+                          className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                        >
+                          {t("payments.refunds.requestAction")}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -139,6 +158,14 @@ export default function PaymentsPage() {
           >
             {tc("next")}</button>
         </div>
+      )}
+    {refundTarget && (
+        <PartialRefundDialog
+          paymentId={refundTarget.id}
+          currency={refundTarget.currency}
+          onClose={() => setRefundTarget(null)}
+          onRequested={() => loadData()}
+        />
       )}
     </div>
   )
