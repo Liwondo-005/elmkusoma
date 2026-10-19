@@ -160,21 +160,31 @@ public class ContactMessageService {
         }
 
         int attempts = working.getNotificationAttempts() == null ? 0 : working.getNotificationAttempts();
+        // A partial result is still a failure: recording QUEUED when even one
+        // recipient was not accepted would overstate what the broker holds. The
+        // enquiry itself is already persisted, so recording the failure loses nothing.
+        boolean allQueued = true;
         try {
             for (String recipient : recipients) {
-                eventPublisherService.publishEmailEvent(
+                if (!eventPublisherService.publishEmailEvent(
                         recipient,
                         "New enquiry " + working.getReference() + ": " + working.getSubject(),
                         "contact-enquiry",
                         variables,
-                        working.getInstitutionId());
+                        working.getInstitutionId())) {
+                    allQueued = false;
+                }
             }
             // QUEUED, not SENT. Publishing hands the message to the async mail worker; whether
             // that worker can actually reach an SMTP relay is not known here and is not
             // knowable from this process. Recording SENT would tell a visitor their enquiry
             // was delivered on the strength of a queue write.
-            working.setNotificationStatus("QUEUED");
-            working.setNotificationError(null);
+            working.setNotificationStatus(allQueued ? "QUEUED" : "FAILED");
+            if (allQueued) {
+                working.setNotificationError(null);
+            } else {
+                working.setNotificationError("Broker did not accept the notification event");
+            }
             working.setNotificationAttempts(attempts + 1);
             working.setNotifiedAt(LocalDateTime.now());
         } catch (RuntimeException ex) {

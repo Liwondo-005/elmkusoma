@@ -125,7 +125,7 @@ function Start-ServiceJar {
     # dependency classpath. Either name works:
     #   elmk_cp.txt / media_cp.txt                        (hand-saved)
     #   mvn dependency:build-classpath "-Dmdep.outputFile=%TEMP%\<module>_cp.txt"
-    $short = if ($Name -eq "elmkusoma-media") { "media" } else { "elmk" }
+    $short = if ($Name -eq "elmkusoma-media") { "media" } elseif ($Name -eq "elmkusoma-workers") { "workers" } else { "elmk" }
     $classpathFile = @(
         (Join-Path $env:TEMP "$short`_cp.txt"),
         (Join-Path $env:TEMP "$Name`_cp.txt")
@@ -150,11 +150,20 @@ Start-ServiceJar -Name "elmkusoma-core" -ModuleDir (Join-Path $backendDir "elmku
 
 if (-not $CoreOnly) {
     Start-ServiceJar -Name "elmkusoma-media" -ModuleDir (Join-Path $backendDir "elmkusoma-media") -MainClass "tz.elmkusoma.ElmkusomaMediaApplication"
+    # Workers consumes elmkusoma.email.queue and needs the SAME environment that was
+    # loaded from backend/.env above. Because those keys are set as process variables
+    # (Set-Item env:) before any Start-Process call, the child inherits them - so
+    # SPRING_MAIL_* and friends reach it without ever being passed as an argument and
+    # without being written to a command line.
+    Start-ServiceJar -Name "elmkusoma-workers" -ModuleDir (Join-Path $backendDir "elmkusoma-workers") -MainClass "tz.elmkusoma.workers.ElmkusomaWorkersApplication"
 }
 
 Write-Host ""
 Write-Host "  core  : http://localhost:8080" -ForegroundColor Cyan
 if (-not $CoreOnly) {
     Write-Host "  media : http://localhost:8083   (MEDIA_STORAGE=$env:MEDIA_STORAGE)" -ForegroundColor Cyan
+    Write-Host "  workers: queue consumer only (no HTTP port). Failures appear in its" -ForegroundColor Cyan
+    Write-Host "           minimized window and in %TEMP% workers logs; stop it with" -ForegroundColor Cyan
+    Write-Host "           Stop-Process -Name java  (or close that window)." -ForegroundColor Cyan
 }
 Write-Host "  web   : npm run dev  (frontend\package.json)" -ForegroundColor Cyan

@@ -42,6 +42,18 @@ public class TransactionSearchService {
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
+    /**
+     * A leading {@code =}, {@code +}, {@code -} or {@code @} makes spreadsheet software execute
+     * the cell. Any run of whitespace or control characters may precede it without changing that,
+     * so they are skipped when detecting the prefix.
+     */
+    private static final java.util.regex.Pattern FORMULA_PREFIX =
+            java.util.regex.Pattern.compile("^[\\p{Z}\\s\\u0000-\\u001F]*[=+\\-@]");
+
+    /** Characters that force a field to be quoted: delimiter, quote, CR, LF. */
+    private static final java.util.regex.Pattern NEEDS_QUOTING =
+            java.util.regex.Pattern.compile("[,\"\r\n]");
+
     private final PaymentRepository paymentRepository;
 
     /**
@@ -240,7 +252,46 @@ public class TransactionSearchService {
         return Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
     }
 
+    /**
+     * Escapes one CSV field per RFC 4180.
+     *
+     * <p>Two separate protections, because they defend against different things:</p>
+     * <ul>
+     *   <li><b>Structural escaping</b> - a value containing a comma, a double quote, CR or LF is
+     *       wrapped in double quotes and its inner quotes doubled. Without this, a comma inside a
+     *       value silently shifts every column to its right for the whole file.</li>
+     *   <li><b>Formula-injection neutralisation</b> - spreadsheet software executes a cell whose
+     *       text begins with {@code =}, {@code +}, {@code -} or {@code @} when the file is opened,
+     *       so untrusted text that starts that way is prefixed with a single quote. Leading
+     *       whitespace and control characters are skipped when detecting the prefix, because
+     *       {@code " =1+1"} and {@code "\t=1+1"} are executed too.</li>
+     * </ul>
+     *
+     * <p>Trusted typed values are emitted verbatim and are never guarded: a {@link BigDecimal} of
+     * {@code -5000.00} is a real negative balance and prefixing an apostrophe would silently
+     * corrupt the figure a reconciliation depends on. The same applies to UUIDs and timestamps.
+     * Only free text, where the leading characters could have been chosen by whoever wrote the
+     * row, is guarded.</p>
+     *
+     * <p>Mirrors {@code frontend/lib/csv.ts} so a file downloaded from either side obeys the same
+     * rules; the numeric exception exists here because this export emits typed amounts.</p>
+     */
     private static String value(Object v) {
-        return v == null ? "" : String.valueOf(v);
+        if (v == null) {
+            return "";
+        }
+        if (v instanceof Number || v instanceof UUID || v instanceof java.time.temporal.TemporalAccessor
+                || v instanceof Boolean) {
+            // Trusted representation: exact text, no quoting, no formula guard.
+            return String.valueOf(v);
+        }
+        String text = String.valueOf(v);
+        if (text.isEmpty()) {
+            return text;
+        }
+        String guarded = FORMULA_PREFIX.matcher(text).find() ? "'" + text : text;
+        return NEEDS_QUOTING.matcher(guarded).find()
+                ? '"' + guarded.replace("\"", "\"\"") + '"'
+                : guarded;
     }
 }

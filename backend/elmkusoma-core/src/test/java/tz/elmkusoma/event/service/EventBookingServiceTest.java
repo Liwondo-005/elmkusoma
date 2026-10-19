@@ -9,6 +9,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.EventRegistration;
+import tz.elmkusoma.exception.ForbiddenException;
+import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.parent.domain.Payment;
@@ -43,6 +45,7 @@ class EventBookingServiceTest {
     @Autowired private EventRegistrationRepository registrationRepository;
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private StudentRepository studentRepository;
+    @Autowired private tz.elmkusoma.shared.repository.UserRepository userRepository;
 
     private Event paidEvent;
     private Event freeEvent;
@@ -71,6 +74,11 @@ class EventBookingServiceTest {
                 .startsAt(LocalDateTime.now().plusDays(3))
                 .endsAt(LocalDateTime.now().plusDays(3).plusHours(2))
                 .status("REGISTRATION_OPEN")
+                // Event.eventStatus defaults to DRAFT via @Builder.Default, so a builder-created
+                // event carries eventStatus=DRAFT even when status says REGISTRATION_OPEN. Production
+                // create/update always goes through EventServiceImpl.applyStatus, which sets both.
+                // The fixture must do the same or it builds events no real code path could produce.
+                .eventStatus(tz.elmkusoma.event.domain.EventStatus.REGISTRATION_OPEN)
                 .isFree(isFree)
                 .requiresApproval(false)
                 .maxParticipants(capacity)
@@ -81,6 +89,44 @@ class EventBookingServiceTest {
             e.setTicketCurrency("TZS");
         }
         return eventRepository.saveAndFlush(e);
+    }
+
+
+    /**
+     * A second attendee: a real User as well as a Student, because booking now resolves the
+     * caller and checks what they may do. A Student with no User behind it is not an attendee
+     * the application can authorise, and the booking is correctly refused.
+     */
+    private UUID newAttendee() {
+        return newAttendeeIn(TestDataSeeder.INSTITUTION_ID);
+    }
+
+    /**
+     * An attendee belonging to a specific institution.
+     *
+     * <p>The User id is read back from the saved row rather than from the value we generate:
+     * {@code BaseEntity} generates its own identifier, so a locally minted id would leave the
+     * Student pointing at a user that does not exist, and booking would correctly refuse it.</p>
+     */
+    private UUID newAttendeeIn(UUID institutionId) {
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        tz.elmkusoma.shared.domain.User saved = userRepository.saveAndFlush(
+                tz.elmkusoma.shared.domain.User.builder()
+                        .email("tkt-" + unique + "@test.go.tz")
+                        .passwordHash("{noop}x")
+                        .firstName("Tkt")
+                        .lastName("Attendee")
+                        .role(tz.elmkusoma.shared.domain.User.Role.STUDENT)
+                        .institutionId(institutionId)
+                        .isActive(true)
+                        .isEmailVerified(true)
+                        .build());
+        studentRepository.saveAndFlush(Student.builder()
+                .userId(saved.getId())
+                .admissionNumber("ADM-TKT-" + unique)
+                .status(StudentStatus.ACTIVE)
+                .build());
+        return saved.getId();
     }
 
     private Payment completePayment(UUID paymentId) {
@@ -196,11 +242,7 @@ class EventBookingServiceTest {
         completePayment(first.paymentId());
         booking.confirmSeat(first.registrationId());
 
-        var other = studentRepository.saveAndFlush(Student.builder()
-                .userId(UUID.randomUUID())
-                .admissionNumber("ADM-TKT2-" + UUID.randomUUID().toString().substring(0, 8))
-                .status(StudentStatus.ACTIVE)
-                .build()).getUserId();
+        UUID other = newAttendee();
 
         var second = booking.book(paidEvent.getId(), other, 2);
         completePayment(second.paymentId());
@@ -250,11 +292,7 @@ class EventBookingServiceTest {
         // The first attendee abandons their prompt; the second must still be able to buy.
         booking.book(paidEvent.getId(), attendee, 4);
 
-        var other = studentRepository.saveAndFlush(Student.builder()
-                .userId(UUID.randomUUID())
-                .admissionNumber("ADM-TKT3-" + UUID.randomUUID().toString().substring(0, 8))
-                .status(StudentStatus.ACTIVE)
-                .build()).getUserId();
+        UUID other = newAttendee();
         var second = booking.book(paidEvent.getId(), other, 2);
         completePayment(second.paymentId());
         var confirmed = booking.confirmSeat(second.registrationId());
@@ -262,5 +300,160 @@ class EventBookingServiceTest {
         assertEquals("REGISTERED", confirmed.getStatus());
         assertEquals(2, registrationRepository.sumHeldSeats(paidEvent.getId()),
                 "an abandoned prompt must not occupy seats from someone who paid");
+    }
+
+    // ------------------------------------------------------- authorization
+    //
+    // The paid booking path originally performed no eligibility check at all, while the free
+    // registration path enforces access level, institution and organiser ownership. Payment is
+    // not a way around access control: buying must never grant more access than registering does.
+
+    @Test
+    void aPrivateEventCannotBeBookedBySomebodyWhoIsNotTheOrganiser() {
+        Event privateEvent = event("Private paid workshop", false, "200.00", 5);
+        privateEvent.setAccessLevel("PRIVATE");
+        eventRepository.saveAndFlush(privateEvent);
+
+        assertThrows(ForbiddenException.class,
+                () -> booking.book(privateEvent.getId(), attendee, 1),
+                "a paid booking must respect the same PRIVATE restriction as a free one");
+    }
+
+    @Test
+    void aPrivateEventCanStillBeBookedByItsOwnOrganiser() {
+        Event privateEvent = event("Organiser paid workshop", false, "200.00", 5);
+        privateEvent.setAccessLevel("PRIVATE");
+        privateEvent.setOrganizerId(TestDataSeeder.TEACHER_USER_ID);
+        eventRepository.saveAndFlush(privateEvent);
+
+        var result = booking.book(privateEvent.getId(), TestDataSeeder.TEACHER_USER_ID, 1);
+        assertEquals("PAYMENT_PENDING", result.registrationStatus());
+    }
+
+    @Test
+    void anAttendeeCannotBookAnEventInAnotherInstitution() {
+        Event foreign = event("Other institution paid workshop", false, "200.00", 5);
+        UUID mine = TestDataSeeder.INSTITUTION_ID;
+        UUID theirs = UUID.randomUUID();
+        foreign.setInstitutionId(theirs);
+        // The shared helper builds PUBLIC events, and a PUBLIC event is deliberately open to
+        // every institution. Institution scoping is the rule for everything else, so this one is
+        // explicitly institution-scoped.
+        foreign.setAccessLevel("INSTITUTION");
+        eventRepository.saveAndFlush(foreign);
+
+        UUID outsider = newAttendeeIn(mine);
+        assertThrows(IllegalArgumentException.class,
+                () -> booking.book(foreign.getId(), outsider, 1),
+                "institution scoping must apply to paid bookings too");
+
+        // And the same attendee may still book an event in their own institution.
+        var allowed = booking.book(paidEvent.getId(), outsider, 1);
+        assertEquals("PAYMENT_PENDING", allowed.registrationStatus());
+    }
+
+    @Test
+    void anAttendeeWithNoUserRecordCannotBook() {
+        // Fails closed: an identity the system cannot resolve is not an identity it can authorise.
+        UUID ghostUserId = UUID.randomUUID();
+        studentRepository.saveAndFlush(Student.builder()
+                .userId(ghostUserId)
+                .admissionNumber("ADM-GHOST-" + ghostUserId.toString().substring(0, 8))
+                .status(StudentStatus.ACTIVE)
+                .build());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> booking.book(paidEvent.getId(), ghostUserId, 1));
+    }
+
+    // ------------------------------------------------------- confirmation integrity
+
+    @Test
+    void aSeatIsNotConfirmedWhenThereIsNoPaymentAtAll() {
+        // The previous check only refused when a payment EXISTED and was not complete, so a
+        // registration with no linked payment fell through and was handed a seat with nothing
+        // verified. Absence of evidence is not evidence of payment.
+        EventRegistration orphanRegistration = EventRegistration.builder()
+                .eventId(paidEvent.getId())
+                .institutionId(paidEvent.getInstitutionId())
+                .userId(attendee)
+                .status("PAYMENT_PENDING")
+                .registeredAt(LocalDateTime.now())
+                .attended(false)
+                .seats(1)
+                .build();
+        EventRegistration orphan = registrationRepository.saveAndFlush(orphanRegistration);
+        UUID orphanId = orphan.getId();
+
+        assertThrows(IllegalStateException.class, () -> booking.confirmSeat(orphanId),
+                "a registration with no payment must never be granted a seat");
+        assertEquals(0, registrationRepository.sumHeldSeats(paidEvent.getId()));
+    }
+
+    @Test
+    void aSeatIsNotConfirmedWhenThePaymentFailedOrIsStillPending() {
+        // Only COMPLETED may hand over a seat. A FAILED payment means the money never arrived,
+        // and a PENDING one means it has not arrived yet; both previously sat behind the same
+        // single branch and needed to be proved individually.
+        for (String status : new String[] {"FAILED", "PENDING", "CANCELLED"}) {
+            var b = booking.book(paidEvent.getId(), newAttendeeIn(paidEvent.getInstitutionId()), 1);
+            Payment payment = paymentRepository.findById(b.paymentId()).orElseThrow();
+            payment.setStatus(status);
+            paymentRepository.saveAndFlush(payment);
+
+            assertThrows(IllegalStateException.class, () -> booking.confirmSeat(b.registrationId()),
+                    "a seat must not be granted while the payment is " + status);
+
+            EventRegistration still = registrationRepository.findById(b.registrationId()).orElseThrow();
+            assertEquals("PAYMENT_PENDING", still.getStatus(),
+                    "registration must stay unconfirmed while the payment is " + status);
+            assertNull(still.getAmountPaid(),
+                    "no amount may be recorded as paid while the payment is " + status);
+        }
+        assertEquals(0, registrationRepository.sumHeldSeats(paidEvent.getId()),
+                "no seat may be held by any of the unpaid attempts");
+    }
+
+    @Test
+    void aBookingAgainstACancelledEventIsRefusedAndChargesNobody() {
+        // The paid path checked access level only, so a cancelled or already-started event could
+        // still be bought. Payment must not be a way past the lifecycle gate.
+        Event cancelledDraft = event("Cancelled lifecycle probe", false, "5000.00", 10);
+        cancelledDraft.setEventStatus(tz.elmkusoma.event.domain.EventStatus.CANCELLED);
+        cancelledDraft.setStatus("CANCELLED");
+        Event cancelled = eventRepository.saveAndFlush(cancelledDraft);
+
+        assertThrows(IllegalStateException.class, () -> booking.book(cancelled.getId(), attendee, 1),
+                "a cancelled event must refuse new bookings");
+
+        Event startedDraft = event("Already started probe", false, "5000.00", 10);
+        startedDraft.setStartsAt(LocalDateTime.now().minusDays(1));
+        startedDraft.setTimezone(null);
+        Event started = eventRepository.saveAndFlush(startedDraft);
+
+        assertThrows(IllegalArgumentException.class, () -> booking.book(started.getId(), attendee, 1),
+                "an event that has already started must refuse new bookings");
+
+        // Nothing may be charged for a refused booking.
+        assertEquals(0L, paymentRepository.findAll().stream()
+                .filter(p -> "EVENT_TICKET".equals(p.getServiceType()))
+                .filter(p -> cancelled.getId().equals(p.getServiceId())
+                        || started.getId().equals(p.getServiceId()))
+                .count(), "a refused booking must not create a payment");
+    }
+
+    @Test
+    void theAmountConfirmedIsWhatWasCharged_notWhatTheEventCostsNow() {
+        // Repricing between booking and confirmation must not restate what was paid. Reading the
+        // ticket price at confirmation time would quietly change the figure.
+        var b = booking.book(paidEvent.getId(), attendee, 1);
+        completePayment(b.paymentId());
+
+        paidEvent.setTicketPrice(new BigDecimal("999.00"));
+        eventRepository.saveAndFlush(paidEvent);
+
+        var confirmed = booking.confirmSeat(b.registrationId());
+        assertEquals(0, new BigDecimal("200").compareTo(confirmed.getAmountPaid()),
+                "the snapshot must be what was charged, not today's list price");
     }
 }

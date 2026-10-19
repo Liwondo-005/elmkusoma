@@ -39,6 +39,11 @@ class ParentPaymentServiceTest {
     @Mock private ReceiptService receiptService;
     @Mock private tz.elmkusoma.finance.service.ReconciliationService reconciliationService;
     @Mock private RefundService refundService;
+    @Mock private tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
+    @Mock private tz.elmkusoma.event.service.EventBookingService eventBookingService;
+    @Mock private tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
+    @Mock private tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
+    @Mock private tz.elmkusoma.bundle.service.BundleTopUpService bundleTopUpService;
 
     @InjectMocks
     private ParentPaymentService paymentService;
@@ -128,6 +133,83 @@ class ParentPaymentServiceTest {
         assertEquals(0, new BigDecimal("100000").compareTo(result.getNetAmount()));
         assertEquals(30, result.getAccessDays());
         verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    void aBundleIsChargedTheTopUpTotalNotTheHeadlinePrice() {
+        // BR-03 end to end. The bundle's policy price is 100000, but this learner already holds one
+        // of its two services, so the authoritative figure is the other service alone. Validating
+        // the caller against the headline price is what made the feature unusable: the correct
+        // amount was rejected as a mismatch with the very policy that produced it.
+        when(bundleGrantService.isBundleServiceType("TERM_BUNDLE")).thenReturn(true);
+        when(pricingService.resolvePrice("TERM_BUNDLE", null))
+                .thenReturn(new PricingService.ResolvedPrice(
+                        new BigDecimal("100000"), "TZS", 1, "SERVICE_DEFAULT_PRICE", 30));
+        when(bundleTopUpService.quoteByServiceType(
+                org.mockito.ArgumentMatchers.eq("TERM_BUNDLE"),
+                org.mockito.ArgumentMatchers.eq(STUDENT_ID),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote(
+                        List.of(), new BigDecimal("60000"), "TZS", false, 1, 1));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment pay = invocation.getArgument(0);
+            pay.setId(UUID.randomUUID());
+            return pay;
+        });
+
+        Payment result = paymentService.initiatePayment(PARENT_ID, STUDENT_ID, INSTITUTION_ID,
+                new BigDecimal("60000"), "TERM_BUNDLE", null, "Top up");
+
+        assertEquals(0, new BigDecimal("60000").compareTo(result.getAmount()),
+                "the stored amount must be what this learner actually owes, not the bundle price");
+        assertEquals(30, result.getAccessDays(), "terms are still snapshotted from the policy");
+        verify(discountService, org.mockito.Mockito.never()).resolve(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void aBundlePurchaseCannotBeInitiatedWhenNothingIsLeftToBuy() {
+        when(bundleGrantService.isBundleServiceType("TERM_BUNDLE")).thenReturn(true);
+        when(pricingService.resolvePrice("TERM_BUNDLE", null))
+                .thenReturn(new PricingService.ResolvedPrice(
+                        new BigDecimal("100000"), "TZS", 1, "SERVICE_DEFAULT_PRICE", 30));
+        when(bundleTopUpService.quoteByServiceType(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote(
+                        List.of(), BigDecimal.ZERO, "TZS", true, 0, 2));
+
+        assertThrows(IllegalStateException.class, () -> paymentService.initiatePayment(
+                        PARENT_ID, STUDENT_ID, INSTITUTION_ID, BigDecimal.ZERO,
+                        "TERM_BUNDLE", null, "Already covered"),
+                "taking money for access the learner already holds is not a purchase");
+        verify(paymentRepository, org.mockito.Mockito.never()).save(any(Payment.class));
+    }
+
+    @Test
+    void aBundlePurchaseStillCannotBeUnderpaidByNamingAnAmount() {
+        // The quote being server-side must not become a hole. Whether the caller sends the right
+        // figure or a cheap one, what gets stored is the server's top-up total - the caller's
+        // number is never the one that reaches the gateway.
+        when(bundleGrantService.isBundleServiceType("TERM_BUNDLE")).thenReturn(true);
+        when(pricingService.resolvePrice("TERM_BUNDLE", null))
+                .thenReturn(new PricingService.ResolvedPrice(
+                        new BigDecimal("100000"), "TZS", 1, "SERVICE_DEFAULT_PRICE", 30));
+        when(bundleTopUpService.quoteByServiceType(anyString(), any(), any()))
+                .thenReturn(new tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote(
+                        List.of(), new BigDecimal("60000"), "TZS", false, 1, 1));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment pay = invocation.getArgument(0);
+            pay.setId(UUID.randomUUID());
+            return pay;
+        });
+
+        Payment result = paymentService.initiatePayment(PARENT_ID, STUDENT_ID, INSTITUTION_ID,
+                new BigDecimal("1"), "TERM_BUNDLE", null, "Cheap bundle");
+
+        assertEquals(0, new BigDecimal("60000").compareTo(result.getAmount()),
+                "a caller naming TZS 1 must not become the stored amount");
     }
 
     @Test
@@ -250,6 +332,119 @@ class ParentPaymentServiceTest {
 
         assertEquals("COMPLETED", result.getStatus());
         verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void verifyPayment_handsOverTheEventSeatTheTicketPaidFor() {
+        // confirmSeat had no caller anywhere in main, so a paid booking collected the money and
+        // never granted the place. The verified, persisted payment is the authority for the seat,
+        // so verification must drive the handover.
+        Payment pending = buildPayment("PENDING", new BigDecimal("5000"));
+        pending.setServiceType(tz.elmkusoma.event.service.EventBookingService.SERVICE_TYPE);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), anyString(), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(anyString(), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("5000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        var registration = new tz.elmkusoma.event.domain.EventRegistration();
+        registration.setId(UUID.randomUUID());
+        when(eventRegistrationRepository.findByPaymentIdAndIsDeletedFalse(eq(PAYMENT_ID)))
+                .thenReturn(Optional.of(registration));
+
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-ticket", UUID.randomUUID());
+
+        assertEquals("COMPLETED", result.getStatus());
+        verify(eventBookingService).confirmSeat(registration.getId());
+    }
+
+    @Test
+    void verifyPayment_doesNotTouchSeatsForANonEventPayment() {
+        Payment pending = buildPayment("PENDING", new BigDecimal("100000"));
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("TUITION"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("TUITION"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("100000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        paymentService.verifyPayment(PAYMENT_ID, "ref-tui", UUID.randomUUID());
+
+        verify(eventBookingService, never()).confirmSeat(any());
+    }
+
+    private Payment subscriptionPayment(String status) {
+        Payment p = buildPayment(status, new BigDecimal("30000"));
+        p.setServiceType("MONTHLY_ACCESS");
+        p.setAccessDays(30);
+        return p;
+    }
+
+    @Test
+    void verifyPayment_opensTheAuditableSubscriptionForASubscriptionTier() {
+        // SubscriptionService existed but nothing called it, so a month bought for money produced
+        // an entitlement and no subscription record at all - leaving cancellation and expiry with
+        // no row to act on and the sold period reconstructible only from the entitlement.
+        Payment pending = subscriptionPayment("PENDING");
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("MONTHLY_ACCESS"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("MONTHLY_ACCESS"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("30000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-sub", UUID.randomUUID());
+
+        assertEquals("COMPLETED", result.getStatus());
+        verify(subscriptionService).activateFromVerifiedPayment(any(Payment.class), any(Entitlement.class));
+    }
+
+    @Test
+    void verifyPayment_doesNotOpenASubscriptionForASingleServicePurchase() {
+        // An event ticket or a one-off course purchase has no recurring period. Offering it to the
+        // subscription service would be asking it to invent a period nobody priced.
+        Payment pending = buildPayment("PENDING", new BigDecimal("100000"));
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("TUITION"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("TUITION"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("100000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+
+        paymentService.verifyPayment(PAYMENT_ID, "ref-tui", UUID.randomUUID());
+
+        verify(subscriptionService, never()).activateFromVerifiedPayment(any(), any());
+    }
+
+    @Test
+    void verifyPayment_stillCompletesWhenSubscriptionActivationFails() {
+        // Same rule as the receipt: money was really collected and access was really granted, so a
+        // derived reporting record failing must not erase the payment.
+        Payment pending = subscriptionPayment("PENDING");
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(entitlementRepository.findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                eq(STUDENT_ID), eq("MONTHLY_ACCESS"), isNull())).thenReturn(Optional.empty());
+        when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
+        when(commissionService.allocate(eq("MONTHLY_ACCESS"), any(), any(), any()))
+                .thenReturn(resolvedAllocation(new BigDecimal("30000")));
+        when(receiptService.issueFor(any(Payment.class), any())).thenReturn(null);
+        org.mockito.Mockito.doThrow(new IllegalStateException("subscription store unavailable"))
+                .when(subscriptionService).activateFromVerifiedPayment(any(), any());
+
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-fail", UUID.randomUUID());
+
+        assertEquals("COMPLETED", result.getStatus());
+        verify(reconciliationService).raiseReceiptFailure(any(Payment.class), any(Exception.class));
     }
 
     private Entitlement activeEntitlement(LocalDateTime startsAt, LocalDateTime expiresAt) {

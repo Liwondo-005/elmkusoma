@@ -172,4 +172,25 @@ public class PricingService {
                             + " v" + resolved.policyVersion());
         }
     }
+
+    /**
+     * Same check, against an amount that was assembled server-side rather than read off one policy.
+     *
+     * <p>A bundle sold to a learner who already holds part of it is priced from several item
+     * policies, so there is no single {@link ResolvedPrice} to compare against. The property that
+     * matters is unchanged and is the one this enforces: the caller may not name the figure. What
+     * differs is only where the authoritative number came from, and it is named in the message so
+     * a mismatch can be traced to a decision rather than guessed at.
+     */
+    public void requireAmountMatches(BigDecimal clientAmount, BigDecimal authoritativeAmount,
+                                     String authoritativeSource) {
+        if (clientAmount == null) {
+            return;
+        }
+        if (clientAmount.compareTo(authoritativeAmount) != 0) {
+            throw new PricingConflictException(
+                    "Amount TZS " + clientAmount + " does not match the authoritative amount of TZS "
+                            + authoritativeAmount + " from " + authoritativeSource);
+        }
+    }
 }

@@ -52,6 +52,33 @@ public class CoreScheduler {
     private final TokenCleanupRepository tokenCleanupRepository;
     private final NotificationService notificationService;
     private final tz.elmkusoma.oversight.service.OversightAnnouncementService oversightAnnouncementService;
+    private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
+
+    /**
+     * Marks elapsed subscription periods EXPIRED.
+     *
+     * <p>{@code SubscriptionService.expireElapsed} was fully implemented but nothing ever called
+     * it, so a paid period that ran out kept reporting itself ACTIVE forever in the commercial
+     * record. Access itself was never at risk - it is decided at read time from the period
+     * boundary, not from this status field - so this sweep is bookkeeping, and a missed or delayed
+     * run can only leave the status stale for a report, never grant or deny access.
+     *
+     * <p>Idempotent by construction: a period already EXPIRED is not selected again, and
+     * EXPIRED is an absorbing state, so repeated execution changes nothing. Only periods whose
+     * own {@code periodEnd} has passed are touched, so a later chained period that has not started
+     * yet is left alone.
+     */
+    @Scheduled(fixedRate = 300000, initialDelay = 120000)
+    public void expireElapsedSubscriptions() {
+        try {
+            int expired = subscriptionService.expireElapsed(java.time.LocalDateTime.now());
+            if (expired > 0) {
+                log.info("Marked {} elapsed subscription period(s) EXPIRED", expired);
+            }
+        } catch (Exception e) {
+            log.warn("Subscription expiry sweep failed: {}", e.getMessage());
+        }
+    }
     private final tz.elmkusoma.course.service.LiveClassService liveClassService;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;

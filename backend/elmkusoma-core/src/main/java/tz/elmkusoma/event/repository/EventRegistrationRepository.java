@@ -13,6 +13,15 @@ import java.util.UUID;
 @Repository
 public interface EventRegistrationRepository extends JpaRepository<EventRegistration, UUID> {
 
+    /**
+     * The registration a confirmed payment belongs to.
+     *
+     * <p>This is the link that lets the payment verification path hand over the seats it paid for.
+     * Without it a paid booking has no way back from "money received" to "seat granted", which is
+     * exactly how a paying attendee ends up charged and refused entry.
+     */
+    Optional<EventRegistration> findByPaymentIdAndIsDeletedFalse(UUID paymentId);
+
     Optional<EventRegistration> findByEventIdAndUserIdAndIsDeletedFalse(UUID eventId, UUID userId);
 
     boolean existsByEventIdAndUserIdAndIsDeletedFalse(UUID eventId, UUID userId);

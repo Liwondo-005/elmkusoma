@@ -391,6 +391,7 @@ const teacherNavSections: TeacherNavSection[] = [
       { label: "Courses", labelKey: "courses", href: "/dashboard/teacher/courses", icon: GraduationCap },
       { label: "Students", labelKey: "students", href: "/dashboard/teacher/students", icon: Users },
       { label: "Learner Support", labelKey: "learnerSupport", href: "/dashboard/teacher/learner-support", icon: HeartPulse },
+      { label: "My Earnings", labelKey: "myEarnings", href: "/dashboard/earnings", icon: Receipt },
     ],
   },
   {
@@ -454,6 +455,7 @@ const providerNavSections: ProviderNavSection[] = [
       { label: "Programs", labelKey: "programs", href: "/dashboard/provider/programs", icon: GraduationCap },
       { label: "Sessions", labelKey: "sessions", href: "/dashboard/provider/sessions", icon: CalendarDays },
       { label: "Learners", labelKey: "learners", href: "/dashboard/provider/learners", icon: Users },
+      { label: "My Earnings", labelKey: "myEarnings", href: "/dashboard/earnings", icon: Receipt },
     ],
   },
   {
@@ -517,6 +519,7 @@ const adminNavGroups: AdminNavGroup[] = [
       { label: "Organization", labelKey: "organization", href: "/dashboard/admin/profile", icon: School },
       { label: "Institutions", labelKey: "institutions", href: "/dashboard/admin/institutions", icon: School },
       { label: "Data Import", labelKey: "dataImport", href: "/dashboard/admin/import", icon: FileText },
+      { label: "Bundles", labelKey: "bundles", href: "/dashboard/admin/bundles", icon: Receipt },
     ],
   },
   {

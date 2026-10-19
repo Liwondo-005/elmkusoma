@@ -42,6 +42,11 @@ public class ParentPaymentService {
     private final ReceiptService receiptService;
     private final tz.elmkusoma.finance.service.ReconciliationService reconciliationService;
     private final RefundService refundService;
+    private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
+    private final tz.elmkusoma.event.service.EventBookingService eventBookingService;
+    private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
+    private final tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
+    private final tz.elmkusoma.bundle.service.BundleTopUpService bundleTopUpService;
 
     /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
      * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
@@ -106,12 +111,43 @@ public class ParentPaymentService {
         // against this already-tainted stored amount. A caller figure that disagrees with the
         // authoritative one is refused rather than used.
         PricingService.ResolvedPrice resolved = pricingService.resolvePrice(serviceType, null);
-        pricingService.requireAmountMatches(amount, resolved);
+
+        // BR-03. A bundle a learner partly already holds is not worth its headline price, so the
+        // authoritative amount for a bundle is the server-side top-up quote, recomputed here at the
+        // moment of purchase. Comparing the caller against the headline policy price instead is what
+        // made partial top-ups impossible: the correct figure was rejected as a mismatch with the
+        // very policy that produced it. Recomputing rather than trusting the quote the client saw
+        // is also what closes the gap between quoting and paying - a learner who gains coverage
+        // between the two is charged the smaller correct amount, not the larger displayed one.
+        BigDecimal authoritativeAmount = resolved.amount();
+        boolean bundlePurchase = bundleGrantService.isBundleServiceType(serviceType);
+        if (bundlePurchase) {
+            tz.elmkusoma.bundle.service.BundleTopUpService.TopUpQuote topUp =
+                    bundleTopUpService.quoteByServiceType(serviceType, studentId, LocalDateTime.now());
+            if (topUp.fullyCovered()) {
+                // Nothing to buy. Charging anyway would take money for access the learner has.
+                throw new IllegalStateException(
+                        "This learner already holds every service in this bundle; there is nothing "
+                                + "left to pay for");
+            }
+            authoritativeAmount = topUp.total();
+        }
+        if (bundlePurchase) {
+            pricingService.requireAmountMatches(amount, authoritativeAmount,
+                    "the bundle top-up quote for this learner");
+        } else {
+            pricingService.requireAmountMatches(amount, resolved);
+        }
 
         // An approved discount, if one applies. Derived server-side from the catalogue price, so
         // a client cannot name its own discount any more than it can name its own price.
-        DiscountService.ResolvedDiscount discount = discountService.resolve(serviceType, resolved.amount());
-        BigDecimal net = resolved.amount().subtract(discount.amount());
+        // Not applied to a bundle: its total is already the sum of per-item policy prices, and
+        // spreading a bundle-level discount across those components is a commercial decision that
+        // has not been approved.
+        DiscountService.ResolvedDiscount discount = bundlePurchase
+                ? DiscountService.ResolvedDiscount.none()
+                : discountService.resolve(serviceType, resolved.amount());
+        BigDecimal net = authoritativeAmount.subtract(discount.amount());
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<Payment> replayed = paymentRepository
@@ -207,7 +243,32 @@ public class ParentPaymentService {
 
         payment = paymentRepository.save(payment);
 
-        grantEntitlement(payment);
+        Entitlement grantedEntitlement = grantEntitlement(payment);
+
+        // The subscription is the auditable record of the period that was actually sold, and it is
+        // what cancellation and expiry act on.
+        openSubscriptionFor(payment, grantedEntitlement);
+
+        // An event ticket's "product" is a seat. Entitlements and subscriptions do not apply, so
+        // nothing else in this flow would ever grant the place the attendee paid for: the seat was
+        // deliberately left unheld until collection landed, which meant confirmSeat had no caller
+        // and a paying attendee was charged and still refused entry. The verified, persisted payment
+        // is the authority for the seat, so the handover happens here and only here.
+        confirmEventSeatsFor(payment);
+
+        // A bundle grants several services. Same authoritative entry point, so the duplicate-callback
+        // protection the payment already has applies here too.
+        try {
+            int granted = bundleGrantService.grantFor(payment);
+            if (granted > 0) {
+                log.info("Granted {} bundle entitlement(s) for payment {}", granted, payment.getId());
+            }
+        } catch (RuntimeException ex) {
+            // Never roll back a confirmed payment for a derived grant. The money arrived; the
+            // learner keeps a refundable payment and operators get a visible reconciliation task.
+            log.error("Bundle grant failed for payment {}; payment stands", payment.getId(), ex);
+            reconciliationService.raiseReceiptFailure(payment, ex);
+        }
 
         // A receipt documents money that was actually received, so it is only issued here, once
         // the payment is confirmed. Idempotent: a duplicate callback returns the existing one.
@@ -242,7 +303,7 @@ public class ParentPaymentService {
         return payment;
     }
 
-    private void grantEntitlement(Payment payment) {
+    private Entitlement grantEntitlement(Payment payment) {
         LocalDateTime now = LocalDateTime.now();
         java.time.Duration granted = accessDurationFor(payment);
 
@@ -261,7 +322,7 @@ public class ParentPaymentService {
             existing.setExpiresAt(from.plus(granted));
             existing.setStatus("ACTIVE");
             existing.setPaymentId(payment.getId());
-            entitlementRepository.save(existing);
+            return entitlementRepository.save(existing);
         } else {
             Entitlement entitlement = Entitlement.builder()
                     .userId(payment.getParentId())
@@ -274,7 +335,69 @@ public class ParentPaymentService {
                     .startsAt(now)
                     .expiresAt(now.plus(granted))
                     .build();
-            entitlementRepository.save(entitlement);
+            return entitlementRepository.save(entitlement);
+        }
+    }
+
+    /**
+     * Hands over the event seats a verified ticket payment paid for.
+     *
+     * <p>Idempotent: the payment reaches COMPLETED once, and confirmSeat itself returns early when
+     * the registration is no longer PAYMENT_PENDING, so a retried webhook cannot add a second seat.
+     *
+     * <p>A failure here does not roll the payment back. The money really was collected, and
+     * discarding a confirmed transaction because the event filled up in the meantime would be worse
+     * for both sides than an unresolved seat: the payer keeps a confirmed, refundable payment and
+     * operators get a visible reconciliation task instead of a silently broken booking.
+     */
+    private void confirmEventSeatsFor(Payment payment) {
+        if (!tz.elmkusoma.event.service.EventBookingService.SERVICE_TYPE
+                .equals(payment.getServiceType())) {
+            return;
+        }
+        try {
+            eventRegistrationRepository
+                    .findByPaymentIdAndIsDeletedFalse(payment.getId())
+                    .ifPresent(registration -> eventBookingService.confirmSeat(registration.getId()));
+        } catch (RuntimeException ex) {
+            log.error("Seat confirmation failed for verified event payment {}; the payment stands "
+                    + "and the seat is left for reconciliation", payment.getId(), ex);
+            reconciliationService.raiseReceiptFailure(payment, ex);
+        }
+    }
+
+    /**
+     * Opens the auditable {@code Subscription} record for a subscription-tier payment.
+     *
+     * <p>{@link SubscriptionService} was fully implemented but nothing ever called it: a learner
+     * paid for a month, an {@code Entitlement} was granted, and no subscription row existed at
+     * all. That left the period actually sold to be reconstructible only from the entitlement, and
+     * left cancellation and expiry with nothing to act on.
+     *
+     * <p>Only subscription tiers reach this. A single-service purchase such as an event ticket has
+     * no recurring period, and {@code SubscriptionService} would rightly refuse it for carrying no
+     * approved access duration - so it is not offered one.
+     *
+     * <p>A failure here never rolls back the payment. The money really was collected and the
+     * entitlement really was granted; losing a confirmed payment because a derived reporting record
+     * could not be written would be far worse than the missing row, so the failure is logged and
+     * surfaced for reconciliation instead.</p>
+     */
+    private void openSubscriptionFor(Payment payment, Entitlement entitlement) {
+        String serviceType = payment.getServiceType();
+        if (serviceType == null || serviceType.isBlank()) {
+            return;
+        }
+        if (!ACCESS_DURATIONS.containsKey(serviceType.trim().toUpperCase())) {
+            return;
+        }
+        try {
+            subscriptionService.activateFromVerifiedPayment(payment, entitlement);
+        } catch (RuntimeException ex) {
+            log.error("Subscription activation failed for completed payment {} (serviceType={}); "
+                            + "payment is NOT rolled back and the entitlement stands",
+                    payment.getId(), serviceType, ex);
+            reconciliationService.raiseReceiptFailure(payment, ex);
         }
     }
 

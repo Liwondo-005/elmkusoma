@@ -18,6 +18,8 @@ import tz.elmkusoma.testutil.TestDataSeeder;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -200,6 +202,182 @@ class TransactionSearchServiceTest {
     void csv_isBoundedSoOneRequestCannotStreamEverything() {
         assertTrue(TransactionSearchService.EXPORT_LIMIT <= 50_000,
                 "the export ceiling must stay a deliberate bound, not 'whatever the table holds'");
+    }
+
+    // ------------------------------------------- RFC 4180 escaping + formula guard
+
+    /** Seeds a payment whose only unusual field is its receipt number, then exports the CSV. */
+    private String csvForReceipt(String receipt) {
+        Payment p = payment("COMPLETED", "50000", null);
+        p.setReceiptNumber(receipt);
+        paymentRepository.saveAndFlush(p);
+        try {
+            return new String(service.exportCsv(all()), StandardCharsets.UTF_8);
+        } finally {
+            paymentRepository.delete(p);
+            paymentRepository.flush();
+        }
+    }
+
+    /**
+     * Minimal RFC 4180 reader used by the escaping tests. {@code String.lines()} cannot verify
+     * escaping, because it splits on a CR/LF even when that CR/LF is legally inside a quoted
+     * field - which is exactly the case under test.
+     */
+    private static List<List<String>> parseCsv(String csv) {
+        List<List<String>> records = new ArrayList<>();
+        List<String> current = new ArrayList<>();
+        StringBuilder field = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < csv.length(); i++) {
+            char c = csv.charAt(i);
+            if (inQuotes) {
+                if (c == '"') {
+                    if (i + 1 < csv.length() && csv.charAt(i + 1) == '"') {
+                        field.append('"');
+                        i++;
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    field.append(c);
+                }
+            } else if (c == '"') {
+                inQuotes = true;
+            } else if (c == ',') {
+                current.add(field.toString());
+                field.setLength(0);
+            } else if (c == '\r') {
+                if (i + 1 < csv.length() && csv.charAt(i + 1) == '\n') {
+                    i++;
+                }
+                current.add(field.toString());
+                field.setLength(0);
+                records.add(current);
+                current = new ArrayList<>();
+            } else {
+                field.append(c);
+            }
+        }
+        if (field.length() > 0 || !current.isEmpty()) {
+            current.add(field.toString());
+            records.add(current);
+        }
+        return records;
+    }
+
+    private static final int EXPORT_COLUMNS = 18;
+
+    @Test
+    void csv_quotesAValueContainingAComma() {
+        String csv = csvForReceipt("RCPT,COMMA");
+        assertTrue(csv.contains("\"RCPT,COMMA\""),
+                "a comma inside a value must not shift every later column");
+        for (List<String> record : parseCsv(csv)) {
+            assertEquals(EXPORT_COLUMNS, record.size(),
+                    "escaping must not change the column count: " + record);
+        }
+        assertTrue(parseCsv(csv).stream()
+                        .anyMatch(r -> r.contains("RCPT,COMMA")),
+                "the comma must survive as one cell, not two");
+    }
+
+    @Test
+    void csv_doublesAnEmbeddedDoubleQuote() {
+        String csv = csvForReceipt("RCPT\"QUOTE");
+        assertTrue(csv.contains("\"RCPT\"\"QUOTE\""),
+                "RFC 4180 escapes an inner quote by doubling it");
+        assertTrue(parseCsv(csv).stream().anyMatch(r -> r.contains("RCPT\"QUOTE")),
+                "the doubled quote must round-trip back to one cell holding one quote");
+    }
+
+    @Test
+    void csv_quotesCarriageReturnAndLineFeed_withoutSplittingTheRecord() {
+        String csv = csvForReceipt("RCPT\r\nBREAK");
+        assertTrue(csv.contains("\"RCPT\r\nBREAK\""),
+                "CR/LF must be inside a quoted field");
+        List<List<String>> records = parseCsv(csv);
+        long matching = records.stream().filter(r -> r.contains("RCPT\r\nBREAK")).count();
+        assertEquals(1, matching, "the embedded newline must not create a second record");
+        for (List<String> record : records) {
+            assertEquals(EXPORT_COLUMNS, record.size(),
+                    "escaping must not change the column count: " + record);
+        }
+    }
+
+    @Test
+    void csv_neutralisesFormulaInjection() {
+        assertTrue(csvForReceipt("=1+1").contains("'=1+1"),
+                "a leading = is executed by spreadsheet software on open");
+        assertTrue(csvForReceipt("+1+1").contains("'+1+1"));
+        assertTrue(csvForReceipt("@SUM(A1)").contains("'@SUM(A1)"));
+    }
+
+    @Test
+    void csv_neutralisesFormulaInjectionHiddenBehindLeadingWhitespaceOrControlCharacters() {
+        // Excel skips leading whitespace before deciding a cell is a formula, so a naive
+        // "starts with =" check is not enough.
+        assertTrue(csvForReceipt(" =1+1").contains("' =1+1"),
+                "a space before = must not bypass the guard");
+        assertTrue(csvForReceipt("\t=1+1").contains("'\t=1+1"),
+                "a tab before = must not bypass the guard");
+    }
+
+    @Test
+    void csv_doesNotCorruptATypedNegativeAmount() {
+        // A negative figure is a real balance, not an attack. The formula guard must never
+        // rewrite it, or a reconciliation reading the file silently loses its sign.
+        Payment p = payment("COMPLETED", "-5000.00", null);
+        p.setReceiptNumber("RCPT-NEGATIVE");
+        paymentRepository.saveAndFlush(p);
+        String csv;
+        try {
+            csv = new String(service.exportCsv(all()), StandardCharsets.UTF_8);
+        } finally {
+            paymentRepository.delete(p);
+            paymentRepository.flush();
+        }
+        String line = csv.lines().filter(l -> l.contains("RCPT-NEGATIVE")).findFirst().orElseThrow();
+        assertTrue(line.contains("-5000.00"), "the negative amount must survive verbatim: " + line);
+        assertFalse(line.contains("'-5000.00"), "a typed number must never be apostrophe-guarded");
+        assertFalse(line.contains("\"-5000.00\""), "a typed number needs no quoting");
+    }
+
+    @Test
+    void csv_leavesUuidAndTimestampColumnsUnquotedAndUnguarded() {
+        String csv = new String(service.exportCsv(all()), StandardCharsets.UTF_8);
+        String line = csv.lines().filter(l -> l.contains("RCPT-APPROVED-1")).findFirst().orElseThrow();
+        assertFalse(line.contains("'\""), "no cell may be an apostrophe-quote: " + line);
+        assertTrue(line.matches("(?s).*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.*"),
+                "the payment_id UUID must be emitted plainly");
+    }
+
+    @Test
+    void csv_rendersNullAsAnEmptyCellNotAsZeroOrNullText() {
+        String csv = new String(service.exportCsv(all()), StandardCharsets.UTF_8);
+        String line = csv.lines().filter(l -> l.contains("RCPT-NONE-2")).findFirst().orElseThrow();
+        assertFalse(line.contains("null"), "a null must not be written as the word null");
+        String[] cells = line.split(",", -1);
+        assertEquals("", cells[10]);
+    }
+
+    @Test
+    void csv_preservesUnicodeVerbatim() {
+        String line = csvForReceipt("RCPT-Ø-Ë-日本語");
+        assertTrue(line.contains("RCPT-Ø-Ë-日本語"),
+                "unicode must pass through unescaped and unmangled: " + line);
+    }
+
+    @Test
+    void csv_columnOrderIsUnchanged_soTheFrontendContractHolds() {
+        String csv = new String(service.exportCsv(all()), StandardCharsets.UTF_8);
+        String header = csv.lines().findFirst().orElseThrow();
+        assertEquals("payment_id,receipt_number,provider_reference,provider,service_type,status,"
+                        + "amount,currency,refunded_amount,refundable_amount,commission_amount,"
+                        + "commission_status,commission_policy_key,commission_policy_version,paid_at,"
+                        + "parent_id,student_id,institution_id",
+                header,
+                "the column order is a published contract; escaping must not have changed it");
     }
 
     // -------------------------------------------------------------- the endpoint

@@ -41,6 +41,7 @@ import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
 import tz.elmkusoma.parent.repository.SupportTicketRepository;
 import tz.elmkusoma.parent.service.*;
+import tz.elmkusoma.subscription.domain.Subscription;
 import tz.elmkusoma.shared.service.CommunicationIdempotencyService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -113,6 +114,7 @@ public class ParentSelfController {
     private final tz.elmkusoma.payments.gateway.StakabaProperties stakabaProperties;
     private final tz.elmkusoma.pricing.service.PricingService pricingService;
     private final tz.elmkusoma.pricing.service.DiscountService discountService;
+    private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
 
     private UUID getCurrentUserId(HttpServletRequest request) {
         Object userIdAttr = request.getAttribute("userId");
@@ -271,6 +273,35 @@ public class ParentSelfController {
         requireChildAccess(userId, studentId);
         List<ParentPaymentResponse.PaymentItem> payments = paymentService.getPaymentsByStudent(studentId);
         return ResponseEntity.ok(ApiResponse.success(payments));
+    }
+
+    // ── Subscriptions ───────────────────────────────────────────────────
+
+    @GetMapping("/subscriptions")
+    @Operation(summary = "Subscriptions this parent is paying for, newest period first.")
+    public ResponseEntity<ApiResponse<List<Subscription>>> getMySubscriptions(
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        return ResponseEntity.ok(ApiResponse.success(subscriptionService.listForPayer(userId)));
+    }
+
+    @PostMapping("/subscriptions/{subscriptionId}/cancel")
+    @Operation(summary = "Cancel a subscription at the end of its already-paid period. "
+            + "Access continues until then and no refund is issued; ask separately for a refund.")
+    public ResponseEntity<ApiResponse<Subscription>> cancelSubscription(
+            @PathVariable UUID subscriptionId,
+            @RequestBody(required = false) SubscriptionCancellationRequest body,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        // Scoped to the caller inside the service, so a subscription id belonging to another
+        // family does not resolve and the endpoint cannot be used to probe for one.
+        Subscription cancelled = subscriptionService.cancelOwnSubscription(
+                subscriptionId, userId, body == null ? null : body.reason());
+        return ResponseEntity.ok(ApiResponse.success(cancelled));
+    }
+
+    /** The reason is optional. Cancellation itself is the whole of the request. */
+    public record SubscriptionCancellationRequest(String reason) {
     }
 
     @PostMapping("/payments/initiate")

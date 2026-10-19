@@ -863,6 +863,34 @@ export interface AnalyticsSnapshot {
   id: string; snapshotType: string; generatedAt: string | null; data: Record<string, unknown> | null
 }
 
+/**
+ * BR-02: how much of a payment may still be refunded.
+ *
+ * Asked for rather than computed from the transaction row, because the figure the list shows is a
+ * snapshot taken when it was built and the eligible balance is what the server will accept right
+ * now. An operator must never be offered an amount the server will refuse.
+ */
+export interface RefundableAmount {
+  amount: number | null
+}
+
+/**
+ * A refund request as created by BR-02.
+ *
+ * `status` is REQUESTED. Creating a request is not money moving: the refund enters the normal
+ * lifecycle and is executed only by the separate approval path, so nothing here may be rendered as
+ * a completed refund.
+ */
+export interface RefundRequestSummary {
+  id: string
+  paymentId: string | null
+  amount: number | null
+  currency: string | null
+  status: string
+  reason: string | null
+  createdAt: string
+}
+
 export const platformAdminApi = {
   getDashboard: () => platformFetch<PlatformDashboard>("/v1/platform-admin/dashboard"),
   getAttention: () => platformFetch<AttentionItem[]>("/v1/platform-admin/attention"),
@@ -958,6 +986,28 @@ export const platformAdminApi = {
     if (status) params.set("status", status)
     return platformFetch<PageResponse<PaymentSummary>>(`/v1/platform-admin/payments?${params}`)
   },
+
+  /** The eligible balance, asked of the server at the moment it is needed. */
+  getRefundableAmount: (paymentId: string) =>
+    platformFetch<RefundableAmount>(
+      `/v1/platform-admin/bundles/payments/${paymentId}/refundable`
+    ),
+
+  /**
+   * Requests a partial bundle refund. This records a REQUEST only.
+   *
+   * The server bounds the amount and owns the lifecycle; the caller supplies no authority of its
+   * own, so a rejected amount here is the server refusing rather than a client-side guess.
+   */
+  requestPartialRefund: (body: {
+    paymentId: string
+    amount: number
+    reason?: string
+  }) =>
+    platformFetch<RefundRequestSummary>("/v1/platform-admin/bundles/refunds", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   listCertificates: (page = 0, size = 20, filters?: {
     search?: string; status?: string; type?: string; institutionId?: string; from?: string; to?: string
