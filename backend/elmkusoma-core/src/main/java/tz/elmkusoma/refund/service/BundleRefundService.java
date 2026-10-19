@@ -8,6 +8,7 @@ import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.domain.RefundRequest;
 import tz.elmkusoma.parent.repository.PaymentRepository;
+import tz.elmkusoma.parent.repository.RefundRequestRepository;
 import tz.elmkusoma.parent.service.RefundService;
 
 import java.math.BigDecimal;
@@ -35,6 +36,7 @@ public class BundleRefundService {
 
     private final PaymentRepository paymentRepository;
     private final RefundService refundService;
+    private final RefundRequestRepository refundRequestRepository;
 
     /**
      * Requests a partial refund of a bundle payment.
@@ -63,11 +65,20 @@ public class BundleRefundService {
                     "Only a completed payment can be refunded; this one is " + payment.getStatus());
         }
 
-        return refundService.requestRefund(paymentId, requestedBy, breakdown.refundedTotal(),
+        RefundRequest request = refundService.requestRefund(paymentId, requestedBy,
+                breakdown.refundedTotal(),
                 reason == null || reason.isBlank()
                         ? "Partial bundle refund (BR-02)"
                         : reason,
                 null);
+
+        // Persist the split that was just computed. RefundService is told only the total, so
+        // without this the two component figures are lost the moment the request is written, and
+        // recovering them later would mean re-running today's commission policy over a historical
+        // sale. Same transaction as the request itself, so a request cannot exist unsplit.
+        request.setCommissionReversed(breakdown.commissionReversed());
+        request.setProviderReversed(breakdown.providerReversed());
+        return refundRequestRepository.save(request);
     }
 
     /** What remains refundable, for a UI to show before a request is made. */

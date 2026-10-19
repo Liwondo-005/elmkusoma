@@ -4,8 +4,10 @@
 `Payment.md` implementation. It records what is *actually verified in this repository*, with
 real test evidence — not what is planned.
 
-**Baseline:** `main` @ `23d69e87` (synced with `origin/main`).
-**Spec:** `Payment.md`, 1,310 lines, last modified 10-17 01:41.
+**Baseline:** `main` @ `23d69e87` (synced with `origin/main`) — the original full-suite baseline,
+kept for history.
+**Current:** `main` @ `2c19597f` plus the P-05/S-09/R-07 work recorded in §5.
+**Spec:** `Payment.md`, 1,811 lines, last modified 10-17 01:41.
 
 ---
 
@@ -38,15 +40,19 @@ which are helpers holding no `@Test`):
 
 | Shard | Packages | Result |
 |---|---|---|
-| A | `bundle`, `parent`, `payments`, `refund`, `subscription`, `pricing`, `finance`, `event`, `integration` | 499 run / 0 failures / 0 errors / 5 skipped |
-| B | `security`, `config`, `emailoutbox` | 650 run / 0 / 0 / 0 |
-| C | 21 packages incl. `certificate`, `identity`, `liveclass`, `learning` | 1123 run / 0 / 0 / 0 |
+| A | `bundle`, `parent`, `payments`, `refund`, `subscription`, `pricing`, `finance`, `event`, `integration` | 514 run / 0 failures / 0 errors / 5 skipped |
+| B | `security`, `config`, `emailoutbox` | 674 run / 0 / 0 / 0 |
+| C | 21 packages incl. `certificate`, `identity`, `liveclass`, `learning` | 1143 run / 0 / 0 / 0 |
 | D | `nursery` | 78 run / 0 / 0 / 0 |
-| | **total** | **2350 run / 0 failures / 0 errors / 5 skipped** |
+| | **total** | **2409 run / 0 failures / 0 errors / 5 skipped** |
 
-Re-run at commit `b14e6c6d` on current code. All 34 packages containing test classes are
-covered. `TestDataSeeder` and `TestTokens` match surefire's default naming but are helpers
-holding no `@Test`, so they contribute nothing and are not counted.
+Most recent run: working tree at `2c19597f` plus the P-05/S-09/R-07 work in §5, sharded as above
+with `loadenv-min.ps1` (DB vars only). **Coverage was verified, not assumed**: the 193
+`*Test.java` files under `src/test` and the 193 classes surefire reported across the four shards
+match exactly — none missing, none extra. Earlier runs at `b14e6c6d`/`629e67e4` recorded 2350; the
+increase is the 20 new P-05/S-09/R-07 tests plus tests brought in with `01947d08..2c19597f`. All 34
+packages containing test classes are covered. `TestDataSeeder` and `TestTokens` match surefire's
+default naming but are helpers holding no `@Test`, so they contribute nothing and are not counted.
 
 Two failures seen during this work were not product defects and are worth recording so
 nobody re-chases them:
@@ -218,14 +224,14 @@ Each row was executed and observed in this session. Exit code and counts are rea
 | Duplicate `payment_id` rejection | `duplicatePaymentIdIsRejected` | PASS |
 | Concurrent renewal serialisation (real PG) | `concurrentRenewalsAreSerialisedByTheDatabase` | PASS |
 | First-purchase payer lock (before period lookup) | `ParentRepository.findByIdForUpdate`, `SubscriptionServiceTest` | PASS |
-| Full Flyway chain V1→V178 on real PostgreSQL | `SubscriptionMigrationConstraintTest` | **8/8** |
+| Full Flyway chain V1→V183 on real PostgreSQL | `SubscriptionMigrationConstraintTest` | **9/9** |
 | Migration naming/version validation | `FlywayMigrationValidationTest` | **32/32** |
 | Duplicate-callback idempotency | `confirmationIsIdempotent`, `payment_id UNIQUE` | PASS |
 | Payment → subscription transactional activation | `ParentPaymentServiceTest` | **24/24** |
 | Entitlement continuity (extend, never truncate) | `grantEntitlement` | PASS |
 | Subscription expiry operational | `CoreScheduler.expireElapsedSubscriptions` | shipped `c2a7d695` |
 | Parent financial notifications (assembler) | `ParentFinancialNotificationAssemblerTest` | **17/17** |
-| Dashboard notification wiring | `ParentDashboardServiceImpl` | shipped `c2a7d695` |
+| Dashboard notification wiring | assembler reachable from `GET /v1/my/notifications` | merged `ParentSelfController.getNotifications` |
 | **Paid seat handover on verified payment** | `confirmSeat` had **0 callers**; wired to `verifyPayment` | shipped `8509867e` |
 | Seat confirmation idempotency | `EventBookingServiceTest` | **21/21** |
 | Paid-path authorization + lifecycle parity | cancelled/started/private/cross-institution denied | PASS |
@@ -419,7 +425,7 @@ Recorded because they were real and non-obvious:
 
 | Item | Status | Blocker |
 |---|---|---|
-| Full backend suite green | **DONE — re-verified on current code** | 2350 run / 0 failures / 0 errors / 5 skipped, all 34 packages — see §1a |
+| Full backend suite green | **DONE — re-verified on current code** | 2409 run / 0 failures / 0 errors / 5 skipped, 193/193 test classes — see §1a |
 | Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
 | Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
 | Bundles/packages | **DONE — grant path, admin API, admin UI** | `next build` exit 0; see §1f. Known gap below |
@@ -475,7 +481,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | S-06 | No renewal after cancellation | effective date = period end | `SubscriptionCancellationPolicyTest` 8/8 | DONE |
 | S-07 | No automatic refund on cancellation | no refund path invoked | `cancellingDoesNotRefund` | DONE |
 | S-08 | Concurrency | `findByIdForUpdate` row lock | `SubscriptionServiceTest` | DONE |
-| S-09 | Expiry scheduler | `CoreScheduler.expireElapsedSubscriptions` | sweep covered by service tests | NEEDS VERIFICATION — no scheduler-level test observed |
+| S-09 | Expiry scheduler | `CoreScheduler.expireElapsedSubscriptions` | `CoreSchedulerExpirySweepTest` 4/4 (delegates, passes current time, survives a failing sweep) + `CoreSchedulerExpirySweepIntegrationTest` 4/4 (real rows flip ACTIVE→EXPIRED, live rows untouched, boundary at `period_end`, second run no-op); both proven to fail when the delegation is removed | DONE |
 
 ### Bundles and entitlements (spec §22, BR-03, §D)
 
@@ -500,7 +506,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | E-02 | Seat capacity + concurrency | lock before confirm | `EventSeatCapacityConcurrencyTest` 4/4 | DONE |
 | E-03 | Duplicate booking / retry | idempotent verify path | `EventBookingServiceTest` | DONE |
 | E-04 | Amount snapshotted at booking, not current price | payment snapshot | `EventBookingServiceTest` | DONE |
-| E-05 | Organizer-paid vs individual-paid group flows | — | — | **NEEDS VERIFICATION** — not observed in tests; spec §53 references group booking |
+| E-05 | Organizer-paid vs individual-paid group flows | multi-seat booking implemented end to end; the *organizer-paid vs individually-paid* distinction is **not** implemented | `EventBookingService.book(…, int seats)` :123, `total = unit × seats` :158, `EventRegistration.seats` :73, `sumHeldSeats` = `COALESCE(SUM(er.seats))` `EventRegistrationRepository:50-53`, `BookSeatsRequest` `EventBookingController:39`, `V173:32-36`; `EventBookingServiceTest`, `EventSeatCapacityConcurrencyTest` 4/4 | **PARTIAL** — seats and capacity are real and tested, but there is no `bookingType`/`payerType`/`ORGANIZER_PAID` anywhere in main, and no frontend booking UI (only free "register"), so §53's organizer-paid flow is absent |
 
 ### Parent / learner (spec §33, §F)
 
@@ -510,7 +516,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | P-02 | Link integrity | `ParentStudentLinkIntegrityTest` | 5/5 | DONE |
 | P-03 | Beneficiary attribution | V179 + `GET /v1/earnings/me` | `BeneficiaryEarningsTest` 4/4 | DONE |
 | P-04 | Purchaser vs beneficiary kept distinct | V178 `purchaser_*` | `ParentPaymentServiceTest` | DONE |
-| P-05 | Financial notifications on parent dashboard | `ParentFinancialNotificationAssembler` | assembler test | PARTIAL — no `ParentDashboard*Test` observes the integration |
+| P-05 | Financial notifications on parent dashboard | `ParentDashboardServiceImpl.getFinancialNotifications` → `ParentFinancialNotificationAssembler`, merged into `GET /v1/my/notifications` in `ParentSelfController:919` | `ParentFinancialNotificationEndpointTest` 10/10 (payment+receipt reach the inbox, another family's withheld, unlinked child withheld, `feeAlerts=false` suppresses, absent preference falls back to showing); 5 of the 10 fail when the merge is removed | DONE |
 | P-06 | Receipts + transaction search | `ReceiptController`, `TransactionSearchService` | `TransactionSearchServiceTest` 23/23 | DONE |
 
 ### Refunds (spec §57, BR-02)
@@ -518,12 +524,12 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | Req | Requirement | Implementation | Evidence | Status |
 |---|---|---|---|---|
 | R-01 | Refund eligibility + status transitions | `RefundService`, `RefundRequest` | `PaymentRefundIntegrityTest` 6/6 | DONE |
-| R-02 | Partial refund per approved policy | `BundleRefundCalculator` | `BundleRefundPolicyTest` 9/9 | DONE |
+| R-02 | Partial refund per approved policy | `BundleRefundCalculator` | `BundleRefundPolicyTest` 11/11 | DONE |
 | R-03 | Server-side authorisation, re-checked from real authorities | `BundleRefundService.requirePlatformAdmin` | `BundleRefundPolicyTest` ROLE_ test | DONE |
 | R-04 | Amount bounded before any write | `eligibleRemaining` | `BundleRefundPolicyTest` | DONE |
 | R-05 | **Refund Admin UI** | `components/platform-admin/partial-refund-dialog.tsx` | `next build` exit 0, i18n exit 0 | DONE |
 | R-06 | Request is not proof of refund | UI states REQUESTED and "no money returned" | copy reviewed | DONE |
-| R-07 | Split recorded as commission/provider reversals | calculator returns split | — | **PARTIAL** — split is computed but not persisted as reversal fields |
+| R-07 | Split recorded as commission/provider reversals | `RefundRequest.commissionReversed` / `providerReversed` + `V183__bundle_refund_split.sql`, written by `BundleRefundService` in the same transaction as the request | `BundleRefundPolicyTest.theSplitThatWasCalculatedIsPersistedOnTheRefundRequest` (fails when the write is removed) and `.aRefundRaisedOutsideABundleSplitRecordsNoSplitAtAll` (NULL, not 0); V183 applied by the real chain into an isolated schema (179 migrations → V183, both columns `numeric`, second run applied 0) | DONE |
 
 ### Pricing, allocation, earnings (spec §17–24, §59–60)
 
@@ -541,12 +547,23 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 
 | Req | Requirement | Implementation | Evidence | Status |
 |---|---|---|---|---|
-| D-01 | Migration chain applies cleanly | V170–V181 contiguous | `SubscriptionMigrationConstraintTest` 9/9 | DONE |
+| D-01 | Migration chain applies cleanly | V170–V183 contiguous | `SubscriptionMigrationConstraintTest` 9/9 | DONE |
 | D-02 | Chain must not skip a version | assertion now scans for gaps ≥ V170 | same | DONE |
 | D-03 | V174 source matches applied checksum | unchanged since verification | `theCommittedV174SourceMatchesTheChecksumAlreadyAppliedInTheSharedDatabase` | DONE |
 | D-04 | Monetary precision | `BigDecimal` throughout | `RefundRequest`, `Payment` | DONE |
 | D-05 | Idempotency constraints | partial unique index on `idempotency_key` | `ParentPaymentServiceTest` | DONE |
-| D-06 | **V175 history mismatch on `elmkusoma`** | read-only inspection only | — | **BLOCKED** — needs database-owner authorization |
+| D-06 | **V175 history mismatch on `elmkusoma`** | read-only inspection only; nothing written | recorded `flyway_schema_history` row is `171 \| 175 \| subscription lifecycle \| 222681029 \| true` while the repo now carries `V175__allow_independent_teachers` — full evidence and the owner-only recovery plan are in §4 | **BLOCKED** — needs database-owner authorization |
+
+**V183 — added by this change set.** `V183__bundle_refund_split.sql` adds
+`commission_reversed` / `provider_reversed` (`DECIMAL(12,2)`, nullable on purpose: NULL means "no
+split was calculated", zero would falsely assert the platform kept nothing). It was **not**
+validated by `mvn flyway:migrate` — that plugin is not usable offline here (missing
+`jackson-dataformat-toml`, `commons-text`) — and the test profile runs with
+`spring.flyway.enabled=false`, so no test exercises it either. It was therefore validated against
+a real PostgreSQL instance in a scratch schema (`v183_chain_check`) via a standalone Flyway 10
+runner: the full chain executed **179 migrations to target V183**, both columns read back as
+`numeric`, a second run applied 0, and the scratch schema was dropped. The shared
+`flyway_schema_history` on `elmkusoma` and `elmkusoma_test` was never touched.
 
 ### Security and IDOR (spec §63, 25 cases)
 
@@ -561,7 +578,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 - Forged success values | only verified gateway evidence grants | `EventBookingServiceTest` | DONE
 - Platform-admin escalation | `/v1/platform-admin/**` fenced to ADMIN | `ResourceHttpSecurityMatrixTest` | DONE
 
-**Counts: DONE 56 · PARTIAL 5 · NEEDS VERIFICATION 2 · BLOCKED 4 · N/A 1. MISSING 0, BROKEN 0.**
+**Counts: DONE 60 · PARTIAL 2 · NEEDS VERIFICATION 0 · BLOCKED 5 · N/A 1. MISSING 0, BROKEN 0.**
 
 `MISSING` is zero because the two UI gaps the audit found (bundle create/edit, refund admin)
 were closed rather than reported. `BROKEN` is zero because the one genuinely broken path found —
@@ -603,7 +620,7 @@ of the attribution work.
 Fixed with DROP CONSTRAINT IF EXISTS + ADD CONSTRAINT. Re-verified: repeat runs
 exit 0, the constraint exists exactly once, and an invalid purchaser_type is
 rejected by the database itself. Full chain still applies
-(SubscriptionMigrationConstraintTest 8/8). The rehearsal database was dropped;
+(SubscriptionMigrationConstraintTest 9/9). The rehearsal database was dropped;
 elmkusoma and elmkusoma_test were read-only throughout and were not modified.
 
 ### V174 -- source VERIFIED correct
@@ -649,14 +666,27 @@ Ordered by what blocks a controlled test, not by what is easiest.
    caused by the B-09 lock, and not fixed by it. Untouched deliberately because deciding whether
    repurchase should extend, re-grant, or apply a grace window is a commercial decision, not a
    bug-local edit. Needs an approved rule before it can be closed.
-2. **Dashboard notification integration (P-05).** `ParentFinancialNotificationAssembler` has its
-   own test but nothing observes it inside `ParentDashboardServiceImpl.getChildNotifications`.
-3. **Subscription expiry scheduler (S-09).** The sweep exists and is exercised through the
-   service; no test drives the scheduler itself.
-4. **Group booking flows (E-05).** Spec §53 references group booking. Not observed in any test;
-   either it is not implemented or it is untested. Needs a read to decide.
-5. **Refund split persistence (R-07).** `BundleRefundCalculator` computes commission/provider
-   reversals but they are not written to the refund record.
+2. ~~**Dashboard notification integration (P-05).**~~ **RESOLVED.** The assembler was unreachable
+   from the endpoint a parent actually calls: `GET /v1/my/notifications` read learner
+   notifications straight from its own repository and never consulted it, so a completed payment
+   never reached the inbox. `getFinancialNotifications` is now merged in, sorted before
+   pagination, and counted in `unreadCount`. Proven at the endpoint, not at the component.
+3. ~~**Subscription expiry scheduler (S-09).**~~ **RESOLVED.** Two layers now covered: the
+   `@Scheduled` wrapper is proven to delegate, to pass the current time, and to survive a failing
+   sweep without taking the recurring task down; and an integration test drives the real bean
+   against real rows so the ACTIVE→EXPIRED flip is observed in the database rather than inferred
+   from a stubbed repository.
+4. **Group booking flows (E-05).** Read and reclassified as **PARTIAL**, not "untested". Multi-seat
+   booking *is* implemented and tested end to end (seats column, `total = unit × seats`, capacity
+   against `SUM(seats)`, positive-seats constraint in V173). What §53 additionally asks for and
+   what does **not** exist: any distinction between an organizer-paid booking and an individually
+   paid one (`bookingType`/`payerType`/`ORGANIZER_PAID` appear nowhere in main), and any frontend
+   booking UI — the site only offers free registration.
+5. ~~**Refund split persistence (R-07).**~~ **RESOLVED.** The split was computed and then thrown
+   away, because `RefundService` is told only the total. It is now stored on the request
+   (`commission_reversed`, `provider_reversed`, V183). Non-bundle refunds deliberately record
+   NULL rather than 0: zero would assert the platform kept nothing from a split nobody
+   calculated.
 6. **Real Stakaba sandbox transaction (G-06).** Blocked until authorized. Mock contract tests do
    not substitute for this.
 7. **V175 reconciliation (D-06).** Blocked pending database-owner authorization. Read-only

@@ -68,6 +68,7 @@ import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -898,11 +899,7 @@ public class ParentSelfController {
         List<LearnerNotification> notifications =
                 learnerNotificationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId);
 
-        long unreadCount = notifications.stream().filter(n -> !Boolean.TRUE.equals(n.getIsRead())).count();
-
         List<ParentNotificationResponse.NotificationItem> items = notifications.stream()
-                .skip((long) page * size)
-                .limit(size)
                 .map(n -> ParentNotificationResponse.NotificationItem.builder()
                         .id(n.getId().toString())
                         .title(n.getTitle())
@@ -916,8 +913,27 @@ public class ParentSelfController {
                         .build())
                 .collect(Collectors.toList());
 
+        // Money the parent is entitled to see: payment, receipt and refund events for their own
+        // verified children. Computed by the assembler through the dashboard service, which only
+        // ever reads and honours the feeAlerts preference. Without this the assembler's output had
+        // no caller anywhere, so a completed payment never reached the parent's inbox at all.
+        items.addAll(dashboardService.getFinancialNotifications(userId));
+
+        // Sorted before pagination so a recent payment cannot be pushed off the end of the first
+        // page by older learner notifications. Null-safe: a learner row may carry no timestamp.
+        items.sort(Comparator.comparing(
+                ParentNotificationResponse.NotificationItem::getCreatedAt,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+
+        long unreadCount = items.stream().filter(n -> !Boolean.TRUE.equals(n.getIsRead())).count();
+
+        List<ParentNotificationResponse.NotificationItem> pageItems = items.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+
         return ResponseEntity.ok(ApiResponse.success(ParentNotificationResponse.builder()
-                .notifications(items)
+                .notifications(pageItems)
                 .unreadCount(unreadCount)
                 .build()));
     }

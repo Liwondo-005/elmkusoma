@@ -7,13 +7,18 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.parent.domain.Payment;
+import tz.elmkusoma.parent.domain.RefundRequest;
 import tz.elmkusoma.parent.repository.PaymentRepository;
+import tz.elmkusoma.parent.repository.RefundRequestRepository;
+import tz.elmkusoma.parent.service.RefundService;
 import tz.elmkusoma.testutil.TestDataSeeder;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,6 +36,8 @@ class BundleRefundPolicyTest {
 
     @Autowired private BundleRefundService bundleRefundService;
     @Autowired private PaymentRepository paymentRepository;
+    @Autowired private RefundRequestRepository refundRequestRepository;
+    @Autowired private RefundService refundService;
 
     private Payment paidBundle(BigDecimal net, BigDecimal commission, BigDecimal refunded) {
         return paymentRepository.saveAndFlush(Payment.builder()
@@ -170,5 +177,54 @@ class BundleRefundPolicyTest {
                 () -> bundleRefundService.requestPartialRefund(
                         p.getId(), new BigDecimal("1000.00"), UUID.randomUUID(), "probe", "ADMIN"),
                 "only a completed payment may be refunded");
+    }
+
+    // ------------------------------------------------------------------ R-07: the split is a
+    // ------------------------------------------------------------------ record, not a throwaway
+
+    @Test
+    void theSplitThatWasCalculatedIsPersistedOnTheRefundRequest() {
+        // The calculator's output was previously discarded after computing the total, so the
+        // refund recorded how much left but never how it divided. Recomputing the split later from
+        // today's policy would silently restate what the original sale was.
+        Payment p = paidBundle(new BigDecimal("120000.00"), new BigDecimal("12000.00"), BigDecimal.ZERO);
+        BigDecimal requested = new BigDecimal("33333.33");
+        BundleRefundCalculator.RefundBreakdown expected =
+                BundleRefundCalculator.breakdown(p, requested);
+
+        var request = bundleRefundService.requestPartialRefund(
+                p.getId(), requested, UUID.randomUUID(), "split must survive", "ADMIN");
+
+        RefundRequest stored = refundRequestRepository.findById(request.getId()).orElseThrow();
+
+        assertNotNull(stored.getCommissionReversed(),
+                "the commission portion of the split must be recorded on the request");
+        assertNotNull(stored.getProviderReversed(),
+                "the provider portion of the split must be recorded on the request");
+        assertEquals(0, expected.commissionReversed().compareTo(stored.getCommissionReversed()),
+                "the stored commission must be the one calculated from the payment's recorded "
+                        + "commission, not a figure recomputed later");
+        assertEquals(0, expected.providerReversed().compareTo(stored.getProviderReversed()),
+                "the stored provider share must be the remainder of that same calculation");
+        assertEquals(0, requested.compareTo(
+                        stored.getCommissionReversed().add(stored.getProviderReversed())),
+                "the stored halves must still add back to exactly the refunded amount");
+    }
+
+    @Test
+    void aRefundRaisedOutsideABundleSplitRecordsNoSplitAtAll() {
+        // NULL means "no split was calculated". If it were stored as zero instead, the ledger would
+        // be asserting the platform kept nothing from refunds it never divided.
+        Payment p = paidBundle(new BigDecimal("100000.00"), new BigDecimal("10000.00"), BigDecimal.ZERO);
+
+        RefundRequest plain = refundService.requestRefund(
+                p.getId(), UUID.randomUUID(), new BigDecimal("1000.00"), "not a bundle split", null);
+
+        RefundRequest stored = refundRequestRepository.findById(plain.getId()).orElseThrow();
+
+        assertNull(stored.getCommissionReversed(),
+                "a refund with no computed split must record no commission reversal, not zero");
+        assertNull(stored.getProviderReversed(),
+                "a refund with no computed split must record no provider reversal, not zero");
     }
 }
