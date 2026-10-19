@@ -38,11 +38,15 @@ which are helpers holding no `@Test`):
 
 | Shard | Packages | Result |
 |---|---|---|
-| 1 | `security` | 596 run / 0 / 0 / 0 |
-| 2 | `liveclass`, `learning`, `parent` | 549 run / 0 / 0 / 0 |
-| 3 | `certificate`, `config`, `identity`, `finance`, `grading`, `integration` | 506 run / 0 / 0 / 5 |
-| 4 | the remaining 20 packages | 576 run / 0 / 0 / 0 |
-| | **total** | **2227 run / 0 failures / 0 errors / 5 skipped** |
+| A | `bundle`, `parent`, `payments`, `refund`, `subscription`, `pricing`, `finance`, `event`, `integration` | 499 run / 0 failures / 0 errors / 5 skipped |
+| B | `security`, `config`, `emailoutbox` | 650 run / 0 / 0 / 0 |
+| C | 21 packages incl. `certificate`, `identity`, `liveclass`, `learning` | 1123 run / 0 / 0 / 0 |
+| D | `nursery` | 78 run / 0 / 0 / 0 |
+| | **total** | **2350 run / 0 failures / 0 errors / 5 skipped** |
+
+Re-run at commit `b14e6c6d` on current code. All 34 packages containing test classes are
+covered. `TestDataSeeder` and `TestTokens` match surefire's default naming but are helpers
+holding no `@Test`, so they contribute nothing and are not counted.
 
 Two failures seen during this work were not product defects and are worth recording so
 nobody re-chases them:
@@ -402,7 +406,7 @@ Recorded because they were real and non-obvious:
 
 | Item | Status | Blocker |
 |---|---|---|
-| Full backend suite green | **DONE — re-verified on current code** | 2227 run / 0 failures / 0 errors / 5 skipped, all 188 test classes — see §1a |
+| Full backend suite green | **DONE — re-verified on current code** | 2350 run / 0 failures / 0 errors / 5 skipped, all 34 packages — see §1a |
 | Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
 | Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
 | Bundles/packages | **DONE — grant path, admin API, admin UI** | `next build` exit 0; see §1f. Known gap below |
