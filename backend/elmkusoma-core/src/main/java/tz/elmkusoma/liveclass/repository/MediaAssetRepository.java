@@ -19,6 +19,17 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, UUID> {
 
     List<MediaAsset> findBySourceTypeAndSourceIdAndIsDeletedFalse(String sourceType, UUID sourceId);
 
+    /**
+     * Recordings of a known set of source sessions, newest first.
+     *
+     * <p>Used to assemble open-learning discovery: the caller passes exactly the ids of
+     * sessions already decided to be open (PUBLISHED + PUBLIC + no class scope), so no
+     * request input ever reaches this query and nothing outside that set can enter the
+     * result. Entitlement is still re-checked per asset by the controller.</p>
+     */
+    List<MediaAsset> findBySourceTypeAndSourceIdInAndMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(
+            String sourceType, java.util.Collection<UUID> sourceIds, String mediaType);
+
     /** Recordings targeted at one class (V149). */
     List<MediaAsset> findByInstitutionIdAndClassGroupIdAndMediaTypeAndIsDeletedFalse(
             UUID institutionId, UUID classGroupId, String mediaType);

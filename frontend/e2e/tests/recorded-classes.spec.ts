@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test"
 
-const API = "http://localhost:8080"
+// The API host is overridable (the E2E gate runs this suite against an instance other than
+// the default 8080); the default is unchanged for existing callers.
+const API = process.env.E2E_API_URL || "http://localhost:8080"
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000"
 
 /**

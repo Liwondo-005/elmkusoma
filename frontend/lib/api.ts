@@ -2358,8 +2358,17 @@ export const mediaApi = {
     })
   },
   list: (institutionId?: string) => {
-    const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
-    return request<any[]>(`/v1/media?institutionId=${instId}`)
+    // The tenant is never invented on the client. api.request() attaches the
+    // X-Institution-Id header only when this account actually stores one, and the
+    // server resolves membership from that claim — an account without a school
+    // (independent teacher or learner) sends no header at all and is shown exactly
+    // what its account may reach: its own material plus published open-learning
+    // recordings, decided entirely server-side. A hardcoded National-HQ id used to
+    // be substituted here when no organization was stored, fabricating an institution
+    // for a reader that has none; the backend never consumed that query parameter,
+    // so an explicitly supplied id stays an explicit opt-in and nothing else.
+    const qs = institutionId ? `?institutionId=${encodeURIComponent(institutionId)}` : ""
+    return request<any[]>(`/v1/media${qs}`)
   },
   getDownloadUrl: (mediaId: string) => request<any>(`/v1/media/${mediaId}/download-url`),
   delete: (mediaId: string) => request<void>(`/api/v1/media/${mediaId}`, { method: "DELETE" }),

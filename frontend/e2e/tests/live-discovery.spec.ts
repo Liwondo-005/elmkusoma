@@ -1,6 +1,8 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test"
 
-const API = "http://localhost:8080"
+// The API host is overridable (the E2E gate runs this suite against an instance other than
+// the default 8080); the default is unchanged for existing callers.
+const API = process.env.E2E_API_URL || "http://localhost:8080"
 
 // Resolved from the authenticated session: the tenant guard rejects any other institution
 // for this token, so a hardcoded id would only mask the tenancy check.

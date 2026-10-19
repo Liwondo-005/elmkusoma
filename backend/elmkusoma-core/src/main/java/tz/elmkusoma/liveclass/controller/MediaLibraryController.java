@@ -78,14 +78,59 @@ public class MediaLibraryController {
      *       day, or who enrolled after it was recorded.</li>
      * </ul>
      *
-     * <p>Staff keep their existing access: institution admins (and platform admins) see the
-     * whole institutional library, and a teacher sees recordings of their own live classes.</p>
+     * <p>Two server-derived conditions decide access without any tenant context at all:</p>
+     * <ul>
+     *   <li><b>Open learning</b> - a PUBLISHED + PUBLIC session declaring no private class
+     *       scope has a platform-wide audience, and a playable recording of it follows that
+     *       audience across institutions and to institution-less learners. This mirrors
+     *       {@code LiveClassRecordingAccessService} for per-class replay.</li>
+     *   <li><b>Ownership</b> - the teacher who made the material, which needs no tenant
+     *       claim, so an independent (school-less) teacher manages their own uploads and
+     *       recordings like any other teacher.</li>
+     * </ul>
+     *
+     * <p>Staff keep their existing access inside their own institution: platform admins
+     * (ADMIN / NATIONAL_ADMIN) remain a deliberate cross-tenant oversight exception, an
+     * institution admin sees the whole library of their own institution — and no longer
+     * skips the tenant boundary for another one — and a teacher sees their own live
+     * classes.</p>
      */
     private boolean canViewAsset(MediaAsset asset, UUID callerUserId, UUID institutionId, String userRole) {
-        if (isInstitutionScopedAdmin(userRole)) {
+        // Platform oversight is not bounded by a tenant (unchanged, checked first).
+        if (isPlatformOversight(userRole)) {
             return true;
         }
-        // Institution boundary first: a recording never crosses tenants.
+        // Institution-scoped staff keep whole-library access INSIDE their own tenant —
+        // including a failed capture they are diagnosing — but the tenant boundary below
+        // now applies to them as well. It used to be checked after a blanket bypass, so an
+        // institution admin could fetch another tenant's asset (metadata and download URL)
+        // by id; listing was always tenant-scoped, so no legitimate in-tenant flow changes.
+        if ("INSTITUTION_ADMIN".equals(userRole)
+                && institutionId != null && institutionId.equals(asset.getInstitutionId())) {
+            return true;
+        }
+        // Ownership precedes tenancy: a teacher's own uploads and recordings need no tenant
+        // claim — which is how a school-less (independent) teacher reaches their own material.
+        // The caller id is server-derived from the authenticated principal, so this crosses
+        // no tenant: it can only ever match rows this same user created.
+        if (callerUserId != null && callerUserId.equals(asset.getTeacherId())) {
+            return true;
+        }
+        // Open learning: a PUBLISHED + PUBLIC session that declares no private class scope
+        // has, by definition, a platform-wide audience, and a playable recording of it
+        // follows that audience — to every school and to institution-less learners alike.
+        // This is the same decision LiveClassRecordingAccessService already enforces for
+        // per-class replay, so listing, detail, download and playback cannot disagree.
+        // Unpublished, private, class-scoped, failed or deleted material never gets here.
+        if ("RECORDING".equalsIgnoreCase(asset.getMediaType())
+                && callerUserId != null
+                && isPlayableForLearners(asset)
+                && SOURCE_LIVE_CLASS.equalsIgnoreCase(asset.getSourceType())
+                && asset.getSourceId() != null
+                && isOpenLearningSource(asset)) {
+            return true;
+        }
+        // Institution boundary: every other asset never crosses tenants.
         if (institutionId == null || !institutionId.equals(asset.getInstitutionId())) {
             return false;
         }
@@ -95,12 +140,9 @@ public class MediaLibraryController {
         if (callerUserId == null) {
             return false;
         }
-        // The teacher's own recording.
-        if (callerUserId.equals(asset.getTeacherId())) {
-            return true;
-        }
         // A capture that never produced a playable file is not something to offer a learner.
-        // Staff still reach it above, which is how a teacher diagnoses a failed job.
+        // Staff still reach it through the branches above (institution-scoped diagnosis, or
+        // the teacher who owns it), which is how a failed job is diagnosed.
         if (!isPlayableForLearners(asset)) {
             return false;
         }
@@ -160,10 +202,23 @@ public class MediaLibraryController {
                 .orElse(false);
     }
 
-    private static boolean isInstitutionScopedAdmin(String userRole) {
+    private static boolean isPlatformOversight(String userRole) {
         return "ADMIN".equals(userRole)
-                || "NATIONAL_ADMIN".equals(userRole)
-                || "INSTITUTION_ADMIN".equals(userRole);
+                || "NATIONAL_ADMIN".equals(userRole);
+    }
+
+    /**
+     * Whether a recording's source session is an open learning session: PUBLISHED + PUBLIC +
+     * no declared class scope, on a row that still exists. The answer is read from the
+     * persisted session — never from client input — and a missing or deleted source grants
+     * nothing (default-deny), which is what keeps the branch below closed for legacy rows
+     * whose recorded session never existed or has been removed.
+     */
+    private boolean isOpenLearningSource(MediaAsset asset) {
+        return liveClassRepository.findById(asset.getSourceId())
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .map(tz.elmkusoma.course.domain.LiveClass::isOpenLearningSession)
+                .orElse(false);
     }
 
     /**
@@ -188,33 +243,87 @@ public class MediaLibraryController {
     @Operation(summary = "List media assets for institution")
     public ResponseEntity<ApiResponse<List<MediaAssetResponse>>> listMedia(
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String userRole,
             @RequestParam(required = false) String type) {
 
         // The tenant must come from the server-derived attribute, and the caller must
         // actually belong to it. Without this check any authenticated user could set
-        // X-Institution-Id to another tenant and read that tenant's media library.
-        if (!isMemberOfInstitution(userId, institutionId)) {
+        // X-Institution-Id to another tenant and read that tenant's media library. An
+        // account that claims no tenant at all (an independent teacher or learner) skips
+        // this guard instead of failing it: what such a reader may list below is decided
+        // per asset by canViewAsset, never by a claim they could make up.
+        if (institutionId != null && !isMemberOfInstitution(userId, institutionId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("You are not a member of this institution"));
         }
 
-        List<MediaAsset> assets;
-        if (type != null && !type.isEmpty()) {
-            assets = mediaAssetRepository.findByInstitutionIdAndMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(institutionId, type);
+        // The caller's own tenant library. A caller with no tenant contributes no rows
+        // here, and the query is scoped rather than post-filtered, so no amount of
+        // entitlement below could ever widen this set beyond the caller's institution.
+        java.util.LinkedHashMap<UUID, MediaAsset> assets = new java.util.LinkedHashMap<>();
+        if (institutionId != null) {
+            if (type != null && !type.isEmpty()) {
+                mediaAssetRepository
+                        .findByInstitutionIdAndMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(institutionId, type)
+                        .forEach(a -> assets.put(a.getId(), a));
+            } else {
+                mediaAssetRepository.findByInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(institutionId)
+                        .forEach(a -> assets.put(a.getId(), a));
+            }
         } else {
-            assets = mediaAssetRepository.findByInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(institutionId);
+            // No tenant to scope by: the reader's own material — authorization by
+            // ownership, which crosses no tenant — joins the open-learning union below.
+            // For a learner this query is always empty (nothing is ever owned by them);
+            // it is what lets an independent teacher's own uploads appear in a listing
+            // that has no institution to be scoped by. The type filter still applies.
+            mediaAssetRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .filter(a -> type == null || type.isEmpty() || type.equalsIgnoreCase(a.getMediaType()))
+                    .forEach(a -> assets.put(a.getId(), a));
+        }
+
+        // Open-learning discovery: recordings of PUBLISHED + PUBLIC sessions that declare
+        // no private class scope are listed for every eligible reader — across institutions
+        // and for institution-less learners alike. This is the only union allowed to cross
+        // the tenant boundary, its candidate set is server-derived (findOpenLearningSessions
+        // plus this library's own RECORDING filter — never request input), and every row is
+        // still entitlement-filtered below, so a failed, unpublished or deleted capture of an
+        // open session is never advertised either.
+        if (type == null || type.isEmpty() || "RECORDING".equalsIgnoreCase(type)) {
+            openLearningRecordings().forEach(a -> assets.putIfAbsent(a.getId(), a));
         }
 
         // Recordings are filtered by entitlement server-side. Filtering in the UI is not
         // authorization, and without this every student would see every class's recording.
-        List<MediaAssetResponse> response = assets.stream()
+        List<MediaAssetResponse> response = assets.values().stream()
                 .filter(a -> canViewAsset(a, userId, institutionId, userRole))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Recordings of every currently open learning session (PUBLISHED + PUBLIC + no declared
+     * class scope), newest first. The candidate set comes from
+     * {@code findOpenLearningSessions} — the same server-side decision that governs learner
+     * discovery and join — so no request input can widen it. Per-asset entitlement is still
+     * re-checked by {@link #canViewAsset}, which is what keeps failed or unpublished rows of
+     * an open session out of every listing.
+     */
+    private List<MediaAsset> openLearningRecordings() {
+        List<tz.elmkusoma.course.domain.LiveClass> openSessions =
+                liveClassRepository.findOpenLearningSessions();
+        if (openSessions.isEmpty()) {
+            return List.of();
+        }
+        java.util.Set<UUID> openIds = openSessions.stream()
+                .map(tz.elmkusoma.course.domain.LiveClass::getId)
+                .collect(Collectors.toSet());
+        return mediaAssetRepository
+                .findBySourceTypeAndSourceIdInAndMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(
+                        SOURCE_LIVE_CLASS, openIds, "RECORDING");
     }
 
     @GetMapping("/recordings/{sourceType}/{sourceId}")
@@ -224,10 +333,14 @@ public class MediaLibraryController {
             @PathVariable String sourceType,
             @PathVariable UUID sourceId,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String userRole) {
 
-        if (!isMemberOfInstitution(userId, institutionId)) {
+        // A tenant claim, when made, must be proven — but an account with no tenant at all
+        // (independent teacher or learner) proceeds: canViewAsset below decides per asset,
+        // and an open session's recordings are exactly the case that must be reachable
+        // without a school while every private class's remain closed to them.
+        if (institutionId != null && !isMemberOfInstitution(userId, institutionId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("You are not a member of this institution"));
         }
@@ -250,10 +363,14 @@ public class MediaLibraryController {
     public ResponseEntity<ApiResponse<List<MediaAssetResponse>>> getRecordingsByClass(
             @PathVariable UUID classGroupId,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String userRole) {
 
-        if (!isMemberOfInstitution(userId, institutionId)) {
+        // Class targeting is inherently institution-scoped (a class group belongs to one
+        // school), so a tenant claim must be proven; an account without a tenant simply has
+        // no class-scoped rows to select here — the selector below returns none for them,
+        // while open sessions remain reachable through the source and listing endpoints.
+        if (institutionId != null && !isMemberOfInstitution(userId, institutionId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("You are not a member of this institution"));
         }
@@ -277,7 +394,7 @@ public class MediaLibraryController {
     public ResponseEntity<ApiResponse<MediaAssetResponse>> getMedia(
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String userRole) {
         MediaAsset asset = mediaAssetRepository.findById(id)
                 .filter(a -> !Boolean.TRUE.equals(a.getIsDeleted()))
@@ -299,7 +416,16 @@ public class MediaLibraryController {
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
 
         if (institutionId == null) {
-            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+            // An independent (school-less) teacher still manages their own material: the
+            // authorization here is ownership — rows keyed to this authenticated user —
+            // and there is no tenant to scope by. Nothing else becomes reachable: this
+            // query can only ever return rows whose teacher_id is the caller themselves.
+            List<MediaAssetResponse> own = mediaAssetRepository
+                    .findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(ApiResponse.success(own));
         }
         List<MediaAsset> assets = mediaAssetRepository
                 .findByTeacherIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(
@@ -317,18 +443,22 @@ public class MediaLibraryController {
     @Operation(summary = "Search media assets")
     public ResponseEntity<ApiResponse<List<MediaAssetResponse>>> searchMedia(
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String userRole,
             @RequestParam String q) {
 
-        if (!isMemberOfInstitution(userId, institutionId)) {
+        // Search covers the caller's own tenant library: a tenant claim must be proven, and
+        // a reader without a tenant owns no searchable library here. It deliberately does
+        // NOT substitute cross-tenant results — search must never become a side channel
+        // around the entitlement check on listing; open-learning discovery lives there.
+        if (institutionId != null && !isMemberOfInstitution(userId, institutionId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("You are not a member of this institution"));
         }
 
         // Search must not become a side channel around the entitlement check on listing.
-        List<MediaAsset> assets = mediaAssetRepository
-                .searchByTitle(institutionId, q).stream()
+        List<MediaAsset> assets = (institutionId == null ? List.<MediaAsset>of()
+                        : mediaAssetRepository.searchByTitle(institutionId, q)).stream()
                 .filter(a -> canViewAsset(a, userId, institutionId, userRole))
                 .toList();
 
@@ -504,7 +634,7 @@ public class MediaLibraryController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDownloadUrl(
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String userRole) {
         // The download path must never be weaker than the detail path, or the entitlement
         // check on GET /v1/media/{id} would be bypassed by asking for the file directly.
