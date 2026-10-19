@@ -34,6 +34,7 @@ import {
   describeExpiry,
 } from "@/lib/payment-status"
 import { toCsv, downloadCsv, exportFilename } from "@/lib/csv"
+import SubscriptionsSection from "@/components/parent/subscriptions-section"
 
 /**
  * Parent payments.
@@ -387,6 +388,10 @@ export default function ParentPaymentsPage() {
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{tp("noMatchBody")}</p>
         </div>
       )}
+
+      {/* Subscriptions sit above the payment lists because a cancellation here changes what the
+          payments below are for, and BR-01 is the one action a payer takes on a paid period. */}
+      <SubscriptionsSection onChanged={() => void load()} />
 
       {pending.length > 0 && (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-xs dark:border-amber-900 dark:bg-amber-950/30">

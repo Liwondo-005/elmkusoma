@@ -5670,6 +5670,30 @@
       "markAllRead": "Mark all read",
       "unreadCount": "{count, plural, one {# unread notification} other {# unread notifications}}"
     },
+    "subscriptions": {
+      "title": "Subscriptions",
+      "subtitle": "Access you are paying for, and the periods already paid for.",
+      "loading": "Loading subscriptions...",
+      "loadFailed": "We could not load your subscriptions. Please try again.",
+      "empty": "There are no subscriptions on this account.",
+      "accessUntil": "Paid access runs to {date}.",
+      "renewalStopped": "Renewal stopped on {date}. Access still runs to the date above.",
+      "cancelledNotice": "The next renewal is cancelled. Your paid access continues to {date}, and nothing has been refunded.",
+      "cancelFailed": "That cancellation could not be completed.",
+      "cancelAction": "Cancel renewal",
+      "working": "Working...",
+      "keepIt": "Keep it",
+      "confirmAction": "Yes, stop renewing",
+      "confirmTitle": "Stop renewing this subscription?",
+      "confirmBody": "You will not be charged again when this period ends. Nothing changes before then.",
+      "confirmRefund": "This does not refund anything already paid, and it does not end access early. If you want your money back, ask separately for a refund.",
+      "nothingToCancel": "Nothing here can be cancelled any more. Every period has already ended.",
+      "status": {
+        "ACTIVE": "Renewing",
+        "CANCELLED": "Not renewing",
+        "EXPIRED": "Ended"
+      }
+    },
     "payments": {
       "historyTitle": "Payment History",
       "noHistory": "No payment history",

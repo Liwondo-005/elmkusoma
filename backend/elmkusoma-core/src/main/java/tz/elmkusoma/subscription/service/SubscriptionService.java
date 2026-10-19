@@ -177,6 +177,36 @@ private LocalDateTime resolvePeriodStart(Payment payment, Entitlement entitlemen
      *
      * <p>Only this period is affected. A later chained period is a separate row and is untouched.
      */
+    /**
+     * The subscriptions this payer is paying for.
+     *
+     * <p>Resolved by payer, never by "all subscriptions" filtered afterwards, so there is no way
+     * for a caller to widen the result set by changing a parameter.
+     */
+    @Transactional(readOnly = true)
+    public List<Subscription> listForPayer(UUID payerId) {
+        return subscriptionRepository.findAllByPayerIdAndIsDeletedFalseOrderByPeriodStartDesc(payerId);
+    }
+
+    /**
+     * Cancels one of the caller's own subscriptions, under BR-01.
+     *
+     * <p>Ownership is resolved before {@link #cancelAtPeriodEnd} is reached. A subscription id that
+     * belongs to somebody else does not resolve here and raises the same not-found an unknown id
+     * does, so this endpoint cannot be used to discover that another family's subscription
+     * exists. Anything less would turn a cancel button into an enumeration oracle.
+     */
+    @Transactional
+    public Subscription cancelOwnSubscription(UUID subscriptionId, UUID payerId, String reason) {
+        Subscription owned = subscriptionRepository
+                .findAllByPayerIdAndIsDeletedFalseOrderByPeriodStartDesc(payerId).stream()
+                .filter(s -> s.getId().equals(subscriptionId))
+                .findFirst()
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException(
+                        "Subscription", "id", subscriptionId));
+        return cancelAtPeriodEnd(owned.getId(), reason);
+    }
+
     @Transactional
     public Subscription cancelAtPeriodEnd(UUID subscriptionId, String reason) {
         Subscription subscription = subscriptionRepository.findByIdForUpdate(subscriptionId)

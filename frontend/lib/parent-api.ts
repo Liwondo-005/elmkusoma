@@ -213,6 +213,26 @@ export interface ParentCalendar {
   events: CalendarEvent[]
 }
 
+/**
+ * A paid access period.
+ *
+ * `periodEnd` is the access boundary and `cancelledAt` is when the next renewal was prevented -
+ * they are different dates on purpose, because cancelling does not move the end of what was paid
+ * for. Conflating them in the UI is how a family ends up believing they lost access early.
+ */
+export interface ParentSubscription {
+  id: string
+  studentId: string | null
+  payerId: string | null
+  serviceType: string
+  serviceId: string | null
+  status: string
+  periodStart: string
+  periodEnd: string
+  cancelledAt: string | null
+  cancellationReason: string | null
+}
+
 export interface PaymentItem {
   id: string
   amount: number
@@ -556,6 +576,27 @@ parentFetch<LiveClassData>(`/v1/my/children/${id}/live-classes`),
 
   getPayments: () => parentFetch<ParentPayments>("/v1/my/payments"),
   getChildPayments: (id: string) => parentFetch<PaymentItem[]>(`/v1/my/children/${id}/payments`),
+
+  /**
+   * The subscriptions this parent is paying for.
+   *
+   * Resolved by the server from the caller's identity. There is no child or payer parameter to
+   * change, so this cannot be widened into somebody else's list.
+   */
+  getSubscriptions: () => parentFetch<ParentSubscription[]>("/v1/my/subscriptions"),
+
+  /**
+   * Cancels at the end of the already-paid period (BR-01).
+   *
+   * This does not stop access now and does not refund - access continues to the period end, and a
+   * refund is a separate request. The UI has to say so, because "cancel" reads as "stop now" to
+   * almost everyone and a mismatch there is how a family thinks they were cut off when they were not.
+   */
+  cancelSubscription: (subscriptionId: string, reason?: string) =>
+    parentFetch<ParentSubscription>(`/v1/my/subscriptions/${subscriptionId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? null }),
+    }),
 
   /**
    * Cancels a payment attempt that has not settled.

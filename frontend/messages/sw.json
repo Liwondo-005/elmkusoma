@@ -5670,6 +5670,30 @@
       "markAllRead": "Weka alama zote zimesomwa",
       "unreadCount": "{count, plural, other {# arifa ambazo haujasoma}}"
     },
+    "subscriptions": {
+      "title": "Usajili",
+      "subtitle": "Ufikiaji unaolipia na vipindi ulivyolipwa.",
+      "loading": "Inapakia usajili...",
+      "loadFailed": "Imeshindikana kupakia usajili wako. Tafadhali jaribu tena.",
+      "empty": "Hakuna usajili kwenye akaunti hii.",
+      "accessUntil": "Ufikiaji uliolipwa unaendelea hadi {date}.",
+      "renewalStopped": "Uendeleaji umesitishwa mnamo {date}. Ufikiaji bado unaendelea hadi tarehe iliyoonyeshwa hapo juu.",
+      "cancelledNotice": "Uendeleaji ujao umesitishwa. Ufikiaji wako uliolipwa unaendelea hadi {date}, na hakuna kilichorudiwa.",
+      "cancelFailed": "Kitendo hiki cha kusitisha hakiweza kukamilishwa.",
+      "cancelAction": "Sitisha uendeleaji",
+      "working": "Inafanya kazi...",
+      "keepIt": "Acha hiyo",
+      "confirmAction": "Ndiyo, sitisha uendeleaji",
+      "confirmTitle": "Usitishe uendeleaji wa usajili huu?",
+      "confirmBody": "Hutachukuliwa tena mfululizo wa kipindi hiki. Hakuna kilichobadilika kabla ya wakati huo.",
+      "confirmRefund": "Hakirudi pesa yoyote iliyolipwa, wala hakuna kumaliza ufikiaji mapema. Ikiwa unataka pesa yako, omba rifundi tofauti.",
+      "nothingToCancel": "Hakuna kinachoweza kusitishwa zaidi hapa. Kila kipindi kimekwishaisha.",
+      "status": {
+        "ACTIVE": "Inaendelea",
+        "CANCELLED": "Haiaendelei",
+        "EXPIRED": "Imeisha"
+      }
+    },
     "payments": {
       "historyTitle": "Historia ya Malipo",
       "noHistory": "Hakuna historia ya malipo",

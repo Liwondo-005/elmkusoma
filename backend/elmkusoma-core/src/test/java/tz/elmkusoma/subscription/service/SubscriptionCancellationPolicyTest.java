@@ -11,6 +11,8 @@ import tz.elmkusoma.testutil.TestDataSeeder;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -151,8 +153,67 @@ class SubscriptionCancellationPolicyTest {
         subscriptionService.cancelAtPeriodEnd(first.getId(), "stop renewing");
 
         assertEquals(Subscription.STATUS_ACTIVE,
-                subscriptionRepository.findById(second.getId()).orElseThrow().getStatus(),
+subscriptionRepository.findById(second.getId()).orElseThrow().getStatus(),
                 "a later chained period is a separate row and must not be cancelled by cancelling "
                         + "the period before it");
+    }
+
+    @Test
+    void aPayerCanCancelTheirOwnSubscription() {
+        // The authorization boundary in front of the policy: it is the difference between a
+        // family cancelling their own commitment and a stranger ending it.
+        UUID payer = UUID.randomUUID();
+        Subscription mine = ownedPeriod(payer, Duration.ofDays(20));
+
+        Subscription cancelled = subscriptionService.cancelOwnSubscription(
+                mine.getId(), payer, "no longer needed");
+
+        assertEquals(Subscription.STATUS_CANCELLED, cancelled.getStatus());
+        assertEquals(mine.getPeriodEnd().truncatedTo(ChronoUnit.SECONDS),
+                cancelled.getCancelledAt().truncatedTo(ChronoUnit.SECONDS),
+                "the effective date is the end of the paid period, which is the approved decision "
+                        + "rather than a default");
+    }
+
+    @Test
+    void anotherFamiliesSubscriptionDoesNotResolveAndIsNotCancelled() {
+        UUID otherPayer = UUID.randomUUID();
+        UUID caller = UUID.randomUUID();
+        Subscription theirs = ownedPeriod(otherPayer, Duration.ofDays(20));
+
+        assertThrows(tz.elmkusoma.exception.ResourceNotFoundException.class,
+                () -> subscriptionService.cancelOwnSubscription(theirs.getId(), caller, "not mine"),
+                "a subscription belonging to another payer must not resolve through this endpoint");
+        assertEquals(Subscription.STATUS_ACTIVE,
+                subscriptionRepository.findById(theirs.getId()).orElseThrow().getStatus(),
+                "a refused cancellation must leave the other family's subscription exactly as it was");
+    }
+
+    @Test
+    void listingShowsOnlyTheCallersOwnSubscriptions() {
+        UUID payer = UUID.randomUUID();
+        Subscription mine = ownedPeriod(payer, Duration.ofDays(20));
+        ownedPeriod(UUID.randomUUID(), Duration.ofDays(20));
+        ownedPeriod(UUID.randomUUID(), Duration.ofDays(20));
+
+        List<Subscription> listed = subscriptionService.listForPayer(payer);
+
+        assertEquals(1, listed.size(),
+                "the list is resolved by payer, so a wider set would leak other families' commitments");
+        assertEquals(mine.getId(), listed.get(0).getId());
+    }
+
+    private Subscription ownedPeriod(UUID payerId, Duration remaining) {
+        LocalDateTime now = LocalDateTime.now();
+        return subscriptionRepository.saveAndFlush(Subscription.builder()
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .studentId(UUID.randomUUID())
+                .payerId(payerId)
+                .serviceType("MONTHLY_ACCESS")
+                .paymentId(UUID.randomUUID())
+                .status(Subscription.STATUS_ACTIVE)
+                .periodStart(now.minusDays(5))
+                .periodEnd(now.plus(remaining))
+                .build());
     }
 }
