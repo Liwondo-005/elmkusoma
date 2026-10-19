@@ -130,8 +130,16 @@ public class EventBookingService {
                 .filter(e -> !Boolean.TRUE.equals(e.getIsDeleted()))
                 .orElseThrow(() -> new ResourceNotFoundException("Event", "id", eventId));
 
-        if (registrationRepository
-                .existsByEventIdAndUserIdAndIsDeletedFalse(eventId, attendeeUserId)) {
+        // A registration only blocks a new booking while it still holds something: a confirmed
+        // seat, or a payment that is still in flight. (event_id, user_id) is unique, so the
+        // attendee has exactly one row - and the blanket check this replaced counted every row
+        // including cancelled ones, so a single abandoned or failed attempt locked them out of
+        // the event permanently, with no way back in. Nothing was collected and no seat was
+        // taken in those cases, so there is nothing to protect by refusing.
+        EventRegistration prior = registrationRepository
+                .findByEventIdAndUserIdAndIsDeletedFalse(eventId, attendeeUserId)
+                .orElse(null);
+        if (prior != null && blocksRebooking(prior)) {
             throw new IllegalStateException("This attendee is already registered for the event");
         }
 
@@ -139,15 +147,8 @@ public class EventBookingService {
 
         if (!event.isPaid()) {
             // Free events keep the existing behaviour and never touch the payment domain.
-            EventRegistration registration = EventRegistration.builder()
-                    .eventId(eventId)
-                    .institutionId(event.getInstitutionId())
-                    .userId(attendeeUserId)
-                    .status("REGISTERED")
-                    .registeredAt(LocalDateTime.now())
-                    .attended(false)
-                    .seats(seats)
-                    .build();
+            EventRegistration registration = freshBooking(
+                    prior, event, attendeeUserId, seats, "REGISTERED");
             registration = registrationRepository.saveAndFlush(registration);
             return new Booking(eventId, registration.getId(), null, BigDecimal.ZERO,
                     event.getTicketCurrency() == null ? "TZS" : event.getTicketCurrency(),
@@ -165,15 +166,8 @@ public class EventBookingService {
 
         // Seats are NOT taken yet. Taking them now would let an abandoned prompt hold a place
         // away from someone who has paid; they are taken in confirmSeat once collection lands.
-        EventRegistration registration = EventRegistration.builder()
-                .eventId(eventId)
-                .institutionId(event.getInstitutionId())
-                .userId(attendeeUserId)
-                .status("PAYMENT_PENDING")
-                .registeredAt(LocalDateTime.now())
-                .attended(false)
-                .seats(seats)
-                .build();
+        EventRegistration registration = freshBooking(
+                prior, event, attendeeUserId, seats, "PAYMENT_PENDING");
         registration = registrationRepository.saveAndFlush(registration);
 
         Payment payment = Payment.builder()
@@ -395,10 +389,62 @@ public class EventBookingService {
     private static boolean isPlatformAdmin(User.Role role) {
         return role == User.Role.ADMIN || role == User.Role.NATIONAL_ADMIN;
     }
+    /**
+     * True while a registration still occupies the attendee's one row for this event.
+     *
+     * <p>Because {@code (event_id, user_id)} is unique, an attendee has exactly one registration
+     * row per event and can never be given a second. A cancelled registration, a no-show, or a
+     * booking whose payment was cancelled or failed holds no seat and collected no money, so it
+     * must not lock the attendee out of booking again.</p>
+     */
+    private boolean blocksRebooking(EventRegistration registration) {
+        String status = registration.getStatus();
+        if ("REGISTERED".equals(status) || "ATTENDED".equals(status) || "WAITLISTED".equals(status)) {
+            return true;
+        }
+        if (!"PAYMENT_PENDING".equals(status)) {
+            return false;
+        }
+        if (registration.getPaymentId() == null) {
+            return false;
+        }
+        // A booking still awaiting payment only blocks while that payment is still live. Once it
+        // is cancelled, failed or otherwise terminal the seat was never taken and nothing was
+        // collected, so the attendee is free to try again.
+        return paymentRepository.findById(registration.getPaymentId())
+                .map(p -> "PENDING".equals(p.getStatus()))
+                .orElse(false);
+    }
+
+    /**
+     * Applies a fresh booking to the attendee's existing row, or to a new one when they have none.
+     *
+     * <p>Reusing the row is not an optimisation - it is required. {@code (event_id, user_id)} is
+     * unique, so inserting a second registration for an attendee whose previous one was cancelled
+     * would fail at the database, and there is no other way for them to book again.</p>
+     */
+    private EventRegistration freshBooking(EventRegistration prior, Event event,
+                                           UUID attendeeUserId, int seats, String status) {
+        EventRegistration target = prior != null ? prior : new EventRegistration();
+        target.setEventId(event.getId());
+        target.setInstitutionId(event.getInstitutionId());
+        target.setUserId(attendeeUserId);
+        target.setStatus(status);
+        target.setRegisteredAt(LocalDateTime.now());
+        target.setAttended(false);
+        target.setAttendedAt(null);
+        target.setSeats(seats);
+        // Anything left over from the abandoned attempt belongs to the old payment, not this one.
+        target.setPaymentId(null);
+        target.setAmountPaid(null);
+        target.setCancelledAt(null);
+        target.setCancellationReason(null);
+        return target;
+    }
+
     /** Releases a seat and records why. Cancellation stays separate from any refund. */
     @Transactional
-    public void cancelSeat(UUID registrationId, UUID actorUserId, String reason) {
-        EventRegistration registration = registrationRepository.findById(registrationId)
+    public void cancelSeat(UUID registrationId, UUID actorUserId, String reason) {        EventRegistration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "EventRegistration", "id", registrationId));
 

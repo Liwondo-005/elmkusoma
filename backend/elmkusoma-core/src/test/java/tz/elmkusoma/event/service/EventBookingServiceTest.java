@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class EventBookingServiceTest {
 
     @Autowired private EventBookingService booking;
+    @Autowired private tz.elmkusoma.event.service.EventService eventService;
     @Autowired private EventRepository eventRepository;
     @Autowired private EventRegistrationRepository registrationRepository;
     @Autowired private PaymentRepository paymentRepository;
@@ -455,5 +456,89 @@ class EventBookingServiceTest {
         var confirmed = booking.confirmSeat(b.registrationId());
         assertEquals(0, new BigDecimal("200").compareTo(confirmed.getAmountPaid()),
                 "the snapshot must be what was charged, not today's list price");
+    }
+
+    // ------------------------------------------------- the attendee is not locked out forever
+    //
+    // (event_id, user_id) is unique, so an attendee has exactly one registration row per event.
+    // The guard this replaced counted every row including cancelled ones, so one abandoned or
+    // failed attempt locked them out permanently: nothing was collected, no seat was taken, and
+    // there was no way back in.
+
+    @Test
+    void aCancelledRegistrationLetsTheAttendeeBookTheEventAgain() {
+        var first = booking.book(freeEvent.getId(), attendee, 1);
+        booking.cancelSeat(first.registrationId(), attendee, "could not attend");
+
+        var second = booking.book(freeEvent.getId(), attendee, 1);
+
+        assertNotNull(second.registrationId());
+        assertEquals(first.registrationId(), second.registrationId(),
+                "the row must be reused, because (event_id, user_id) is unique and no second "
+                        + "registration row can be inserted for the same attendee");
+        assertEquals(1, registrationRepository.sumHeldSeats(freeEvent.getId()),
+                "cancelling released the seat, and rebooking takes exactly one again");
+    }
+
+    @Test
+    void aBookingWhosePaymentWasCancelledLetsTheAttendeeTryAgain() {
+        var first = booking.book(paidEvent.getId(), attendee, 1);
+        // The payment was cancelled or failed. The seat was never taken and nothing was collected.
+        Payment abandoned = paymentRepository.findById(first.paymentId()).orElseThrow();
+        abandoned.setStatus("CANCELLED");
+        paymentRepository.saveAndFlush(abandoned);
+
+        var second = booking.book(paidEvent.getId(), attendee, 1);
+
+        assertNotNull(second.paymentId(), "a second, live payment must be raised for the retry");
+        assertEquals("PENDING", paymentRepository.findById(second.paymentId()).orElseThrow().getStatus());
+        assertEquals(0L, registrationRepository.sumHeldSeats(paidEvent.getId()),
+                "an unconfirmed booking holds no seat either before or after the retry");
+    }
+
+    @Test
+    void aConfirmedSeatStillBlocksASecondBooking() {
+        // The guard that was loosened must still refuse the case it was written for: an attendee
+        // who already holds a seat. Rebooking over a confirmed seat would double-charge them or
+        // silently over-allocate.
+        var held = booking.book(paidEvent.getId(), attendee, 2);
+        completePayment(held.paymentId());
+        booking.confirmSeat(held.registrationId());
+
+        assertThrows(IllegalStateException.class,
+                () -> booking.book(paidEvent.getId(), attendee, 1),
+                "an attendee who already holds confirmed seats must not be able to book again");
+        assertEquals(2, registrationRepository.sumHeldSeats(paidEvent.getId()),
+                "the refused attempt must not have changed what is held");
+    }
+
+    @Test
+    void aLivePaymentStillBlocksASecondBooking() {
+        // The other half of the loosened guard: an attempt that is genuinely still in flight must
+        // keep its place, or a double-click would raise two payments for one attendee.
+        booking.book(paidEvent.getId(), attendee, 1);
+
+        assertThrows(IllegalStateException.class,
+                () -> booking.book(paidEvent.getId(), attendee, 1),
+                "an in-flight payment must not be abandoned by a second booking attempt");
+    }
+
+    @Test
+    void cancellingAGroupBookingRestoresEverySeatItHeld() {
+        // Cancellation used to recount capacity as a row count, so a group holding several seats
+        // on one registration released them all but reported one. An event could then be reopened
+        // while still full, or show a count that no longer matched what was held.
+        var group = booking.book(freeEvent.getId(), attendee, 3);
+        assertEquals(3, registrationRepository.sumHeldSeats(freeEvent.getId()));
+
+        eventService.cancelRegistration(freeEvent.getId(), attendee, "group cannot attend");
+
+        assertEquals(0, registrationRepository.sumHeldSeats(freeEvent.getId()),
+                "every seat the group held must be released");
+        var reloaded = eventRepository.findById(freeEvent.getId()).orElseThrow();
+        assertEquals(0, reloaded.getCurrentRegistrations(),
+                "the published count must be seats held, not rows - a group of three is three "
+                        + "seats, and counting rows would understate the event as one seat short "
+                        + "of what was actually freed");
     }
 }

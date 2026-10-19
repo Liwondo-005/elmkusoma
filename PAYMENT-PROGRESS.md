@@ -46,13 +46,35 @@ which are helpers holding no `@Test`):
 | D | `nursery` | 78 run / 0 / 0 / 0 |
 | | **total** | **2409 run / 0 failures / 0 errors / 5 skipped** |
 
-Most recent run: working tree at `2c19597f` plus the P-05/S-09/R-07 work in §5, sharded as above
+Run at that point: working tree at `2c19597f` plus the P-05/S-09/R-07 work in §5, sharded as above
 with `loadenv-min.ps1` (DB vars only). **Coverage was verified, not assumed**: the 193
 `*Test.java` files under `src/test` and the 193 classes surefire reported across the four shards
 match exactly — none missing, none extra. Earlier runs at `b14e6c6d`/`629e67e4` recorded 2350; the
 increase is the 20 new P-05/S-09/R-07 tests plus tests brought in with `01947d08..2c19597f`. All 34
 packages containing test classes are covered. `TestDataSeeder` and `TestTokens` match surefire's
 default naming but are helpers holding no `@Test`, so they contribute nothing and are not counted.
+
+### Re-verified after the B-10 / E-05 work
+
+Because both fixes changed production and test code, the whole suite was rerun unsharded on the
+current working tree — no shards, so there is no chance of a package being missed:
+
+```
+Command : mvn -o test                          (JAVA_HOME=jdk-21.0.12.1, loadenv-min.ps1)
+Exit    : 0   BUILD SUCCESS   Total time: 16:46 min
+Result  : Tests run: 2417, Failures: 0, Errors: 0, Skipped: 5
+Classes : 193
+```
+
+**Coverage verified, not assumed:** the 193 `*Test.java` files under `src/test` and the 193
+classes surefire reported match exactly — none missing, none extra. 2417 − 2409 = 8, which is
+precisely the 3 new `BundleAdminServiceTest` cases plus the 5 new `EventBookingServiceTest` cases
+added this session; no other test count moved. The 5 skips are unchanged and all belong to the
+integration package (`EventD03ComplianceTest` 1, `LiveKitIntegrationTest` 1,
+`LiveKitRealServerTest` 3). No `[ERROR]` line appears anywhere in the run.
+
+Frontend on the same tree: `npx tsc --noEmit` exit 0, `node scripts/check-i18n-keys.mjs` exit 0
+(`OK - every statically-referenced key exists in en and sw`), `npm run build` exit 0.
 
 Two failures seen during this work were not product defects and are worth recording so
 nobody re-chases them:
@@ -466,7 +488,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | G-03 | Duplicate delivery / replay | Verified-payment path is idempotent | `ParentPaymentServiceTest` | DONE |
 | G-04 | Provider disabled / missing credentials | `StakabaProperties` interlock | `PaymentGatewayServiceTest` | DONE |
 | G-05 | `STAKABA_ALLOW_LIVE=false` held | `.env` has sandbox key, live off | `start-backend.ps1 -VerifyConfig` exit 0 | DONE |
-| G-06 | **Real sandbox transaction** | none executed | — | **BLOCKED** — needs an actual sandbox transaction; mock contract tests are not this |
+| G-06 | **Real sandbox transaction** | none executed; `STAKABA_ALLOW_LIVE` remains `false`, no live key accepted | — | **BLOCKED** — 63 mock/contract tests across `StakabaGatewayClientImplTest` 18, `PaymentGatewayServiceTest` 23, `StakabaWebhookSecurityTest` 7, `StakabaConfigurationValidatorTest` 7, `PaymentWebhookSecurityTest` 7, wiring tests; reproducible checklist in `docs/STAKABA-SANDBOX-TESTING.md`; blocked on pricing activation (decision request §6) + a genuine sandbox transaction |
 | G-07 | Production credentials / onboarding | none | — | **BLOCKED** — out of scope, not authorized |
 
 ### Subscriptions (spec §49–52, BR-01)
@@ -496,7 +518,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | B-07 | Entitlement only after confirmed payment | `BundleGrantService` | `BundleGrantServiceTest` 7/7 | DONE |
 | B-08 | Overlap/top-up policy | `BundleTopUpService` | `BundleTopUpServiceTest` 7/7 | DONE |
 | B-09 | Concurrent purchase / duplicate grant protection | transaction-scoped advisory lock in `BundleGrantService.grantOne`, taken before the coverage check | `BundleGrantServiceTest` `twoConcurrentPurchasesCannotGrantTheSameServiceTwice` (fails with 2 grants when the lock is removed) | DONE |
-| B-10 | Bundle item must point at a real service | service id accepted as typed UUID, not resolved | — | **PARTIAL** — no service-catalogue exists to validate against |
+| B-10 | Bundle item must point at a real service | `BundleAdminService.requirePricedServices` — every item's `serviceType` must resolve to an ACTIVE pricing policy, checked on create, update **and** publish; that same policy is what `BundleTopUpService` resolves the item's price from | `BundleAdminServiceTest` 13/13 incl. `anItemNamingAServiceThePlatformDoesNotSellIsRefused` (nothing persisted, message names the offending type), `aDraftCannotBePublishedOnceItsServiceIsNoLongerSold`, `anEmptyServiceNameIsRefusedRatherThanTreatedAsAValidType` | DONE — server-side enforcement proven; the frontend picker is a separate open item (decision request §5) |
 
 ### Events and bookings (spec §53–55)
 
@@ -506,7 +528,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | E-02 | Seat capacity + concurrency | lock before confirm | `EventSeatCapacityConcurrencyTest` 4/4 | DONE |
 | E-03 | Duplicate booking / retry | idempotent verify path | `EventBookingServiceTest` | DONE |
 | E-04 | Amount snapshotted at booking, not current price | payment snapshot | `EventBookingServiceTest` | DONE |
-| E-05 | Organizer-paid vs individual-paid group flows | multi-seat booking implemented end to end; the *organizer-paid vs individually-paid* distinction is **not** implemented | `EventBookingService.book(…, int seats)` :123, `total = unit × seats` :158, `EventRegistration.seats` :73, `sumHeldSeats` = `COALESCE(SUM(er.seats))` `EventRegistrationRepository:50-53`, `BookSeatsRequest` `EventBookingController:39`, `V173:32-36`; `EventBookingServiceTest`, `EventSeatCapacityConcurrencyTest` 4/4 | **PARTIAL** — seats and capacity are real and tested, but there is no `bookingType`/`payerType`/`ORGANIZER_PAID` anywhere in main, and no frontend booking UI (only free "register"), so §53's organizer-paid flow is absent |
+| E-05 | Organizer-paid vs individual-paid group flows | multi-seat booking implemented end to end; two defects found and fixed this session (attendee permanently locked out after a cancelled/failed booking; capacity recounted as a row count instead of `SUM(seats)`); the *organizer-paid vs individually-paid* distinction is **not** implemented | `EventBookingServiceTest` **26/26** incl. `aCancelledRegistrationLetsTheAttendeeBookTheEventAgain`, `aBookingWhosePaymentWasCancelledLetsTheAttendeeTryAgain`, `aConfirmedSeatStillBlocksASecondBooking`, `aLivePaymentStillBlocksASecondBooking`, `cancellingAGroupBookingRestoresEverySeatItHeld`; `EventSeatCapacityConcurrencyTest` 4/4; `book(…, int seats)` :123, `total = unit × seats` :158, `sumHeldSeats` `EventRegistrationRepository:50-53`, `V173` | **PARTIAL** — individual paid multi-seat flow DONE and tested; no `bookingType`/`payerType`/`ORGANIZER_PAID` anywhere in main and no booking UI (only free "register"), so §53's organizer-paid flow awaits decision request §4 |
 
 ### Parent / learner (spec §33, §F)
 
@@ -539,9 +561,9 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | A-02 | Platform commission allocation | `CommissionService` | `ParentPaymentServiceTest` | DONE |
 | A-03 | Per-beneficiary earnings | `EarningsService` | `BeneficiaryEarningsTest` 4/4 | DONE |
 | A-04 | Bundle-level discount distribution | deliberately not applied | `aBundleIsChargedTheTopUpTotalNotTheHeadlinePrice` (never resolves discount) | DONE — documented as unapproved |
-| A-05 | Settlement / payouts | — | — | **BLOCKED** — needs approved commission policy |
+| A-05 | Settlement / payouts | `CommissionPolicy` + `CommissionService.allocate` (rate-agnostic; stamps `commissionAmount`/`providerShare`/`commissionStatus` at confirmation) + `EarningsService`/`FinancialReportingService` reporting "unavailable" rather than 0; **no hardcoded rate anywhere, and no endpoint can activate a policy** | `BeneficiaryEarningsTest`, `FinancialReportingServiceTest`, `FlywayMigrationValidationTest.commissionSeed_CarriesNoRateAndNoInventedFeeBearer`; `Payment.md` line 1171 "Do not assume any commission percentage" | **BLOCKED** — machinery DONE and proven; needs an approved rate (decision request §2). Settlement/payout additionally blocked by `Payment.md` line 1199 |
 | A-06 | Expired-entitlement grace period | straightforward reading used | `anExpiredEntitlementIsNotCoverage` | DONE — documented, unapproved alternative noted |
-| A-07 | Component-level refund valuation basis | avoided entirely | — | **BLOCKED** — needs an approved valuation rule |
+| A-07 | Component-level refund valuation basis | whole-payment basis implemented: `refundableAmount()` = collected − refunded, enforced at 4 levels (request bound, completion re-check under `findByIdForUpdate`, `BundleRefundCalculator` pre-write refusal, DB checks `chk_refunded_not_overpaid`/`chk_refunded_not_negative` + one-open-refund-per-payment index); a component split is deliberately not invented | `RefundServiceTest` 21/21, `PaymentRefundIntegrityTest` 6/6 incl. `concurrentLegacyRefunds_exactlyOneSucceedsAndTheAmountIsNeverDoubled`, `BundleRefundPolicyTest` 11/11; `V170`, `V171`, `V183` | **BLOCKED** for *component* valuation only (decision request §3); the whole-payment rule is DONE and tested |
 
 ### Database and migrations (spec §46–48)
 
@@ -552,7 +574,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | D-03 | V174 source matches applied checksum | unchanged since verification | `theCommittedV174SourceMatchesTheChecksumAlreadyAppliedInTheSharedDatabase` | DONE |
 | D-04 | Monetary precision | `BigDecimal` throughout | `RefundRequest`, `Payment` | DONE |
 | D-05 | Idempotency constraints | partial unique index on `idempotency_key` | `ParentPaymentServiceTest` | DONE |
-| D-06 | **V175 history mismatch on `elmkusoma`** | read-only inspection only; nothing written | recorded `flyway_schema_history` row is `171 \| 175 \| subscription lifecycle \| 222681029 \| true` while the repo now carries `V175__allow_independent_teachers` — full evidence and the owner-only recovery plan are in §4 | **BLOCKED** — needs database-owner authorization |
+| D-06 | **V175 history mismatch on `elmkusoma`** | read-only inspection only; nothing written, no repair/update/baseline ever run | recorded row `171 \| 175 \| subscription lifecycle \| 222681029 \| true` vs repo `V175__allow_independent_teachers`; **found this session: this is a version collision, not just a checksum mismatch** — the repo's `V177__subscription_lifecycle.sql` line 1 is the very migration the shared DB recorded at 175 (renamed after an upstream collision, §3). Full options, risks, the exact approval text and post-recovery checks are in `docs/V175-RECOVERY-PROCEDURE.md` | **BLOCKED** — needs database-owner authorization |
 
 **V183 — added by this change set.** `V183__bundle_refund_split.sql` adds
 `commission_reversed` / `provider_reversed` (`DECIMAL(12,2)`, nullable on purpose: NULL means "no
@@ -578,7 +600,9 @@ runner: the full chain executed **179 migrations to target V183**, both columns 
 - Forged success values | only verified gateway evidence grants | `EventBookingServiceTest` | DONE
 - Platform-admin escalation | `/v1/platform-admin/**` fenced to ADMIN | `ResourceHttpSecurityMatrixTest` | DONE
 
-**Counts: DONE 60 · PARTIAL 2 · NEEDS VERIFICATION 0 · BLOCKED 5 · N/A 1. MISSING 0, BROKEN 0.**
+**Counts: DONE 61 · PARTIAL 1 · NEEDS VERIFICATION 0 · BLOCKED 5 · N/A 1. MISSING 0, BROKEN 0.**
+(67 ID rows + the one non-ID N/A row = 68. B-10 moved PARTIAL → DONE this session once
+server-side enforcement and its tests existed; E-05 remains the only PARTIAL.)
 
 `MISSING` is zero because the two UI gaps the audit found (bundle create/edit, refund admin)
 were closed rather than reported. `BROKEN` is zero because the one genuinely broken path found —
@@ -588,7 +612,12 @@ BR-03 rejecting the correct top-up amount at initiation — was fixed.
 
 ## 4. DATABASE BLOCKERS — require database-owner authorization
 
-### V175 checksum mismatch — app cannot boot against `elmkusoma`
+### V175 mismatch — app cannot boot against `elmkusoma`
+
+> **The full procedure lives in `docs/V175-RECOVERY-PROCEDURE.md`** — observed record, repo
+> migration identity, how to validate read-only, four candidate options with risks, the exact
+> approval text required, and rollback plus post-recovery checks. Nothing below has been executed
+> against a shared database.
 
 `flyway_schema_history` (read-only) records:
 
@@ -602,6 +631,12 @@ Repository now has `V175__allow_independent_teachers`. **Flyway validate will fa
 Physical state of `elmkusoma`: has `subscriptions` table, `btree_gist`,
 `ex_subscriptions_active_no_overlap` — i.e. the *former subscription* V175. The
 independent-teacher and institutionless-audit-log DDL was **never applied**.
+
+**This is a version collision, not just a checksum mismatch.** The repo's
+`V177__subscription_lifecycle.sql` (line 1: `-- V177: subscription lifecycle records.`) is the
+very migration the shared database recorded at version 175 — upstream and payment work both
+claimed 175, so the payment one was renamed to 177 (see §3). Two different contents therefore
+claim version 175, so fixing only the checksum would leave the collision in place.
 
 **Recovery plan (rehearsed on a disposable database; result below):**
 1. V177/V178 are already idempotent (`IF NOT EXISTS` / `IF EXISTS`) — they re-run cleanly.
@@ -676,21 +711,34 @@ Ordered by what blocks a controlled test, not by what is easiest.
    sweep without taking the recurring task down; and an integration test drives the real bean
    against real rows so the ACTIVE→EXPIRED flip is observed in the database rather than inferred
    from a stubbed repository.
-4. **Group booking flows (E-05).** Read and reclassified as **PARTIAL**, not "untested". Multi-seat
-   booking *is* implemented and tested end to end (seats column, `total = unit × seats`, capacity
-   against `SUM(seats)`, positive-seats constraint in V173). What §53 additionally asks for and
-   what does **not** exist: any distinction between an organizer-paid booking and an individually
-   paid one (`bookingType`/`payerType`/`ORGANIZER_PAID` appear nowhere in main), and any frontend
-   booking UI — the site only offers free registration.
+4. **Group booking flows (E-05).** Read as **PARTIAL**, not "untested". Multi-seat booking *is*
+   implemented and tested end to end (seats column, `total = unit × seats`, capacity against
+   `SUM(seats)`, positive-seats constraint in V173), and two defects found during this audit were
+   fixed and covered by tests: a cancelled or dead-payment registration used to lock the attendee
+   out permanently (the blanket `existsByEventIdAndUserId` matched CANCELLED rows while the unique
+   constraint `(event_id,user_id)` forbade a second row), and capacity was recounted as a **row
+   count** instead of `SUM(seats)` on cancellation. What §53 additionally asks for and what does
+   **not** exist: any distinction between an organizer-paid booking and an individually paid one
+   (`bookingType`/`payerType`/`ORGANIZER_PAID` appear nowhere in main), and any frontend booking
+   UI — the site only offers free registration. Both await decision request §4.
 5. ~~**Refund split persistence (R-07).**~~ **RESOLVED.** The split was computed and then thrown
    away, because `RefundService` is told only the total. It is now stored on the request
    (`commission_reversed`, `provider_reversed`, V183). Non-bundle refunds deliberately record
    NULL rather than 0: zero would assert the platform kept nothing from a split nobody
    calculated.
 6. **Real Stakaba sandbox transaction (G-06).** Blocked until authorized. Mock contract tests do
-   not substitute for this.
+   not substitute for this. Two prerequisites, both needing a decision first: an ACTIVE pricing
+   policy (decision request §6 — V169 seeds all 17 as DRAFT, so *no* checkout can be priced today)
+   and a genuine sandbox transaction executed against `docs/STAKABA-SANDBOX-TESTING.md`.
 7. **V175 reconciliation (D-06).** Blocked pending database-owner authorization. Read-only
-   evidence is already recorded in §4.
+   evidence is in §4; `docs/V175-RECOVERY-PROCEDURE.md` now carries the full picture — including
+   this session's finding that it is a **version collision**, not a checksum mismatch (the repo's
+   `V177__subscription_lifecycle.sql` is the migration the shared DB recorded at 175) — plus four
+   options with risks, the exact approval text required, rollback and post-recovery checks.
+8. **Owner decisions.** `docs/PAYMENT-OWNER-DECISIONS.md` consolidates the seven decisions that
+   nothing can be built without: entitlement expiry/repurchase, commission rate, component refund
+   valuation, organizer-paid booking rules, catalogue read audience, sandbox pricing activation,
+   V175. Items 1, 4, 6, 7 above all resolve behind these.
 
 ---
 
@@ -712,3 +760,39 @@ Ordered by what blocks a controlled test, not by what is easiest.
   `git hash-object --stdin` and **normalise CRLF → LF**, because `--stdin` applies no autocrlf
   filter and the diff would otherwise show the entire file as changed. Never write the filtered
   text back to the working tree — that deletes the other developer's edit.
+
+
+---
+
+## 7. Verification level (Payment.md §27 ladder)
+
+`Payment.md:594-604` requires these nine to be recorded **separately**. They are, so mock
+evidence is never presented as sandbox or production evidence (`Payment.md:590-591`).
+
+| # | Rung | Status | Evidence |
+|---|---|---|---|
+| 1 | Code implemented | **Achieved** | 61 DONE rows in §2a |
+| 2 | Mock tests passed | **Achieved** | full suite green; see §1a for the exact run |
+| 3 | Sandbox credentials configured | **Configured, not exercised** | `.env` carries a sandbox key with `STAKABA_ALLOW_LIVE=false`; `start-backend.ps1 -VerifyConfig` exit 0; `StakabaConfigurationValidatorTest` 7/7 |
+| 4 | Real sandbox transactions verified | **Not achieved** | G-06 BLOCKED — no transaction has ever been executed against Stakaba |
+| 5 | Production credentials configured | **Deliberately not done** | no live key is accepted anywhere |
+| 6 | Production onboarding approved | **Not achieved** | G-07 BLOCKED, out of scope, no approval on record |
+| 7 | Live collections authorized | **Not achieved** | `Payment.md:587` — would require 5 and 6 first |
+| 8 | Refund capability verified | **Mock-verified only** | `RefundServiceTest` 21/21, `PaymentRefundIntegrityTest` 6/6, `BundleRefundPolicyTest` 11/11; **no real refund has been executed** (`Payment.md:588`) |
+| 9 | Settlement/payout capability verified | **Not achieved** | A-05 BLOCKED — `Payment.md:1199` forbids payout activation without approval, and `Payment.md:1171` forbids assuming a rate |
+
+**Highest rung actually reached: 2.** Rung 3 is *configured*, which is not the same as verified.
+Everything from rung 4 up is blocked by an owner decision or an authorisation, not by missing code.
+
+### Final verdict
+
+The payment system is **implemented and mock-verified**: server-computed amounts, ACTIVE-policy
+pricing, idempotent and replay-safe collection, webhook authenticity, entitlement granted only on
+verified completion, refunds bounded and split-persisted, per-beneficiary earnings isolated, and
+a bundle catalogue whose items must resolve to a real, priced service. `MISSING 0 · BROKEN 0`.
+
+It is **not** ready for money. One PARTIAL (E-05 organizer-paid) and five BLOCKED rows (G-06,
+G-07, A-05, A-07, D-06) all resolve behind the seven decisions in
+`docs/PAYMENT-OWNER-DECISIONS.md`, and rungs 4-9 of §27 cannot begin until those decisions and
+the sandbox authorisation exist. Claiming anything beyond rung 2 today would breach
+`Payment.md:590`.
