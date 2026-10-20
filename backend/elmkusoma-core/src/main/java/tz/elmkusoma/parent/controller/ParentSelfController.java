@@ -941,11 +941,24 @@ public class ParentSelfController {
     @PutMapping("/notifications/{notificationId}/read")
     @Operation(summary = "Mark a notification as read")
     public ResponseEntity<ApiResponse<String>> markNotificationRead(
-            @PathVariable UUID notificationId) {
-        learnerNotificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setIsRead(true);
-            learnerNotificationRepository.save(n);
-        });
+            @PathVariable UUID notificationId, HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        // Ownership is part of the lookup, not a check after it. This endpoint used to take any
+        // notification id in the database and mark it read for its owner, so any authenticated
+        // parent could quietly clear another user's inbox simply by guessing or being shown a row
+        // id. A row that is not the caller's is now indistinguishable from one that does not
+        // exist, which is also what stops this from confirming an id to anyone who can probe it.
+        learnerNotificationRepository
+                .findByIdAndUserIdAndIsDeletedFalse(notificationId, userId)
+                .ifPresentOrElse(n -> {
+                    n.setIsRead(true);
+                    learnerNotificationRepository.save(n);
+                }, () -> {
+                    log.warn("IDOR blocked: user={} attempted to mark unauthorized notification={}",
+                            userId, notificationId);
+                    throw new tz.elmkusoma.exception.ResourceNotFoundException(
+                            "Notification", "notificationId", notificationId);
+                });
         return ResponseEntity.ok(ApiResponse.success("Marked as read", null));
     }
 

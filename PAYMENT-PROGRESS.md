@@ -83,10 +83,44 @@ nobody re-chases them:
   variable from `backend/.env`, and `LIVEKIT_*` satisfied the "no storage configured"
   precondition. Injecting only `DB_*` makes them pass unchanged.
 - `PublicLiveClassDiscoveryTest.unpublishingPreservesAcademicRecords` asserted
-  `scheduledAt.toLocalDate() == LocalDate.now()` against a seed of `now().minusHours(2)`,
+  `scheduledAt.toLocalDate() == LocalDate.now()` against a seed of `now().minusHours(2`,
   so it fails in the two hours after midnight and nowhere else. It now compares the
   stored schedule against the seeded one, which is deterministic and actually tests
   preservation.
+
+### Re-verified after the Decision 1 / Decision 5 / IDOR work
+
+Again unsharded on the whole working tree, so no package can be missed:
+
+```
+Command : mvn -o test                          (JAVA_HOME=jdk-21.0.12.1, loadenv-min.ps1)
+Exit    : 0   BUILD SUCCESS   Total time: 09:42 min
+Result  : Tests run: 2456, Failures: 0, Errors: 0, Skipped: 5
+Classes : 196
+```
+
+**Coverage verified, not assumed:** 196 `*Test.java` files under `src/test` and 196 surefire
+reports — none missing, none extra.
+
+**The +39 is fully accounted for**, with no other test having moved:
+
+| Change | Tests |
+|---|---|
+| `PaymentSpecSecurityCoverageTest` (new) | +17 |
+| `PaymentIdorHardeningTest` (new) | +11 |
+| `EntitlementExpirySweepIntegrationTest` (new) | +5 |
+| `BundleGrantServiceTest` 10 → 13 (Decision 1) | +3 |
+| `CoreSchedulerExpirySweepTest` 4 → 7 (entitlement sweep wiring) | +3 |
+| **total** | **+39 → 2456** |
+
+The 5 skips are unchanged and all belong to the integration package (`EventD03ComplianceTest` 1,
+`LiveKitIntegrationTest` 1, `LiveKitRealServerTest` 3). No `[ERROR]` line appears anywhere in the
+run.
+
+Frontend on the same tree: `npx tsc --noEmit` exit 0, `node scripts/check-i18n-keys.mjs` exit 0
+(`OK - every statically-referenced key exists in en and sw`, 540 source files / 967 bindings —
+one more binding than before, and **no message file was edited to get there**; the retry buttons
+reuse `common.retry`), `npm run build` exit 0.
 
 ---
 
@@ -104,9 +138,12 @@ An earlier pass reported this as MISSING. That was wrong. Verified by inspection
 | Platform Admin | `platform-admin-sidebar.tsx:53-54` Finance + Payments |
 | Refunds / receipts | `RefundController`, `ReceiptController` endpoints exist |
 | CSV export | `toCsv`/`downloadCsv` from `lib/csv` — the hardened exporter from §1 |
+| Failure recovery | all three payment surfaces offer an in-place retry: `parent/payments` already had one, `learner/payments` and `platform-admin/payments` now do too (`common.retry`, no message file touched) |
 
 No fabricated totals were found; the page loads through the real API. `authority-sidebar`
-has **no** finance/earnings entry.
+has **no** finance/earnings entry. Each payment surface previously rendered a bare error box
+whose only recovery was a full page reload, which also threw away the operator's filter and page
+position; all three now retry in place.
 
 ### V179 -- beneficiary attribution (schema, rehearsed)
 
@@ -216,11 +253,25 @@ the two policy decisions above.
 
 ### Open decisions needing the owner
 
+Two were answered; one remains.
+
+- ~~**Whether a bundle may overlap an entitlement the learner already holds.**~~ **Answered —
+  Decision 1** (`docs/PAYMENT-OWNER-DECISIONS.md` §1, rules 1–6, proposed default accepted).
+  A repurchase that lands while the period is still running stays the unchanged no-op it always
+  was; a repurchase after the period ended now opens a fresh period starting at that moment and
+  closes the old one out to `EXPIRED`. Implemented in `BundleGrantService.grantOne`, scheduled
+  bookkeeping in `CoreScheduler.expireElapsedEntitlements`, proven by `BundleGrantServiceTest` 13/13
+  and `EntitlementExpirySweepIntegrationTest` 5/5.
+- ~~**Bundle item `serviceType` must be one the platform actually sells**~~ — this was decision
+  request §5, and it is now **answered and implemented**: server side by
+  `BundleAdminService.requirePricedServices` (already DONE at B-10), catalogue endpoint and
+  type-name-only picker added this session, see B-10.
 - **Bundle refund allocation.** A bundle costs one price but contains several services.
   A partial refund has no defined split, and inventing one would move money that policy
-  has not allocated. Blocked until a rule is approved.
-- **Whether a bundle may overlap an entitlement the learner already holds.** Granting is
-  idempotent, so this is currently a no-op rather than a top-up. Needs a decision.
+  has not allocated. Blocked until a rule is approved (decision request §3 = A-07).
+
+---
+
 ## 1c. Per-persona earnings — confirmed PARTIAL
 
 - Backend: `EarningsService.summaryFor(UUID institutionId, ...)` — **institution-scoped only**.
@@ -440,6 +491,40 @@ Recorded because they were real and non-obvious:
 
    Evidence that the test is real rather than decorative: with the lock removed the same test
    fails with `expected: <1> but was: <2>` — two grants committed. With it in place it passes.
+6. **`BundleGrantService.grantOne` refused a repurchase after expiry — money taken, nothing
+   granted.** The coverage check asked the *status column*
+   (`existsBy…StatusAndIsDeletedFalse(…, "ACTIVE")`), and nothing ever flips that column when a
+   period runs out, so an entitlement that expired months ago still read `ACTIVE` and still
+   counted as held. The quote side, which reads `expiresAt`, had already decided the learner held
+   nothing and charged the parent for it — then the grant side decided they already held it and
+   wrote nothing. Fixed under Decision 1 (owner-approved rules 1–6, `docs/PAYMENT-OWNER-DECISIONS.md`
+   §1): both sides now ask the same question of the same timestamp, an elapsed row is closed out to
+   `EXPIRED` before the new period is opened (so the old one stays auditable instead of being
+   overwritten), the new period starts now and is never backdated, a period that has not elapsed is
+   neither re-created nor extended, a row that records no end still blocks, and no payment below
+   COMPLETED ever reaches this method.
+7. **Receipt ownership compared a user id against a column that also holds a parent row id.**
+   `payments.parent_id` receives the payer's `users.id` from the dashboard path but the `Parent`
+   row id from `EventBookingService` — so a parent who had just bought an event ticket was refused
+   their *own* receipt (403) and, worse, that receipt never appeared in their receipt list at all,
+   because the list filtered on the user id alone. `requireOwnsOrAdmin` and
+   `PaymentReceiptRepository.findByParentIdIn…` now accept either id space; `mine()` unions the
+   two. An empty `parentId` stays admin-only.
+8. **Two payer-scoped endpoints trusted whatever id they were handed.** `POST …/notifications/{id}/read`
+   used an unscoped `findById`, so any signed-in parent could flip another family's notification;
+   `POST /v1/bundles/quote` had no ownership check whatsoever, so any signed-in parent (or learner)
+   could price a bundle against *any* learner id and read back that child's entitlements.
+   Both now resolve the caller first, allow only their own learner record or a learner they are
+   linked to, and answer `404` rather than `403` for a foreign id — the same convention
+   `ParentSelfController` already used, so a caller cannot learn whether an id exists. A related
+   trap: `ParentAuthorizationService.isAuthorizedChild` throws when the caller has no parent
+   profile, which would have made the learner-self branch fail closed for every learner; the
+   ownership check uses `isLinkedParentOf`, which returns `false` instead.
+
+   Tests: `PaymentIdorHardeningTest` 11/11 (notification own/foreign idempotent, quote for
+   own child / linked-to-another-family / unlinked / own learner record / foreign learner /
+   anonymous), `PaymentSpecSecurityCoverageTest` 17/17 (the §63 cases that were enforced but never
+   exercised). Removing any of the ownership checks makes them fail.
 
 ---
 
@@ -503,22 +588,22 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | S-06 | No renewal after cancellation | effective date = period end | `SubscriptionCancellationPolicyTest` 8/8 | DONE |
 | S-07 | No automatic refund on cancellation | no refund path invoked | `cancellingDoesNotRefund` | DONE |
 | S-08 | Concurrency | `findByIdForUpdate` row lock | `SubscriptionServiceTest` | DONE |
-| S-09 | Expiry scheduler | `CoreScheduler.expireElapsedSubscriptions` | `CoreSchedulerExpirySweepTest` 4/4 (delegates, passes current time, survives a failing sweep) + `CoreSchedulerExpirySweepIntegrationTest` 4/4 (real rows flip ACTIVE→EXPIRED, live rows untouched, boundary at `period_end`, second run no-op); both proven to fail when the delegation is removed | DONE |
+| S-09 | Expiry scheduler | `CoreScheduler.expireElapsedSubscriptions` + `CoreScheduler.expireElapsedEntitlements` (Decision 1 rule 6 — bookkeeping only, never the thing that grants or denies) | `CoreSchedulerExpirySweepTest` **7/7** (delegates, passes current time, survives a failing sweep, + 3 entitlement-sweep wiring tests) + `CoreSchedulerExpirySweepIntegrationTest` 4/4 (real rows flip ACTIVE→EXPIRED, live rows untouched, boundary at `period_end`, second run no-op) + `EntitlementExpirySweepIntegrationTest` 5/5 (sweeps only elapsed entitlements, live rows untouched, boundary, repeat run no-op, audit rows written with the system actor); all proven to fail when the delegation is removed | DONE |
 
 ### Bundles and entitlements (spec §22, BR-03, §D)
 
 | Req | Requirement | Implementation | Evidence | Status |
 |---|---|---|---|---|
 | B-01 | Catalog + detail, published only | `BundleCatalogController` | `BundleCatalogControllerTest` 4/4 | DONE |
-| B-02 | Draft/publish/suspend, no delete | `BundleAdminService` | `BundleAdminServiceTest` 10/10 | DONE |
+| B-02 | Draft/publish/suspend, no delete | `BundleAdminService` | `BundleAdminServiceTest` 13/13 | DONE |
 | B-03 | Create/edit UI | `app/dashboard/admin/bundles/page.tsx` | `next build` exit 0 | DONE |
 | B-04 | Editing must not silently drop items | `GET /v1/institution/bundles/{id}` | `editingADraftLoadsTheItemsItActuallyContains` | DONE |
 | B-05 | Duplicate service prevention (BE + UI) | `requireDistinctItems` | `theSameServiceCannotBeListedTwice` | DONE |
 | B-06 | No price column / no price field in UI | `V180` schema + admin UI | migration test | DONE |
-| B-07 | Entitlement only after confirmed payment | `BundleGrantService` | `BundleGrantServiceTest` 7/7 | DONE |
+| B-07 | Entitlement only after confirmed payment | `BundleGrantService.grantOne` — only ever reached for a COMPLETED payment, and since Decision 1 the coverage predicate is the timestamp (`isActive && isUnexpired`), not the stored status string | `BundleGrantServiceTest` **13/13** incl. `aPaymentThatIsNotCompleteGrantsNothing`, `aRepeatedCallbackGrantsNothingTwice`, `twoConcurrentPurchasesCannotGrantTheSameServiceTwice`, and the three expiry/repurchase cases cited at A-06 | DONE |
 | B-08 | Overlap/top-up policy | `BundleTopUpService` | `BundleTopUpServiceTest` 7/7 | DONE |
 | B-09 | Concurrent purchase / duplicate grant protection | transaction-scoped advisory lock in `BundleGrantService.grantOne`, taken before the coverage check | `BundleGrantServiceTest` `twoConcurrentPurchasesCannotGrantTheSameServiceTwice` (fails with 2 grants when the lock is removed) | DONE |
-| B-10 | Bundle item must point at a real service | `BundleAdminService.requirePricedServices` — every item's `serviceType` must resolve to an ACTIVE pricing policy, checked on create, update **and** publish; that same policy is what `BundleTopUpService` resolves the item's price from | `BundleAdminServiceTest` 13/13 incl. `anItemNamingAServiceThePlatformDoesNotSellIsRefused` (nothing persisted, message names the offending type), `aDraftCannotBePublishedOnceItsServiceIsNoLongerSold`, `anEmptyServiceNameIsRefusedRatherThanTreatedAsAValidType` | DONE — server-side enforcement proven; the frontend picker is a separate open item (decision request §5) |
+| B-10 | Bundle item must point at a real service | `BundleAdminService.requirePricedServices` — every item's `serviceType` must resolve to an ACTIVE pricing policy, checked on create, update **and** publish; that same policy is what `BundleTopUpService` resolves the item's price from | `BundleAdminServiceTest` 13/13 incl. `anItemNamingAServiceThePlatformDoesNotSellIsRefused` (nothing persisted, message names the offending type), `aDraftCannotBePublishedOnceItsServiceIsNoLongerSold`, `anEmptyServiceNameIsRefusedRatherThanTreatedAsAValidType` | DONE — server-side enforcement proven, and the frontend picker from decision request §5 is now implemented: `GET /v1/institution/bundles/catalogue/service-types` returns the distinct `serviceType` names of ACTIVE pricing policies (names only — no price, amount, commission or rate leaves the platform), the admin page renders them as a `<select>` and falls back to a text input when the catalogue is empty so an institution cannot be forced to type blindly; `PaymentSpecSecurityCoverageTest` proves an INSTITUTION_ADMIN may read it while PARENT may not, and an item naming a type the platform does not sell is still refused at the server |
 
 ### Events and bookings (spec §53–55)
 
@@ -539,7 +624,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | P-03 | Beneficiary attribution | V179 + `GET /v1/earnings/me` | `BeneficiaryEarningsTest` 4/4 | DONE |
 | P-04 | Purchaser vs beneficiary kept distinct | V178 `purchaser_*` | `ParentPaymentServiceTest` | DONE |
 | P-05 | Financial notifications on parent dashboard | `ParentDashboardServiceImpl.getFinancialNotifications` → `ParentFinancialNotificationAssembler`, merged into `GET /v1/my/notifications` in `ParentSelfController:919` | `ParentFinancialNotificationEndpointTest` 10/10 (payment+receipt reach the inbox, another family's withheld, unlinked child withheld, `feeAlerts=false` suppresses, absent preference falls back to showing); 5 of the 10 fail when the merge is removed | DONE |
-| P-06 | Receipts + transaction search | `ReceiptController`, `TransactionSearchService` | `TransactionSearchServiceTest` 23/23 | DONE |
+| P-06 | Receipts + transaction search | `ReceiptController` with `requireOwnsOrAdmin`, which accepts **either** id space (a dashboard payment stores the parent's `users.id`, an event ticket stores the `Parent` row id — see defect 7 below) | `TransactionSearchServiceTest` 23/23; `PaymentSpecSecurityCoverageTest` receipt cases (owner sees both shapes, stranger 403, ADMIN 200, stranger's list empty) | DONE |
 
 ### Refunds (spec §57, BR-02)
 
@@ -562,7 +647,7 @@ actually does today, not what a section title implies. "Evidence" is a recorded 
 | A-03 | Per-beneficiary earnings | `EarningsService` | `BeneficiaryEarningsTest` 4/4 | DONE |
 | A-04 | Bundle-level discount distribution | deliberately not applied | `aBundleIsChargedTheTopUpTotalNotTheHeadlinePrice` (never resolves discount) | DONE — documented as unapproved |
 | A-05 | Settlement / payouts | `CommissionPolicy` + `CommissionService.allocate` (rate-agnostic; stamps `commissionAmount`/`providerShare`/`commissionStatus` at confirmation) + `EarningsService`/`FinancialReportingService` reporting "unavailable" rather than 0; **no hardcoded rate anywhere, and no endpoint can activate a policy** | `BeneficiaryEarningsTest`, `FinancialReportingServiceTest`, `FlywayMigrationValidationTest.commissionSeed_CarriesNoRateAndNoInventedFeeBearer`; `Payment.md` line 1171 "Do not assume any commission percentage" | **BLOCKED** — machinery DONE and proven; needs an approved rate (decision request §2). Settlement/payout additionally blocked by `Payment.md` line 1199 |
-| A-06 | Expired-entitlement grace period | straightforward reading used | `anExpiredEntitlementIsNotCoverage` | DONE — documented, unapproved alternative noted |
+| A-06 | Expired-entitlement grace period | no grace period, now **owner-approved** (Decision 1 rule 3, `docs/PAYMENT-OWNER-DECISIONS.md` §1): access ends exactly at `expiresAt` regardless of a stale `ACTIVE`, a repurchase past expiry opens a period starting at the moment of repurchase and never backdated, and the elapsed row is closed out to `EXPIRED` rather than overwritten | `BundleTopUpServiceTest.anExpiredEntitlementIsNotCoverage` (quote side refuses an elapsed grant as coverage, 7/7); `BundleGrantServiceTest` 13/13 incl. `aRepurchaseAfterThePeriodEndedOpensANewPeriodAndClosesTheOldOne`, `aRepurchaseWhileThePeriodStillRunsIsNeitherExtendedNorDuplicated`, `anEntitlementThatRecordsNoEndStillBlocksARepurchase`, `aPaymentThatIsNotCompleteGrantsNothing`; `EntitlementExpirySweepIntegrationTest` 5/5 | DONE — approved and implemented |
 | A-07 | Component-level refund valuation basis | whole-payment basis implemented: `refundableAmount()` = collected − refunded, enforced at 4 levels (request bound, completion re-check under `findByIdForUpdate`, `BundleRefundCalculator` pre-write refusal, DB checks `chk_refunded_not_overpaid`/`chk_refunded_not_negative` + one-open-refund-per-payment index); a component split is deliberately not invented | `RefundServiceTest` 21/21, `PaymentRefundIntegrityTest` 6/6 incl. `concurrentLegacyRefunds_exactlyOneSucceedsAndTheAmountIsNeverDoubled`, `BundleRefundPolicyTest` 11/11; `V170`, `V171`, `V183` | **BLOCKED** for *component* valuation only (decision request §3); the whole-payment rule is DONE and tested |
 
 ### Database and migrations (spec §46–48)
@@ -589,20 +674,49 @@ runner: the full chain executed **179 migrations to target V183**, both columns 
 
 ### Security and IDOR (spec §63, 25 cases)
 
-| Req | Requirement | Implementation | Evidence | Status |
-|---|---|---|---|---|
-- Cross-user transaction read | `SecurityConfig` denies `/v1/payments/**` | `ResourceHttpSecurityMatrixTest` | DONE
-- Cross-family child access | `requireChildAccess` → 404 | `ParentAuthorizationServiceTest` | DONE
-- Cross-family subscription access | `cancelOwnSubscription` → 404 | `SubscriptionCancellationPolicyTest` | DONE
-- Provider→other provider earnings | query-level isolation | `BeneficiaryEarningsTest` | DONE
-- Unauthorized refund | `@PreAuthorize` + service re-check | `BundleRefundPolicyTest` | DONE
-- Callback replay | idempotent verification | `ParentPaymentServiceTest` | DONE
-- Forged success values | only verified gateway evidence grants | `EventBookingServiceTest` | DONE
-- Platform-admin escalation | `/v1/platform-admin/**` fenced to ADMIN | `ResourceHttpSecurityMatrixTest` | DONE
+The cases with a dedicated test in this repository:
+
+| Requirement | Implementation | Evidence | Status |
+|---|---|---|---|
+| Cross-user transaction read | `SecurityConfig` denies `/v1/payments/**` | `CrossOrgAttackTest.paymentIdManipulation_CrossInstitution_Returns403` | DONE |
+| Receipt ownership | `ReceiptController.requireOwnsOrAdmin` → 403 | `PaymentSpecSecurityCoverageTest` (6 cases) | DONE |
+| Cross-family child access | `requireChildAccess` → 404 | `ParentAuthorizationServiceTest` | DONE |
+| Cross-family subscription access | `cancelOwnSubscription` → 404 | `SubscriptionCancellationPolicyTest` | DONE |
+| Provider→other provider earnings | query-level isolation | `BeneficiaryEarningsTest` | DONE |
+| Unauthorized refund | `@PreAuthorize` + service re-check | `BundleRefundPolicyTest` | DONE |
+| Refund approval authorisation | `hasRole('ADMIN')` on `/v1/platform-admin/refunds/**` | `PaymentSpecSecurityCoverageTest` (3 cases) | DONE |
+| Callback replay | idempotent verification | `ParentPaymentServiceTest` | DONE |
+| Forged success values | only verified gateway evidence grants | `EventBookingServiceTest` | DONE |
+| Platform-admin escalation | `/v1/platform-admin/**` fenced to ADMIN | `PrivilegeEscalationTest.studentCannotAccessPlatformAdminEndpoints` | DONE |
+| Pricing governance | `hasRole('ADMIN')` on `/v1/platform-admin/pricing` | `PaymentSpecSecurityCoverageTest` (3 cases) | DONE |
+| Reconciliation access | `hasRole('ADMIN')` on `/v1/platform-admin/financial` | `PaymentSpecSecurityCoverageTest` (3 cases) | DONE |
+| Notification ownership on write | `findByIdAndUserIdAndIsDeletedFalse` → 404 | `PaymentIdorHardeningTest` (4 cases) | DONE |
+| Bundle quote ownership | parent link or own learner record → 404 | `PaymentIdorHardeningTest` (5 cases) | DONE |
+
+> **Correction.** Earlier revisions of this table cited `ResourceHttpSecurityMatrixTest` for the
+> `/v1/payments/**` and `/v1/platform-admin/**` rows. That class drives `/v1/resources` and
+> `/v1/learner/resources` only, so it never covered either path; the evidence above replaces it
+> with the tests that actually do.
+
+Two of the §63 cases — receipt ownership and bundle quote ownership — were found enforced but
+unexercised this session, and writing the test surfaced a real defect in each area rather than
+confirming them clean: `ReceiptController` compared a caller's *user* id against a column that
+also carries the parent *record* id for event tickets (so a parent was refused their own receipt,
+and their receipt was missing from the list entirely), and `BundleQuoteController` priced any
+learner id an authenticated caller named, disclosing that learner's entitlements. Both are fixed
+and pinned above.
+
+The remaining §63 cases are covered through the generic wiring tests
+(`ResourceHttpSecurityMatrixTest` for resource/jurisdiction/404-oracle behaviour,
+`CrossOrgAttackTest` for tenant isolation, `PrivilegeEscalationTest` for role fences) rather than
+one test per row; they are not re-listed here to avoid citing the same evidence twice.
 
 **Counts: DONE 61 · PARTIAL 1 · NEEDS VERIFICATION 0 · BLOCKED 5 · N/A 1. MISSING 0, BROKEN 0.**
-(67 ID rows + the one non-ID N/A row = 68. B-10 moved PARTIAL → DONE this session once
-server-side enforcement and its tests existed; E-05 remains the only PARTIAL.)
+Recomputed from the rows themselves, not asserted: 67 ID rows in §2a break down as 61 DONE,
+5 BLOCKED (G-06, G-07, A-05, A-07, D-06), 1 PARTIAL (E-05); plus the single non-ID N/A row
+(bank/card payment methods, §3) = 68. This Decision 1 / Decision 5 / IDOR round changed
+*implementations and evidence* within existing rows — A-06 now owner-approved, B-07 and B-10 and
+S-09 and P-06 re-cited — so **no row changed status and the totals are unchanged**.
 
 `MISSING` is zero because the two UI gaps the audit found (bundle create/edit, refund admin)
 were closed rather than reported. `BROKEN` is zero because the one genuinely broken path found —
@@ -738,7 +852,11 @@ Ordered by what blocks a controlled test, not by what is easiest.
 8. **Owner decisions.** `docs/PAYMENT-OWNER-DECISIONS.md` consolidates the seven decisions that
    nothing can be built without: entitlement expiry/repurchase, commission rate, component refund
    valuation, organizer-paid booking rules, catalogue read audience, sandbox pricing activation,
-   V175. Items 1, 4, 6, 7 above all resolve behind these.
+   V175. **Two are now answered and implemented — Decision 1 (rules 1–6, no grace period) and
+   Decision 5 (type-names-only catalogue picker), recorded at §1e/§2a (A-06, B-07, B-10) and
+   defects 6–8 in §2.** Five remain: commission rate (§2 → A-05), component refund valuation
+   (§3 → A-07), organizer-paid booking rules (§4 → E-05), sandbox pricing activation (§6 → G-06),
+   V175 (→ D-06). Items 1, 4, 6, 7 above all still resolve behind those.
 
 ---
 
@@ -788,11 +906,16 @@ Everything from rung 4 up is blocked by an owner decision or an authorisation, n
 
 The payment system is **implemented and mock-verified**: server-computed amounts, ACTIVE-policy
 pricing, idempotent and replay-safe collection, webhook authenticity, entitlement granted only on
-verified completion, refunds bounded and split-persisted, per-beneficiary earnings isolated, and
-a bundle catalogue whose items must resolve to a real, priced service. `MISSING 0 · BROKEN 0`.
+verified completion — and, since Decision 1, an entitlement that *stays* granted only while its
+period runs, with repurchase after expiry opening a new period instead of silently charging for
+nothing; refunds bounded and split-persisted, per-beneficiary earnings isolated, and a bundle
+catalogue whose items must resolve to a real, priced service **and may now be chosen from a
+catalogue of type names rather than typed blind**. Receipts, notification writes and bundle quotes
+are scoped to their owner, with a foreign id answering 404 rather than 403 so nothing leaks about
+whether it exists. `MISSING 0 · BROKEN 0`.
 
 It is **not** ready for money. One PARTIAL (E-05 organizer-paid) and five BLOCKED rows (G-06,
-G-07, A-05, A-07, D-06) all resolve behind the seven decisions in
+G-07, A-05, A-07, D-06) resolve behind the five still-open decisions in
 `docs/PAYMENT-OWNER-DECISIONS.md`, and rungs 4-9 of §27 cannot begin until those decisions and
 the sandbox authorisation exist. Claiming anything beyond rung 2 today would breach
 `Payment.md:590`.

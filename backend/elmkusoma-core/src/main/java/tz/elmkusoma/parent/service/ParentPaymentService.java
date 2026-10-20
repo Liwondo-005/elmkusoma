@@ -340,6 +340,49 @@ public class ParentPaymentService {
     }
 
     /**
+     * Marks entitlements whose period has run out as EXPIRED.
+     *
+     * <p>Nothing in the codebase ever wrote EXPIRED to an entitlement, so an elapsed row reported
+     * itself ACTIVE forever. Access itself was never at risk - every read path checks the
+     * timestamp as well as the status - but anything counting or filtering on the string
+     * overstated live access, and the bundle grant gate trusted the string alone, which is what
+     * let a repurchase after expiry be charged while its grant was refused.
+     *
+     * <p>Idempotent: a row already EXPIRED or REVOKED is not selected again, EXPIRED is absorbing,
+     * and only rows whose own {@code expiresAt} has passed are touched. A null expiry records no
+     * end and is therefore never selected. A delayed run can only leave a status stale for a
+     * report; it cannot grant or deny access, which is decided from the boundary itself.
+     *
+     * @return how many rows were closed out
+     */
+    @Transactional
+    public int expireElapsedEntitlements(LocalDateTime now) {
+        List<Entitlement> elapsed = entitlementRepository
+                .findAllByStatusAndExpiresAtLessThanEqualAndIsDeletedFalse("ACTIVE", now);
+        for (Entitlement entitlement : elapsed) {
+            entitlement.setStatus("EXPIRED");
+            entitlementRepository.save(entitlement);
+            AuditLog auditLog = new AuditLog();
+            auditLog.setInstitutionId(entitlement.getInstitutionId());
+            auditLog.setUserId(null);
+            auditLog.setUserEmail(WEBHOOK_SYSTEM_ACTOR);
+            auditLog.setUserRole("SYSTEM");
+            auditLog.setEntityType("Entitlement");
+            auditLog.setEntityId(entitlement.getId());
+            auditLog.setEntityName("Entitlement Expiry");
+            auditLog.setAction(AuditLog.AuditAction.UPDATE);
+            auditLog.setOldValues(Map.of("status", "ACTIVE"));
+            auditLog.setNewValues(Map.of("status", "EXPIRED",
+                    "expiresAt", String.valueOf(entitlement.getExpiresAt())));
+            auditLogRepository.save(auditLog);
+        }
+        if (!elapsed.isEmpty()) {
+            log.info("Marked {} elapsed entitlement(s) EXPIRED", elapsed.size());
+        }
+        return elapsed.size();
+    }
+
+    /**
      * Hands over the event seats a verified ticket payment paid for.
      *
      * <p>Idempotent: the payment reaches COMPLETED once, and confirmSeat itself returns early when

@@ -49,6 +49,22 @@ public class ParentAuthorizationService {
     }
 
     /**
+     * Whether this user is a parent linked to this learner.
+     *
+     * <p>Answers false rather than throwing when the user has no parent profile at all, which
+     * {@link #isAuthorizedChild} does. An endpoint that has to accept more than one kind of owner
+     * - a parent linked to a learner, and the learner themselves - cannot probe both through
+     * methods that throw on the first miss, because whoever is not a parent never reaches the
+     * check meant for them.
+     */
+    public boolean isLinkedParentOf(UUID userId, UUID studentId) {
+        return parentRepository.findByUserIdAndIsDeletedFalse(userId)
+                .map(parent -> studentLinkRepository
+                        .existsByParentIdAndStudentIdAndIsDeletedFalse(parent.getId(), studentId))
+                .orElse(false);
+    }
+
+    /**
      * Verify the parent belongs to the given institution.
      */
     public void requireInstitutionMembership(UUID userId, UUID institutionId) {

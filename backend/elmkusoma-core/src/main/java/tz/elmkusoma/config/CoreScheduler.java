@@ -53,6 +53,7 @@ public class CoreScheduler {
     private final NotificationService notificationService;
     private final tz.elmkusoma.oversight.service.OversightAnnouncementService oversightAnnouncementService;
     private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
+    private final tz.elmkusoma.parent.service.ParentPaymentService parentPaymentService;
 
     /**
      * Marks elapsed subscription periods EXPIRED.
@@ -77,6 +78,29 @@ public class CoreScheduler {
             }
         } catch (Exception e) {
             log.warn("Subscription expiry sweep failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Marks elapsed entitlement periods EXPIRED.
+     *
+     * <p>Bookkeeping, not enforcement: every access path independently checks {@code expiresAt},
+     * so a missed or delayed run can only leave a status string stale for a report - it can never
+     * keep a lapsed learner entitled or cut off one who is still inside their period. The sweep
+     * exists so the stored status agrees with the boundary the rest of the platform reads.
+     *
+     * <p>Idempotent: only rows that are still ACTIVE with a passed {@code expiresAt} are selected,
+     * EXPIRED is absorbing, and a row with no expiry records no end so it is never selected.
+     */
+    @Scheduled(fixedRate = 300000, initialDelay = 180000)
+    public void expireElapsedEntitlements() {
+        try {
+            int expired = parentPaymentService.expireElapsedEntitlements(LocalDateTime.now());
+            if (expired > 0) {
+                log.info("Marked {} elapsed entitlement(s) EXPIRED", expired);
+            }
+        } catch (Exception e) {
+            log.warn("Entitlement expiry sweep failed: {}", e.getMessage());
         }
     }
     private final tz.elmkusoma.course.service.LiveClassService liveClassService;

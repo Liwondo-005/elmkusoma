@@ -79,6 +79,17 @@ public class BundleAdminController {
                 bundleAdminService.listForInstitution(institutionId)));
     }
 
+    @GetMapping("/catalogue/service-types")
+    @Operation(summary = "Names of the service types an institution admin may put in a bundle. "
+            + "Names only - pricing policy itself stays platform-side.")
+    public ResponseEntity<ApiResponse<List<String>>> serviceTypeCatalogue(
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        bundleAdminService.requireScope(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(
+                bundleAdminService.serviceTypeNames()));
+    }
+
     @GetMapping("/{bundleId}")
     @Operation(summary = "One bundle in this institution and the services it contains, "
             + "including unpublished ones.")

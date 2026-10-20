@@ -51,6 +51,28 @@ public class BundleAdminService {
     }
 
     /**
+     * The service type names this institution may name in a bundle item.
+     *
+     * <p>The bundle editor only validates server-side that an item names a service the platform
+     * actually sells, so an author who types an unsupported name gets a refusal after submitting
+     * rather than a list to choose from. {@code GET /v1/platform-admin/pricing} would be that
+     * list, but it is gated to the platform admin and returns amounts, margins and policy
+     * versions, none of which an institution admin needs or may read.
+     *
+     * <p>So this exposes names only: enough for the picker to be honest about what can be priced,
+     * and nothing about how it is priced. It is also not scoped to the caller's institution,
+     * because the catalogue is the platform's, not the institution's - but it carries no
+     * institution-specific figure either.</p>
+     *
+     * @return sorted, deduplicated names of service types with an ACTIVE pricing policy
+     */
+    @Transactional(readOnly = true)
+    public List<String> serviceTypeNames() {
+        return pricingPolicyRepository
+                .findDistinctServiceTypesByStatus(PricingPolicy.STATUS_ACTIVE);
+    }
+
+    /**
      * One bundle with the services it contains, resolved inside the caller's institution.
      *
      * <p>Drafts are included deliberately. An administrator has to be able to see what is inside a

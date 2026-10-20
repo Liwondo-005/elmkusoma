@@ -367,26 +367,145 @@ class BundleGrantServiceTest {
 
     @Test
     void aPaymentThatIsNotCompleteGrantsNothing() {
-        String serviceType = "BUNDLE_PENDING_" + UUID.randomUUID();
-        UUID studentId = UUID.randomUUID();
-        Bundle b = bundle(serviceType, Bundle.STATUS_PUBLISHED);
-        item(b, UUID.randomUUID(), 0);
+        for (String unverified : new String[] {"PENDING", "FAILED", "REJECTED"}) {
+            String serviceType = "BUNDLE_" + unverified + "_" + UUID.randomUUID();
+            UUID studentId = UUID.randomUUID();
+            UUID serviceId = UUID.randomUUID();
+            Bundle b = bundle(serviceType, Bundle.STATUS_PUBLISHED);
+            item(b, serviceId, 0);
 
-        Payment pending = Payment.builder()
-                .purchaserId(UUID.randomUUID())
-                .purchaserType("PARENT")
+            Payment payment = Payment.builder()
+                    .purchaserId(UUID.randomUUID())
+                    .purchaserType("PARENT")
+                    .studentId(studentId)
+                    .institutionId(TestDataSeeder.INSTITUTION_ID)
+                    .serviceType(serviceType)
+                    .amount(new BigDecimal("120000.00"))
+                    .currency("TZS")
+                    .status(unverified)
+                    .accessDays(30)
+                    .build();
+
+            assertEquals(0, bundleGrantService.grantFor(payment),
+                    "a " + unverified + " payment must never open an access period");
+            assertEquals(0, entitlementRepository.findByStudentIdAndIsDeletedFalse(studentId).size(),
+                    "a " + unverified + " payment must leave no entitlement behind");
+        }
+    }
+
+    @Test
+    void aRepurchaseAfterThePeriodEndedOpensANewPeriodAndClosesTheOldOne() {
+        // The defect this pins: the charge side priced a repurchase for a grant that was already
+        // elapsed, then the grant side refused it, because it trusted the stored status string
+        // over the timestamp. The parent was charged and the learner received nothing, and no
+        // amount of waiting would ever have fixed it, because nothing in the codebase ever wrote
+        // EXPIRED to an entitlement.
+        String serviceType = "BUNDLE_REPURCHASE_" + UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID serviceId = UUID.randomUUID();
+        Bundle b = bundle(serviceType, Bundle.STATUS_PUBLISHED);
+        item(b, serviceId, 0);
+
+        // The first period ran out last week. Its status still says ACTIVE, which is what it will
+        // say forever unless this method closes it out.
+        Entitlement lapsed = entitlementRepository.saveAndFlush(Entitlement.builder()
+                .userId(UUID.randomUUID())
                 .studentId(studentId)
                 .institutionId(TestDataSeeder.INSTITUTION_ID)
-                .serviceType(serviceType)
-                .amount(new BigDecimal("120000.00"))
-                .currency("TZS")
-                .status("PENDING")
-                .accessDays(30)
-                .build();
+                .serviceType("COURSE_ACCESS")
+                .serviceId(serviceId)
+                .status("ACTIVE")
+                .startsAt(LocalDateTime.now().minusDays(37))
+                .expiresAt(LocalDateTime.now().minusDays(7))
+                .build());
 
-        assertEquals(0, bundleGrantService.grantFor(pending),
-                "access must never come from a payment that is not verified");
-        assertEquals(0, entitlementRepository.findByStudentIdAndIsDeletedFalse(studentId).size(),
-                "an unverified payment must leave no entitlement behind");
+        int granted = bundleGrantService.grantFor(completedPayment(serviceType, studentId));
+
+        assertEquals(1, granted,
+                "a repurchase of a period that has ended must grant the new one; refusing it would "
+                        + "leave the parent charged for access the learner never received");
+
+        List<Entitlement> rows = entitlementRepository.findByStudentIdAndIsDeletedFalse(studentId)
+                .stream().filter(e -> serviceId.equals(e.getServiceId())).toList();
+        assertEquals(2, rows.size(),
+                "the elapsed period must be kept as history alongside the new one, not overwritten");
+
+        Entitlement closed = rows.stream()
+                .filter(e -> e.getId().equals(lapsed.getId())).findFirst().orElseThrow();
+        assertEquals("EXPIRED", closed.getStatus(),
+                "the elapsed period must be closed out, so it stops claiming ACTIVE while its "
+                        + "timestamp says otherwise");
+        assertEquals(LocalDateTime.now().minusDays(7).toLocalDate(), closed.getExpiresAt().toLocalDate(),
+                "closing out the old period must not rewrite when it actually ended");
+
+        Entitlement fresh = rows.stream().filter(e -> !e.getId().equals(lapsed.getId()))
+                .findFirst().orElseThrow();
+        assertEquals("ACTIVE", fresh.getStatus(), "the repurchased period must be live");
+        assertTrue(fresh.getStartsAt().isAfter(LocalDateTime.now().minusMinutes(1)),
+                "the new period must begin at the repurchase, never backdated into the gap");
+        assertEquals(LocalDateTime.now().plusDays(30).toLocalDate(), fresh.getExpiresAt().toLocalDate(),
+                "the new period must run the days that were bought");
+    }
+
+    @Test
+    void aRepurchaseWhileThePeriodStillRunsIsNeitherExtendedNorDuplicated() {
+        // Rule: repurchase during a live period follows the existing overlap rule, which is a
+        // deliberate no-op. Extending the expiry here would be a commercial decision about whether
+        // two overlapping paid periods stack, and nobody has approved one.
+        String serviceType = "BUNDLE_LIVE_REBUY_" + UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID serviceId = UUID.randomUUID();
+        Bundle b = bundle(serviceType, Bundle.STATUS_PUBLISHED);
+        item(b, serviceId, 0);
+
+        LocalDateTime expiry = LocalDateTime.now().plusDays(10);
+        entitlementRepository.saveAndFlush(Entitlement.builder()
+                .userId(UUID.randomUUID())
+                .studentId(studentId)
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .serviceType("COURSE_ACCESS")
+                .serviceId(serviceId)
+                .status("ACTIVE")
+                .startsAt(LocalDateTime.now().minusDays(20))
+                .expiresAt(expiry)
+                .build());
+
+        int granted = bundleGrantService.grantFor(completedPayment(serviceType, studentId));
+
+        assertEquals(0, granted, "access that is still running is already held, so nothing new is granted");
+        List<Entitlement> rows = entitlementRepository.findByStudentIdAndIsDeletedFalse(studentId)
+                .stream().filter(e -> serviceId.equals(e.getServiceId())).toList();
+        assertEquals(1, rows.size(), "the learner must still hold exactly one period for this service");
+        assertEquals(expiry.toLocalDate(), rows.get(0).getExpiresAt().toLocalDate(),
+                "a no-op repurchase must not silently extend the period the learner already paid for");
+    }
+
+    @Test
+    void anEntitlementThatRecordsNoEndStillBlocksARepurchase() {
+        // A null expiry records no end, so nothing has passed and the period still holds. Treating
+        // it as elapsed would hand the learner a fresh paid period on top of access that never
+        // lapsed, for free.
+        String serviceType = "BUNDLE_NOEXPIRY_" + UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        UUID serviceId = UUID.randomUUID();
+        Bundle b = bundle(serviceType, Bundle.STATUS_PUBLISHED);
+        item(b, serviceId, 0);
+
+        entitlementRepository.saveAndFlush(Entitlement.builder()
+                .userId(UUID.randomUUID())
+                .studentId(studentId)
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .serviceType("COURSE_ACCESS")
+                .serviceId(serviceId)
+                .status("ACTIVE")
+                .startsAt(LocalDateTime.now().minusDays(400))
+                .expiresAt(null)
+                .build());
+
+        assertEquals(0, bundleGrantService.grantFor(completedPayment(serviceType, studentId)),
+                "access with no recorded end has not elapsed and must still block a re-grant");
+        assertEquals(1, entitlementRepository.findByStudentIdAndIsDeletedFalse(studentId).stream()
+                        .filter(e -> serviceId.equals(e.getServiceId())).count(),
+                "the standing grant must be left exactly as it is");
     }
 }

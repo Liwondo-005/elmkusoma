@@ -32,6 +32,9 @@ class CoreSchedulerExpirySweepTest {
     @Mock
     private SubscriptionService subscriptionService;
 
+    @Mock
+    private tz.elmkusoma.parent.service.ParentPaymentService parentPaymentService;
+
     @InjectMocks
     private CoreScheduler scheduler;
 
@@ -79,5 +82,42 @@ class CoreSchedulerExpirySweepTest {
 
         // The guard is per-invocation: swallowing one failure must not leave the sweep unwired.
         verify(subscriptionService, org.mockito.Mockito.times(2)).expireElapsed(any());
+    }
+
+    // ---------------------------------------------------------------- entitlements
+
+    @Test
+    void theEntitlementSweepIsWiredToItsService() {
+        scheduler.expireElapsedEntitlements();
+
+        // The same failure the subscription sweep was originally shipped with: the service written,
+        // the scheduler left uncalled, and every elapsed entitlement reporting ACTIVE forever
+        // while all unit tests still pass.
+        verify(parentPaymentService).expireElapsedEntitlements(any());
+    }
+
+    @Test
+    void itEvaluatesEntitlementsAgainstTheCurrentTime() {
+        LocalDateTime before = LocalDateTime.now();
+
+        scheduler.expireElapsedEntitlements();
+
+        ArgumentCaptor<LocalDateTime> now = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(parentPaymentService).expireElapsedEntitlements(now.capture());
+
+        LocalDateTime after = LocalDateTime.now();
+        assertTrue(!now.getValue().isBefore(before) && !now.getValue().isAfter(after),
+                "the sweep must evaluate against the current time, but passed " + now.getValue()
+                        + " between " + before + " and " + after);
+    }
+
+    @Test
+    void aFailingEntitlementSweepDoesNotStopTheRecurringSweep() {
+        doThrow(new RuntimeException("entitlements unavailable")).when(parentPaymentService)
+                .expireElapsedEntitlements(any());
+
+        // A rethrow here would let one failed run take the whole scheduled task down, leaving every
+        // later sweep silently unscheduled rather than merely late.
+        assertDoesNotThrow(() -> scheduler.expireElapsedEntitlements());
     }
 }

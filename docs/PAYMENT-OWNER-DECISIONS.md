@@ -12,7 +12,10 @@ Nothing here has been implemented. No rate, window, grace period or payer rule w
 
 ## 1. Entitlement expiry and repurchase after expiry
 
-**Status:** BLOCKED — a live financial defect. See `PAYMENT-PROGRESS.md` §5 item 1.
+**Status:** **ACCEPTED — rules 1–6 as proposed, no grace period. IMPLEMENTED.**
+Evidence: `PAYMENT-PROGRESS.md` §1a (re-verification), §2a (A-06, B-07, S-09), defects 6–8 in §2;
+`BundleGrantServiceTest` 13/13, `EntitlementExpirySweepIntegrationTest` 5/5,
+`CoreSchedulerExpirySweepTest` 7/7.
 
 **The defect.** Nothing sets an entitlement's `status` to `EXPIRED`. An elapsed entitlement stays
 `ACTIVE` forever, and the two sides of the system read that differently:
@@ -156,7 +159,12 @@ confirmation only on verified success, no pre-payment seat hold, cancellation re
 
 ## 5. Who may read the service catalogue — B-10 frontend
 
-**Status:** open, non-financial.
+**Status:** **ACCEPTED — service type names only, read by `INSTITUTION_ADMIN` (and platform ADMIN).
+IMPLEMENTED.** `GET /v1/institution/bundles/catalogue/service-types` returns distinct `serviceType`
+names of ACTIVE pricing policies and nothing else; the bundle editor renders them as a picker and
+falls back to text input when the catalogue is empty. Evidence: `PAYMENT-PROGRESS.md` §2a (B-10),
+`PaymentSpecSecurityCoverageTest` (INSTITUTION_ADMIN 200, PARENT 403), `npx tsc --noEmit` 0,
+`npm run build` 0.
 
 The bundle editor now validates server-side that every item names a service the platform actually
 sells (an ACTIVE pricing policy exists for its `serviceType`). The editor UI still offers free-text
@@ -201,15 +209,16 @@ read-only analysis today and nothing has been written to shared history.
 
 ## Summary
 
-| # | Decision | Blocks | Proposed default |
-|---|---|---|---|
-| 1 | Expiry / repurchase rule | Entitlement requirements + a live charge-without-grant defect | 6 rules, no grace period |
-| 2 | Commission rate | A-05 settlement/payout | Percentage of net, snapshot at confirmation |
-| 3 | Component refund valuation | A-07 component split | Whole-payment basis, no window |
-| 4 | Organizer-paid booking rules | E-05 organizer-paid flow | Organizer pays, per-attendee registration |
-| 5 | Catalogue read audience | B-10 frontend picker | Type names only, to institution admin |
-| 6 | Sandbox pricing activation | G-06 first checkout | Activate seeded policies for sandbox only |
-| 7 | V175 history reconciliation | D-06 | Owner executes `docs/V175-RECOVERY-PROCEDURE.md` |
+| # | Decision | Blocks | Proposed default | Status |
+|---|---|---|---|---|
+| 1 | Expiry / repurchase rule | Entitlement requirements + a live charge-without-grant defect | 6 rules, no grace period | **ACCEPTED + IMPLEMENTED** |
+| 2 | Commission rate | A-05 settlement/payout | Percentage of net, snapshot at confirmation | open |
+| 3 | Component refund valuation | A-07 component split | Whole-payment basis, no window | open |
+| 4 | Organizer-paid booking rules | E-05 organizer-paid flow | Organizer pays, per-attendee registration | open |
+| 5 | Catalogue read audience | B-10 frontend picker | Type names only, to institution admin | **ACCEPTED + IMPLEMENTED** |
+| 6 | Sandbox pricing activation | G-06 first checkout | Activate seeded policies for sandbox only | open |
+| 7 | V175 history reconciliation | D-06 | Owner executes `docs/V175-RECOVERY-PROCEDURE.md` | open |
 
 Decisions 1–4 change when or how much money is taken. They require explicit approval in writing
-before any code implements them.
+before any code implements them. **Decision 1 has that approval and the code is in**; the other
+three in that group still do not, and no code implements them.

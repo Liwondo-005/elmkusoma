@@ -66,6 +66,21 @@ export async function listInstitutionBundles(): Promise<Bundle[]> {
 }
 
 /**
+ * Service type names an institution admin may name in a bundle.
+ *
+ * Names only, and that is deliberate: this endpoint exists so the bundle editor can offer a
+ * choice instead of a blank line, and reading the pricing policy itself - amounts, margins,
+ * versions - is a platform-admin concern. Nothing here describes how a type is priced, only that
+ * it currently can be.
+ *
+ * An empty array is not an error condition to hide. If the platform sells nothing yet, the picker
+ * has no options and says so; inventing one would send the author into a server refusal.
+ */
+export async function listServiceTypeCatalogue(): Promise<string[]> {
+  return (await api.get<string[]>("/v1/institution/bundles/catalogue/service-types")).data ?? []
+}
+
+/**
  * Administration detail for one bundle, including unpublished ones.
  *
  * The public `getBundle` deliberately 404s a draft, so the admin editor cannot use it: it would
