@@ -6,8 +6,9 @@ real test evidence — not what is planned.
 
 **Baseline:** `main` @ `23d69e87` (synced with `origin/main`) — the original full-suite baseline,
 kept for history.
-**Current:** `main` @ `43da0d8d` (synced with `origin/main`) plus the uncommitted §61
-notification and §45 read-oracle work described in §5 items 9–10.
+**Current:** `main` @ `5a80bf80` (synced with `origin/main`) plus this round's OP-03, OP-06, OP-10,
+AU-03, RO-07, UI-05 and UI-06 — which is what §1a and §2a record below. The previous round's §61
+notification, §45 read-oracle and §58/§71 correlation-filter work is already inside `5a80bf80`.
 **Spec:** `Payment.md`, 1,811 lines, last modified 10-17 01:41.
 
 ---
@@ -161,6 +162,59 @@ Frontend on the same tree: `npx tsc --noEmit` exit 0, `node scripts/check-i18n-k
 errors (only line-ending warnings). Safety greps clean: no `@Disabled`/`@Ignore`/`skip`/`fixme`
 in the suites, no `assertTrue(true)`, `STAKABA_ALLOW_LIVE` still `false`, no
 `repair`/`baseline`/`dropAll` issued anywhere.
+
+### Re-verified after OP-03 / OP-06 / OP-10 / AU-03 / RO-07 / UI-05 / UI-06
+
+Every row closed in this round touches production code, so the whole suite was rerun unsharded on
+the whole working tree:
+
+```
+Command : mvn -o test                          (JAVA_HOME=jdk-21.0.12.1, loadenv-min.ps1)
+Exit    : 0   BUILD SUCCESS   Total time: 12:50 min
+Result  : Tests run: 2527, Failures: 0, Errors: 0, Skipped: 5
+Classes : 200
+```
+
+**Coverage verified, not assumed:** 200 `*Test.java` files under `src/test` and 200 surefire
+reports — none missing, none extra.
+
+**The +49 over the 2478 baseline is fully accounted for**, with no other test having moved:
+
+| Change | Tests |
+|---|---|
+| `ReconciliationServiceTest` 11 → 30 (OP-03 gateway outcomes, OP-06 currency, OP-10 allocation) | +19 |
+| `ParentPaymentServiceTest` 27 → 39 (+4 UI-06 masking, +8 UI-05 timeline) | +12 |
+| `ProviderFinancialTransactionsSecurityTest` (new — RO-07 tenant-scope matrix) | +7 |
+| `AuditLogCorrelationIdTest` (new — AU-03 correlation id) | +6 |
+| `PaymentIdorHardeningTest` 12 → 16 (UI-05: §45 read oracle for the timeline) | +4 |
+| `FlywayMigrationValidationTest` 32 → 33 (AU-03: `audit_logs.correlation_id` declared, nullable, indexed) | +1 |
+| **total** | **+49 → 2527** |
+
+The 5 skips are unchanged and all belong to the integration package. No `[ERROR]` line appears
+anywhere in the run.
+
+Frontend on the same tree: `npx tsc --noEmit` exit 0, `node scripts/check-i18n-keys.mjs` exit 0
+(`OK - every statically-referenced key exists in en and sw`, **541 source files / 974 bindings**).
+`PaymentTimeline` adds three `useTranslations()` bindings and **no message file was edited to get
+there**: every label reuses `nav.history`, `parent.payments.historyTitle`, `parent.payments.newPayment`
+and `common.{loading,retry,error,none}`, with the status vocabulary itself left as the verbatim
+backend value the page already rendered. `npm run build` exit 0.
+
+Playwright, run for the first time rather than assumed: `npx playwright test
+payment-surfaces.spec.ts --workers=1` → **24 passed**. The authenticated dashboard routes first
+returned the app's 404 page because a stale `.next` filesystem cache from an earlier Next build
+was present; `frontend/.next` is a gitignored build artefact and clearing it restored routing.
+One pre-existing assertion was then corrected because UI-06 masks a child payment's gateway
+reference just as it masks the account's own (`PSP-CHILD-1` → `****LD-1`), and the payments suite
+was verified serially because parallel workers against a cold dev server are flaky. The
+whole-repository Playwright run is **not** part of this gate: 71 passed / 29 did not run, and the
+remainder depend on live backend services (SMTP, oversight jurisdictions, LiveKit) that are not
+running in this environment.
+
+`git diff --check` reports no whitespace errors (only line-ending warnings). Safety greps on this
+round's diff are clean: no `STAKABA_ALLOW_LIVE` change, no `sk_live_`, no `@Disabled`, no
+`assertTrue(true)`, no `repair`/`baseline`/`dropAll`. The four protected frontend files are still
+modified only by their own pre-existing `nav.bundles` change and nothing this round touched them.
 
 
 ---
@@ -569,9 +623,9 @@ Recorded because they were real and non-obvious:
 
 | Item | Status | Blocker |
 |---|---|---|
-| Full backend suite green | **DONE — re-verified on current code** | 2478 run / 0 failures / 0 errors / 5 skipped, 198/198 test classes — see §1a |
+| Full backend suite green | **DONE — re-verified on current code** | 2527 run / 0 failures / 0 errors / 5 skipped, 200/200 test classes — see §1a |
 | Frontend Payments & Transactions nav/dashboards | **DONE** | Verified wired end-to-end — see §1b; §2a rows UI-01–UI-04 record the residual gaps |
-| Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
+| Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d; provider-scoped transactions now also exist (`/v1/provider/financial/transactions`), while the rest of RO-07's provider financial surface is recorded PARTIAL in §2a |
 | Bundles/packages | **DONE — grant path, admin API, admin UI** | `next build` exit 0; see §1f. Known gap below |
 | Subscription cancellation API | **DONE** | `GET /v1/my/subscriptions` + `POST .../{id}/cancel`, payer-scoped, UI on parent payments — see §1f |
 | Refund Admin UI (BR-02) | **DONE** | Dialog on platform-admin payments; records a REQUEST, never claims a refund paid |
@@ -777,8 +831,8 @@ one test per row; they are not re-listed here to avoid citing the same evidence 
 | UI-02 | Capabilities mapped onto real existing routes with no duplicate page where an equivalent already exists | Learner, parent and platform-admin payments + finance routes exist; transaction-details, payment-attempts, receipts and orders routes do not; sidebar carries both Finance and Payments | no `payments/[id]` route; `platform-admin-sidebar.tsx:53-54` Finance + Payments | PARTIAL |
 | UI-03 | Area exposes overview, history, details, orders, attempts, receipts, subscriptions, bundles, refunds, earnings, reconciliation, notifications, reports and admin controls | Present: history, purchases, entitlements, bundles, refund dialog, earnings, reconciliation, CSV export, admin controls. Missing: transaction details, attempts and receipts pages; subscription page is a placeholder | `dashboard/subscription/page.tsx` ("unavailable"); `finance/page.tsx` tabs payments/transactions/entitlements/exceptions/catalogue | PARTIAL |
 | UI-04 | Transaction shows reference, order reference, service, payer, beneficiary, amount, currency, method, status and timestamps | `FinancialTransaction` carries providerReference, commission fields, paidAt, receiptNumber; `Payment` has no paymentMethod or orderReference column | `lib/platform-admin-api.ts` `FinancialTransaction`; `parent/domain/Payment.java`; `V178`/`V179__payment_*_attribution.sql` | PARTIAL |
-| UI-05 | Transaction exposes a **status timeline**, not only the current status | Status pill only; no `status_history` or `payment_attempts` table in any migration and no timeline UI | grep `status_history\|payment_attempts` over `db/migration` → none; status pill in `learner/payments/page.tsx` | MISSING |
-| UI-06 | Gateway reference is **masked** where displayed | Full `providerReference` rendered in the parent receipt table; no masking helper anywhere | `parent/payments/page.tsx:1034-1038`; `payment-surfaces.spec.ts` asserts `PSP-REF-9911` visible | MISSING |
+| UI-05 | Transaction exposes a **status timeline**, not only the current status | closed | `GET /v1/my/payments/{paymentId}/timeline` (`ParentSelfController` → `ParentPaymentService.getPaymentTimeline`) assembles the steps from `Payment.createdAt`/`paidAt` and the `AuditLog` rows recorded against that payment, sorted by when they happened and inventing nothing; §45 read oracle (a foreign id and an unknown id both answer `Payment not found`, and no audit row is read before ownership is established); rendered on demand inside the parent payments row by `PaymentTimeline`, labelled only with keys the page already owns | DONE |
+| UI-06 | Gateway reference is **masked** where displayed | closed | `ParentPaymentService.maskProviderReference` (idempotent, last four only) is applied in `toPaymentItem`, so no payer-facing payload carries the raw token at all; `frontend/lib/payment-status.ts:maskProviderReference` applies the same rule in the row detail, the CSV export and the child view; e2e asserts `****9911` visible and `PSP-REF-9911` absent | DONE |
 | UI-07 | Receipt, subscription/entitlement, event booking and refund history reachable from the transaction | `receiptNumber` shown inline; backend receipt endpoints exist; no frontend receipt fetch, download or print surface | `ReceiptController.java:48,64,76`; `parent-api.ts:319` (field only); `learner/payments/page.tsx:200` | PARTIAL |
 | UI-08 | Available actions and their eligibility shown | `isCancellable` limits cancel to PENDING/PROCESSING; refund only on COMPLETED; ineligible actions are hidden rather than shown with a reason | `lib/payment-status.ts` `isCancellable`; e2e "a failed cancel leaves the row on screen" | PARTIAL |
 | UI-09 | Payer, student, parent, attendee, provider, organizer and beneficiary never conflated | Payer/recipient split plus per-child grants in the parent view; purchaser/beneficiary attribution migrated | e2e "shows the payer/recipient split and per-child access grants"; `V178`/`V179` | PARTIAL |
@@ -805,7 +859,7 @@ one test per row; they are not re-listed here to avoid citing the same evidence 
 | RO-04 | Parent access resolved from authoritative parent–child relationships, never from numeric ID equality | `ParentAuthorizationService.requireChildAccess` + link-integrity tests + child switch reloads server-side | `ParentAuthorizationServiceTest.requireChildAccess_throwsForbidden_whenNotLinked`; `ParentStudentLinkIntegrityTest`; e2e "switching child reloads that child's data" | DONE |
 | RO-05 | Teacher/trainer sees sales, gross revenue, refunds, fees, net earnings, pending/held/available earnings, settled amounts where verified, service-level reports — without unnecessary payer personal data | `GET /v1/earnings/me` + `MyEarningsPage` (gross, refunded, commission, providerShare); no service-level reports; no payouts | `BeneficiaryEarningsController.java` `@PreAuthorize` incl. TEACHER; `dashboard/earnings/page.tsx` | PARTIAL |
 | RO-06 | Organizer sees event transactions, ticket sales, bookings, seat capacity/reservations/utilisation, payment status, refunds, gross revenue, deductions, net earnings, reports | Seats and capacity come from authoritative booking data; no ticket-revenue or net-earnings view for organizers | `EventServiceImpl` summary `maxCapacity`/`currentRegistrations`; `EventController` `GET /{id}/registrations`; event summary page has no revenue | PARTIAL |
-| RO-07 | Provider sees provider-owned service sales, orders, transactions, refunds, commissions, net earnings, bundle performance, refund cases, reports and staff activity | No provider-scoped orders/transactions controller or UI; provider earnings reachable only through the shared `/v1/earnings/me`; provider nav has no Payments entry | no `earning`/`transaction`/`order` match in provider `*Controller.java`; `dashboard-sidebar.tsx` `providerNavSections` | MISSING |
+| RO-07 | Provider sees provider-owned service sales, orders, transactions, refunds, commissions, net earnings, bundle performance, refund cases, reports and staff activity | transactions closed, the rest still open | `GET /v1/provider/financial/transactions` (`ProviderFinancialReportingController`) reuses `TransactionSearchService`, pinned to the server-resolved `institutionId` request attribute with `InstitutionScopeService.validateAccess` in front of it, plus a `/v1/provider/**` role fence in `SecurityConfig` and a Payments entry in `providerNavSections`; `ProviderFinancialTransactionsSecurityTest` 7. **Still not built:** provider-scoped orders, refunds, commissions, net earnings, bundle performance, refund cases, reports and staff activity | PARTIAL |
 | RO-08 | Provider Admin restricted to the assigned Provider and explicitly delegated permissions; no cross-provider, global control, gateway secret or platform-wide financial access | Provider-scope security tests + `provider_staff_scope` migration | `ProviderIsolationSecurityTest.providerAdmin_readsForeignEvent_404`, `..._pagedEventList_scopedToOwnEvents`; `V165__provider_staff_scope.sql` | DONE |
 | RO-09 | Institution/College Admin gets institution-scoped transactions, student/cohort summaries, receipts, pending payments, refunds, and earnings only as an approved beneficiary | Backend `GET /v1/institution/earnings/summary` exists; no institution payments/transactions page and no institution-scoped transaction list endpoint | `InstitutionEarningsController.java:34-43`; no frontend consumer of `/v1/institution/earnings` | PARTIAL |
 | RO-10 | NGO/CBO, religious and corporate owners reuse the existing Provider/service-owner model; no redundant financial roles or modules | No NGO/CBO value in the role enum; provider/service-owner model reused | `User.java:87` `Role` enum (13 values); `README-01` §3.1 role table | DONE |
@@ -874,7 +928,7 @@ one test per row; they are not re-listed here to avoid citing the same evidence 
 |---|---|---|---|---|
 | AU-01 | Audit events record actor, action, target and timestamp | `AuditLog` | `user_id`/`user_email`/`user_role`, `action` enum, `entity_type`/`entity_id`/`entity_name`, `created_at`; written by `PaymentGatewayService.audit:456-469` | DONE |
 | AU-02 | Audit events record a **result** | `AuditLog`, `PlatformIntegrationService` | `audit_logs` has no result column — the outcome lives in `oldValues`/`newValues` status (`ParentPaymentService:257-264`) or in `webhook_events.processing_result` via `recordWebhook:216-235`; the `responseStatus` column is never set | PARTIAL |
-| AU-03 | Audit events record **correlation identifiers** | `RequestCorrelationFilter` carries the id for every request; **`audit_logs` still has no correlation column** | the log half is done — `X-Correlation-Id` validated and put in the MDC for the whole chain, echoed to the caller, printed by `logging.pattern.level`, wiring asserted by `everyRequestCarriesACorrelationIdThatIsWiredAheadOfTheSecurityChain`; the row half is not: `audit_logs` has no correlation column (a nullable `V184` would close it), and `PlatformAdminService:828-829` records request method/url only | PARTIAL |
+| AU-03 | Audit events record **correlation identifiers** | closed | `V184__audit_logs_correlation_id.sql` adds a nullable `correlation_id VARCHAR(64)` plus a partial index (purely additive, no backfill, no shared database touched); `AuditLog.onCreate()` reads the id from the MDC at a single choke point, so every one of the direct `new AuditLog()` writers is covered without any of them being edited; exposed on `AuditLogResponse`/`AuditMapper`; the log half is unchanged — `X-Correlation-Id` still validated, put in the MDC ahead of the security chain, echoed to the caller and printed by `logging.pattern.level` | DONE |
 | AU-04 | Logs protected from tampering and free of unnecessary personal information | `V18__create_audit_tables.sql`, `PlatformIntegrationService` | `audit_logs` is soft-delete like any table — no trigger, no append-only enforcement, no `REVOKE` on UPDATE/DELETE in any migration; the only redaction is `PlatformIntegrationService.redact:343`; no logback masking and no secret-logging test | PARTIAL |
 | AU-05 | History traceable; explicit adjustments instead of silent edits to historical transactions | `RefundService`, `ReconciliationService` | `refunded_amount` accumulated under a row lock (:277); `V171` `chk_refunded_not_overpaid`; `ReconciliationService.resolve` sets resolution fields only; no `.setAmount(` on a settled row in `src/main` | DONE |
 
@@ -921,14 +975,14 @@ one test per row; they are not re-listed here to avoid citing the same evidence 
 |---|---|---|---|---|
 | OP-01 | Compare authoritative gateway records with local transactions where the gateway supports it | `PaymentGatewayService.verify` + `StakabaGatewayClientImpl.getTransaction` per payment; **no batch gateway comparison** | `getTransaction_parsesStatusAmountAndCurrency`, `verify_alreadyCompleted_isIdempotent_noSecondGatewayCall`; `CoreScheduler.hourlyReconciliationScan:264` runs a local-only `ReconciliationService.scan()` | PARTIAL |
 | OP-02 | Detect gateway success with missing local fulfillment | `ReconciliationService.scanMissingEntitlements` (COMPLETED payment with no entitlement) | `ReconciliationServiceTest.scan_flagsACompletedPaymentThatGrantedNoEntitlement`; **detection is local-only, not driven by gateway records** | PARTIAL |
-| OP-03 | Detect local success with uncertain gateway outcome | — | `ReconciliationException.TYPE_INCONSISTENT_STATUS` declared (:35) but **never raised by any scan** | MISSING |
+| OP-03 | Detect local success with uncertain gateway outcome | `ReconciliationService.scanGatewayOutcomes()` consults Stakaba for recent COMPLETED payments that carry a provider reference, separately from the deterministic local `scan()` | raises `TYPE_INCONSISTENT_STATUS` when the gateway reports FAILED/NOT_FOUND against a locally COMPLETED payment and `TYPE_GATEWAY_UNCERTAIN` when the lookup errors, times out or returns no transaction; never mutates the payment, never re-grants an entitlement; `CoreScheduler.hourlyReconciliationScan` runs it in its own try/catch so a gateway outage cannot suppress the local checks; gated on `stakaba.enabled && hasApiKey` | DONE |
 | OP-04 | Detect unknown gateway references | `PaymentGatewayService:330` `log.warn` + `recordWebhook("…Unknown internalReference…")` | `webhook_unknownReference_isAcknowledgedAndIgnored`, `unknownReference_isAcknowledgedWithoutFulfilment`, `verify_unknownGatewayReference_keepsPendingForLater`; **no reconciliation exception type for it** | PARTIAL |
 | OP-05 | Detect amount mismatches | `ReconciliationService.scanAmountInconsistencies` + callback amount guard | `amountMismatch_is422AndPendingPreserved`, `verify_amountMismatch_refusesFulfilment`; the scan itself is untested | DONE |
-| OP-06 | Detect **currency** mismatches | callback-time guard only (`PaymentGatewayService:293`, `PaymentWebhookController:92`) | `currencyMismatch_is422WithNoCompletion`; **`ReconciliationService.scan()` has no currency check** | PARTIAL |
+| OP-06 | Detect **currency** mismatches | `ReconciliationService.scanCurrencyInconsistencies()` on every non-deleted payment, on top of the existing callback-time guards | a null or blank currency is reported as `CURRENCY_MISMATCH` rather than assumed to be TZS, and any non-TZS value is reported too because no rate is invented and no conversion is performed; `raise(...).currency(...)` carries the stored value and leaves it null when there is none; the callback guard is unchanged and still asserted by `currencyMismatch_is422WithNoCompletion` | DONE |
 | OP-07 | Detect stale pending attempts | `ReconciliationService.scanStalePending` (24 h), wired to `CoreScheduler.hourlyReconciliationScan:264` | `scan_flagsAPaymentStuckForOverTwentyFourHours`, `scan_leavesAFreshPendingPaymentAlone` | DONE |
 | OP-08 | Detect duplicate gateway events | `ReconciliationService.scanDuplicateProviderReferences` + callback replay guard | `scan_flagsADuplicateProviderReference`, `providerReferenceReplayAcrossPayments_is409`, `webhook_duplicateDelivery_afterCompletion_isHarmless` | DONE |
 | OP-09 | Detect refund inconsistencies | `ReconciliationService.scanRefundInconsistencies` (over-refund, or REFUNDED with zero refunded) | implementation at `ReconciliationService:146-166`; **no test exercises it** | PARTIAL |
-| OP-10 | Detect **earnings allocation** discrepancies | — | `ReconciliationException.TYPE_FEE_MISMATCH` declared only; **no scan compares `commissionAmount`/`providerShareAmount`** | MISSING |
+| OP-10 | Detect **earnings allocation** discrepancies | `ReconciliationService.scanEarningsAllocations()` over COMPLETED, non-deleted payments | raises `TYPE_FEE_MISMATCH` when the allocation was never recorded, when figures exist without a RESOLVED status, when a RESOLVED status carries no traceable policy key/version, when any figure is negative, or when `commission + share != netAmount`; the three "no approved rate" statuses with null figures are deliberately **not** flagged while the §2 commission-rate decision is open, because a rate that was never approved is not a discrepancy | DONE |
 | OP-11 | Never silently modify balances to force reconciliation; classify exceptions and recover only through authorized, auditable procedures | `ReconciliationService` (read-and-record only) + `resolve(id,resolvedBy,note)`/`assign`; `FinancialReportingController /v1/platform-admin/financial/reconciliation/*` `@PreAuthorize hasRole('ADMIN')` | `resolve_closesAnExceptionWithANote_andRecordsWho`, `assign_movesAnExceptionToInProgressUnderAnOwner`, `aPlatformAdminCanReadReconciliationExceptions`, `anInstitutionAdminCannotReadReconciliationExceptions` | DONE |
 | OP-12 | Operational visibility across the 12 listed failure classes | logs in `PaymentGatewayService:150,330`, `PaymentWebhookController` `recordWebhook` (:56-125), `ParentPaymentService` fulfillment errors, `ReconciliationService.raise`, `CoreScheduler:80,273`; ops endpoint `GET /v1/platform-admin/webhook-events` (`PlatformAdminController:855`); `infrastructure/monitoring/prometheus.yml` + grafana/otel configs | classes recorded via `PlatformIntegrationService.recordWebhook` (`WebhookEvent`) and reconciliation exceptions; monitoring config files exist | DONE |
 | OP-13 | **Correlation IDs** used in operational logs | `RequestCorrelationFilter` + `logging.pattern.level` | every request gets an `X-Correlation-Id` (inbound id reused only when it matches `[A-Za-z0-9._-]{1,64}`, otherwise replaced, so a hostile header is never echoed or logged), held in the MDC for the whole chain and cleared in `finally`; printed on every log line as `%5p [%X{correlationId:-}]`; registered ahead of the security chain by `SecurityConfig.requestCorrelationFilterRegistration` (`HIGHEST_PRECEDENCE + 1`); `RequestCorrelationFilterTest` 7/7 + `PaymentSpecSecurityCoverageTest.everyRequestCarriesACorrelationIdThatIsWiredAheadOfTheSecurityChain` | DONE |
@@ -951,33 +1005,41 @@ one test per row; they are not re-listed here to avoid citing the same evidence 
 | AC-11 | Production readiness reported separately from code completion | §7 nine-rung verification ladder + final verdict below | the ladder records rungs 1–9 individually, "Highest rung actually reached: 2", "It is not ready for money" — mock evidence is never presented as sandbox evidence | DONE |
 | AC-12 | Remaining production-readiness blockers listed rather than claimed | §3 PARTIAL/MISSING/BLOCKED table, §7 rungs 4–9, `docs/PAYMENT-OWNER-DECISIONS.md` summary | G-06, G-07, A-05, A-07, D-06 plus 5 open decisions are explicit; **prod config, secret management, monitoring, operational recovery and security verification are not itemised as blockers** | PARTIAL |
 
-**Counts: DONE 143 · PARTIAL 46 · NEEDS VERIFICATION 0 · BLOCKED 5 · MISSING 5. BROKEN 0.**
+**Counts: DONE 149 · PARTIAL 45 · NEEDS VERIFICATION 0 · BLOCKED 5 · MISSING 0. BROKEN 0.**
 Recomputed from the rows themselves, not asserted. The matrix now holds **199 ID rows** across
 19 groups: the original 67 (`F`,`G`,`S`,`B`,`E`,`P`,`R`,`A`,`D`) contribute 61 DONE, 1 PARTIAL
 (E-05) and 5 BLOCKED (G-06, G-07, A-05, A-07, D-06); the completion pass added **132 rows**
 (`UI` 21, `RO` 15, `AP` 17, `AV` 13, `RC` 8, `AU` 5, `NT` 14, `TC` 13, `OP` 14, `AC` 12)
-contributing 82 DONE, 45 PARTIAL and 5 MISSING. Adding the single non-ID N/A row (bank/card
+contributing 88 DONE, 44 PARTIAL and 0 MISSING. Adding the single non-ID N/A row (bank/card
 payment methods, §3) gives **200 entries**. The 14 §63 security rows above are held as
 cross-referenced evidence for the one section they come from and are deliberately not counted
 again.
 
-**Against the 98 % target: not met, and the arithmetic is the point.**
-- Strict — DONE ÷ ID rows: **143 / 199 = 71.9 %**.
-- Generous — DONE + PARTIAL ÷ ID rows: **189 / 199 = 95.0 %** (counting N/A as satisfied:
-  190 / 200 = 95.0 %).
+**Against the 98 % target: still not met, and the arithmetic is the point.**
+- Strict — DONE ÷ ID rows: **149 / 199 = 74.9 %**.
+- Generous — DONE + PARTIAL ÷ ID rows: **194 / 199 = 97.5 %** (counting N/A as satisfied:
+  195 / 200 = 97.5 %).
 
 The earlier record stood at 61/67 = 91.0 % because the first pass only enumerated the sections it
 had already built against. Expanding the denominator to every requirement-bearing section drops
-the figure by ~19 points; that drop is a measurement correction, not a regression. Three rows then
-closed inside the same round — OP-13 and NT-12 to DONE, AU-03 from MISSING to PARTIAL — which is
-why these figures are 71.9/95.0 rather than the 70.9/94.0 the expansion first produced.
+the figure by ~19 points; that drop is a measurement correction, not a regression. The round
+after that closed OP-13 and NT-12 to DONE and lifted AU-03 from MISSING to PARTIAL (71.9/95.0
+against the 70.9/94.0 the expansion first produced). The round recorded here closed the five rows
+that were then the whole of `MISSING` — UI-05, UI-06, OP-03 and OP-10 to DONE, RO-07 to PARTIAL
+(a transactions slice only) — and lifted AU-03 and OP-06 from PARTIAL to DONE, which is where
+149 / 194 comes from.
 
-`MISSING` is 5 rather than 0 because this pass reports gaps it did not close: UI-05 (status
-timeline), UI-06 (masked gateway reference), RO-07 (provider payment surface), OP-03
-(local-success/gateway-uncertain) and OP-10 (earnings allocation discrepancy). `BROKEN` remains 0
-because the one genuinely broken path found in the earlier pass — BR-03 rejecting the correct
-top-up amount at initiation — was fixed, and because this round's two fixes (receipt and
-refund-request read oracles) closed rather than introduced defects.
+`MISSING` is now **0**, and that is a claim about the matrix, not about the product: every row
+still open at the start of this round was either implemented and tested or reclassified as
+PARTIAL with the unbuilt remainder named in the row itself — RO-07 lists the provider financial
+surfaces and states plainly that only transactions landed. It does **not** mean the payments
+stack is production-ready. §3's PARTIAL rows, the §4 database blockers, the §7 ladder and the
+open owner decisions all still stand, and the five BLOCKED rows are blocked on decisions that
+code cannot make. `BROKEN` remains 0 because the one genuinely broken path found in the earlier
+pass — BR-03 rejecting the correct top-up amount at initiation — was fixed, and because both
+later rounds closed defects rather than introducing them: the §45 receipt and refund-request
+read oracles, and this round's masked child-payment reference, corrected after the e2e suite
+caught the stale assertion.
 
 
 ---
@@ -1130,6 +1192,19 @@ Ordered by what blocks a controlled test, not by what is easiest.
     403 for foreign, which let a caller probe which ids are real. Mutation paths (refund approve/
     reject, payment cancel) deliberately stay 403. Evidence:
     `PaymentSpecSecurityCoverageTest.anUnknownPaymentIdAndAForeignOneAreIndistinguishable`.
+11. **The seven rows that were the whole of `MISSING` — DONE, except RO-07 which is PARTIAL.**
+    OP-03, OP-06 and OP-10 close the reconciliation gaps (`scanGatewayOutcomes`,
+    `scanCurrencyInconsistencies`, `scanEarningsAllocations`, plus two new exception types);
+    AU-03 closes the correlation-row half (`V184`, captured in `AuditLog.onCreate()` so none of
+    the 15+ direct writers had to be touched); UI-05 adds the §29 status timeline behind a §45
+    read oracle; UI-06 masks the gateway reference at both layers. RO-07 got the transactions
+    slice only and is recorded PARTIAL rather than claimed. Evidence is in §1a and the §2a rows.
+12. **RO-07 remainder — the largest thing still unbuilt in the payments stack.** A
+    provider-scoped surface for orders, refunds, commissions, net earnings, bundle performance,
+    refund cases, reports and staff activity. `/v1/provider/financial/transactions` is the shape
+    to follow: resolve the institution from the authenticated principal, fence the namespace in
+    `SecurityConfig`, re-check membership in `InstitutionScopeService`, and let the platform
+    admin route stay platform-wide. No decision blocks this one — it is simply not done yet.
 
 
 ---
@@ -1163,8 +1238,8 @@ evidence is never presented as sandbox or production evidence (`Payment.md:590-5
 
 | # | Rung | Status | Evidence |
 |---|---|---|---|
-| 1 | Code implemented | **Achieved** | 61 DONE rows in §2a |
-| 2 | Mock tests passed | **Achieved** | full suite green; see §1a for the exact run |
+| 1 | Code implemented | **Achieved** | 149 DONE rows in §2a |
+| 2 | Mock tests passed | **Achieved** | full suite green (2527 run, 0 failures); see §1a for the exact run |
 | 3 | Sandbox credentials configured | **Configured, not exercised** | `.env` carries a sandbox key with `STAKABA_ALLOW_LIVE=false`; `start-backend.ps1 -VerifyConfig` exit 0; `StakabaConfigurationValidatorTest` 7/7 |
 | 4 | Real sandbox transactions verified | **Not achieved** | G-06 BLOCKED — no transaction has ever been executed against Stakaba |
 | 5 | Production credentials configured | **Deliberately not done** | no live key is accepted anywhere |
@@ -1188,8 +1263,9 @@ catalogue of type names rather than typed blind**. Receipts, notification writes
 are scoped to their owner, with a foreign id answering 404 rather than 403 so nothing leaks about
 whether it exists. `MISSING 0 · BROKEN 0`.
 
-It is **not** ready for money. One PARTIAL (E-05 organizer-paid) and five BLOCKED rows (G-06,
-G-07, A-05, A-07, D-06) resolve behind the five still-open decisions in
-`docs/PAYMENT-OWNER-DECISIONS.md`, and rungs 4-9 of §27 cannot begin until those decisions and
-the sandbox authorisation exist. Claiming anything beyond rung 2 today would breach
-`Payment.md:590`.
+It is **not** ready for money. The rows that resolve behind the five still-open decisions in
+`docs/PAYMENT-OWNER-DECISIONS.md` are E-05 (organizer-paid) plus the five BLOCKED rows (G-06,
+G-07, A-05, A-07, D-06); the remaining 44 PARTIAL rows are unbuilt or only partly built work
+(RO-07's eight unbuilt financial surfaces are the largest block), not decisions. Rungs 4-9 of
+§27 cannot begin until those decisions and the sandbox authorisation exist. Claiming anything
+beyond rung 2 today would breach `Payment.md:590`.

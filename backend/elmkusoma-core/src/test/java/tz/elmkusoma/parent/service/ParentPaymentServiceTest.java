@@ -6,12 +6,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.repository.AuditLogRepository;
 import tz.elmkusoma.parent.domain.Entitlement;
+import tz.elmkusoma.parent.domain.Parent;
 import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.domain.RefundRequest;
 import tz.elmkusoma.parent.dto.ParentPaymentResponse;
 import tz.elmkusoma.parent.repository.EntitlementRepository;
+import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.PaymentRepository;
 import tz.elmkusoma.pricing.service.CommissionService;
 import tz.elmkusoma.pricing.service.PricingService;
@@ -19,6 +22,7 @@ import tz.elmkusoma.pricing.service.PricingService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +35,7 @@ import static org.mockito.Mockito.*;
 class ParentPaymentServiceTest {
 
     @Mock private PaymentRepository paymentRepository;
+    @Mock private ParentRepository parentRepository;
     @Mock private EntitlementRepository entitlementRepository;
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private PricingService pricingService;
@@ -93,6 +98,218 @@ class ParentPaymentServiceTest {
         var result = paymentService.getPaymentsByStudent(STUDENT_ID);
         assertEquals(1, result.size());
         assertEquals(new BigDecimal("75000"), result.get(0).getAmount());
+    }
+
+    // ------------------------------------------------------------------
+    // Gateway reference masking (Payment.md §28/§45, UI-06)
+    // ------------------------------------------------------------------
+
+    @Test
+    void getPayments_neverHandsThePayerARawGatewayReference() {
+        Payment completed = buildPayment("COMPLETED", new BigDecimal("100000"));
+        completed.setProviderReference("PSP-REF-9911");
+        when(paymentRepository.findByParentIdAndIsDeletedFalseOrderByCreatedAtDesc(PARENT_ID))
+                .thenReturn(List.of(completed));
+
+        ParentPaymentResponse result = paymentService.getPayments(PARENT_ID);
+
+        assertEquals(1, result.getRecentPayments().size());
+        assertEquals("****9911", result.getRecentPayments().get(0).getProviderReference());
+    }
+
+    @Test
+    void maskProviderReference_keepsOnlyTheLastFourCharacters() {
+        assertEquals("****9911", ParentPaymentService.maskProviderReference("PSP-REF-9911"));
+        assertEquals("****C123", ParentPaymentService.maskProviderReference("M_ABC123"));
+        // Leading or trailing whitespace is not part of the token and must not shift the
+        // four characters that are kept.
+        assertEquals("****9911", ParentPaymentService.maskProviderReference(" PSP-REF-9911 "));
+    }
+
+    @Test
+    void maskProviderReference_leavesNothingToReadFromAShortOrMissingValue() {
+        assertNull(ParentPaymentService.maskProviderReference(null));
+        assertNull(ParentPaymentService.maskProviderReference(""));
+        assertNull(ParentPaymentService.maskProviderReference("   "));
+        // Four characters or fewer is the whole token, so masking any of it would leave the
+        // entire reference on screen.
+        assertEquals("****", ParentPaymentService.maskProviderReference("ABCD"));
+        assertEquals("*", ParentPaymentService.maskProviderReference("A"));
+    }
+
+    @Test
+    void maskProviderReference_isIdempotentSoTwoLayersCannotMaskItTwice() {
+        String once = ParentPaymentService.maskProviderReference("PSP-REF-9911");
+        assertEquals(once, ParentPaymentService.maskProviderReference(once));
+        assertEquals("****9911", ParentPaymentService.maskProviderReference("****9911"));
+    }
+
+    // ------------------------------------------------------------------
+    // Status timeline (Payment.md §29, UI-05)
+    // ------------------------------------------------------------------
+
+    private static AuditLog paymentAudit(LocalDateTime at, Map<String, Object> oldValues,
+                                          Map<String, Object> newValues) {
+        AuditLog entry = new AuditLog();
+        entry.setEntityType("Payment");
+        entry.setEntityId(PAYMENT_ID);
+        entry.setCreatedAt(at);
+        entry.setOldValues(oldValues);
+        entry.setNewValues(newValues);
+        return entry;
+    }
+
+    @Test
+    void getPaymentTimeline_reportsTheStepsThatWereActuallyRecorded() {
+        Payment payment = buildPayment("COMPLETED", new BigDecimal("100000"));
+        LocalDateTime created = payment.getCreatedAt();
+        LocalDateTime initiated = created.plusMinutes(10);
+        LocalDateTime settled = created.plusHours(2);
+        payment.setPaidAt(settled);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+        when(auditLogRepository.findByEntityTypeAndEntityId("Payment", PAYMENT_ID)).thenReturn(List.of(
+                paymentAudit(settled, null,
+                        Map.of("status", "COMPLETED", "paidAt", settled.toString())),
+                paymentAudit(initiated, Map.of("status", "PENDING"),
+                        Map.of("providerReference", "PSP-REF-9911"))));
+
+        var timeline = paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID);
+
+        assertEquals(3, timeline.size());
+        assertEquals("CREATED", timeline.get(0).getKind());
+        assertEquals("PAYMENT", timeline.get(0).getSource());
+        assertEquals(created, timeline.get(0).getAt());
+        // The initiation row only named the status in force then, so it is a snapshot.
+        assertEquals("STATUS", timeline.get(1).getKind());
+        assertEquals("PENDING", timeline.get(1).getToStatus());
+        assertNull(timeline.get(1).getFromStatus());
+        assertEquals("AUDIT", timeline.get(1).getSource());
+        assertEquals("COMPLETED", timeline.get(2).getToStatus());
+        // paidAt is the same moment the audit row recorded; one settlement, not two.
+        assertEquals(1, timeline.stream()
+                .filter(e -> "COMPLETED".equals(e.getToStatus())).count());
+    }
+
+    @Test
+    void getPaymentTimeline_addsTheSettlementMomentOnlyWhenNoAuditRowRecordedIt() {
+        Payment payment = buildPayment("COMPLETED", new BigDecimal("100000"));
+        LocalDateTime settled = payment.getCreatedAt().plusHours(3);
+        payment.setPaidAt(settled);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+        when(auditLogRepository.findByEntityTypeAndEntityId("Payment", PAYMENT_ID))
+                .thenReturn(List.of());
+
+        var timeline = paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID);
+
+        assertEquals(2, timeline.size());
+        assertEquals("SETTLED", timeline.get(1).getKind());
+        assertEquals("COMPLETED", timeline.get(1).getToStatus());
+        assertEquals("PAYMENT", timeline.get(1).getSource());
+        assertEquals(settled, timeline.get(1).getAt());
+    }
+
+    @Test
+    void getPaymentTimeline_neverInventsAStepThatWasNotRecorded() {
+        Payment payment = buildPayment("PENDING", new BigDecimal("50000"));
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+        when(auditLogRepository.findByEntityTypeAndEntityId("Payment", PAYMENT_ID))
+                .thenReturn(List.of());
+
+        var timeline = paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID);
+
+        assertEquals(1, timeline.size());
+        assertEquals("CREATED", timeline.get(0).getKind());
+        assertNull(timeline.get(0).getFromStatus());
+        assertNull(timeline.get(0).getToStatus());
+        assertEquals("PAYMENT", timeline.get(0).getSource());
+        assertEquals(payment.getCreatedAt(), timeline.get(0).getAt());
+    }
+
+    @Test
+    void getPaymentTimeline_ignoresAuditRowsThatSayNothingAboutStatus() {
+        Payment payment = buildPayment("PENDING", new BigDecimal("50000"));
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+        when(auditLogRepository.findByEntityTypeAndEntityId("Payment", PAYMENT_ID)).thenReturn(List.of(
+                paymentAudit(payment.getCreatedAt().plusMinutes(1),
+                        Map.of("amount", "50000"), Map.of("note", "metadata refresh"))));
+
+        var timeline = paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID);
+
+        assertEquals(1, timeline.size());
+    }
+
+    @Test
+    void getPaymentTimeline_ordersStepsByWhenTheyHappenedNotByWhenTheyWereReturned() {
+        Payment payment = buildPayment("COMPLETED", new BigDecimal("100000"));
+        LocalDateTime created = payment.getCreatedAt();
+        LocalDateTime failed = created.plusHours(1);
+        LocalDateTime completed = created.plusHours(2);
+        payment.setPaidAt(completed);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+        // deliberately newest first, the order the repository returns rows in
+        when(auditLogRepository.findByEntityTypeAndEntityId("Payment", PAYMENT_ID)).thenReturn(List.of(
+                paymentAudit(completed, Map.of("status", "PENDING"), Map.of("status", "COMPLETED")),
+                paymentAudit(failed, Map.of("status", "PENDING"), Map.of("status", "FAILED"))));
+
+        var timeline = paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID);
+
+        assertEquals(List.of("CREATED", "STATUS", "STATUS"),
+                timeline.stream().map(e -> e.getKind()).toList());
+        assertEquals("FAILED", timeline.get(1).getToStatus());
+        assertEquals("COMPLETED", timeline.get(2).getToStatus());
+    }
+
+    @Test
+    void getPaymentTimeline_refusesAPaymentThatIsNotTheCallers() {
+        Payment payment = buildPayment("PENDING", new BigDecimal("50000"));
+        payment.setParentId(UUID.randomUUID());
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+        when(parentRepository.findByUserIdAndIsDeletedFalse(PARENT_ID))
+                .thenReturn(Optional.empty());
+
+        var foreign = assertThrows(tz.elmkusoma.exception.ResourceNotFoundException.class,
+                () -> paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID));
+
+        UUID unknownId = UUID.randomUUID();
+        when(paymentRepository.findById(unknownId)).thenReturn(Optional.empty());
+        var unknown = assertThrows(tz.elmkusoma.exception.ResourceNotFoundException.class,
+                () -> paymentService.getPaymentTimeline(unknownId, PARENT_ID));
+
+        // Identical wording, so the answer cannot be used to tell a real id from a made-up one.
+        assertEquals(unknown.getMessage(), foreign.getMessage());
+        // No audit row is read before ownership is established.
+        verify(auditLogRepository, never())
+                .findByEntityTypeAndEntityId(any(String.class), any(UUID.class));
+    }
+
+    @Test
+    void getPaymentTimeline_acceptsAPayerWhoPaidUnderTheirParentRecord() {
+        Payment payment = buildPayment("PENDING", new BigDecimal("50000"));
+        UUID parentRecordId = UUID.randomUUID();
+        payment.setParentId(parentRecordId);
+        Parent parentRecord = new Parent();
+        parentRecord.setId(parentRecordId);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+        when(parentRepository.findByUserIdAndIsDeletedFalse(PARENT_ID))
+                .thenReturn(Optional.of(parentRecord));
+        when(auditLogRepository.findByEntityTypeAndEntityId("Payment", PAYMENT_ID))
+                .thenReturn(List.of());
+
+        assertEquals(1, paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID).size());
+    }
+
+    @Test
+    void getPaymentTimeline_refusesADeletedPayment() {
+        Payment payment = buildPayment("PENDING", new BigDecimal("50000"));
+        payment.setIsDeleted(true);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(payment));
+
+        var thrown = assertThrows(tz.elmkusoma.exception.ResourceNotFoundException.class,
+                () -> paymentService.getPaymentTimeline(PAYMENT_ID, PARENT_ID));
+
+        assertEquals("Payment not found", thrown.getMessage());
+        verify(auditLogRepository, never())
+                .findByEntityTypeAndEntityId(any(String.class), any(UUID.class));
     }
 
     private static final tz.elmkusoma.pricing.service.DiscountService.ResolvedDiscount NO_DISCOUNT =

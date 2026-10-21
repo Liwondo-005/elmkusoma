@@ -8,10 +8,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.audit.domain.AuditLog;
+import tz.elmkusoma.audit.repository.AuditLogRepository;
 import tz.elmkusoma.bundle.domain.Bundle;
 import tz.elmkusoma.bundle.domain.BundleItem;
 import tz.elmkusoma.bundle.repository.BundleItemRepository;
@@ -38,8 +41,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -48,13 +53,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Two money-adjacent endpoints that took an identifier belonging to somebody else.
+ * Three money-adjacent endpoints that took an identifier belonging to somebody else.
  *
- * <p>Both were reachable by any authenticated user of the right role and both were addressed by a
+ * <p>Each was reachable by any authenticated user of the right role and each was addressed by a
  * plain UUID, which is the shape that turns into an IDOR the moment such an id can be guessed,
  * leaked, or read out of a list response. What each one leaked differed - one let a caller clear
- * another family's inbox, the other let a caller price a learner they had no relationship with and
- * learn which services that learner already holds - but the cause and the fix are the same, so
+ * another family's inbox, another let a caller price a learner they had no relationship with and
+ * learn which services that learner already holds, the third would have let a caller walk the
+ * status history of somebody else's payment - but the cause and the fix are the same, so
  * they are pinned together.</p>
  *
  * <p>The security property under test is stronger than "the other row is not modified". A 403 or a
@@ -79,6 +85,7 @@ class PaymentIdorHardeningTest {
     @Autowired private BundleRepository bundleRepository;
     @Autowired private BundleItemRepository bundleItemRepository;
     @Autowired private PaymentRepository paymentRepository;
+    @Autowired private AuditLogRepository auditLogRepository;
     @Autowired private PaymentEventNotificationService paymentEventNotificationService;
 
     private final List<UUID> createdUsers = new ArrayList<>();
@@ -372,7 +379,106 @@ class PaymentIdorHardeningTest {
                 "writing an inbox row must not create an entitlement for anything");
     }
 
+    // ------------------------------------------- reading another family's payment timeline
+
+    @Test
+    @WithMockUser(roles = "PARENT")
+    void aParentMayReadTheTimelineOfTheirOwnPayment() throws Exception {
+        Payment mine = savePayment(me, "PENDING");
+        AuditLog statusChange = new AuditLog();
+        statusChange.setInstitutionId(institutionId);
+        statusChange.setEntityType("Payment");
+        statusChange.setEntityId(mine.getId());
+        statusChange.setEntityName("Payment Failure");
+        statusChange.setAction(AuditLog.AuditAction.UPDATE);
+        statusChange.setOldValues(Map.of("status", "PENDING"));
+        statusChange.setNewValues(Map.of("status", "FAILED"));
+        auditLogRepository.save(statusChange);
+
+        mockMvc.perform(get("/v1/my/payments/{id}/timeline", mine.getId())
+                        .requestAttr("userId", myUserId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].kind").value("CREATED"))
+                .andExpect(jsonPath("$.data[0].source").value("PAYMENT"))
+                // The recorded transition arrives from the audit row, in the caller's own scope.
+                .andExpect(jsonPath("$.data[1].kind").value("STATUS"))
+                .andExpect(jsonPath("$.data[1].fromStatus").value("PENDING"))
+                .andExpect(jsonPath("$.data[1].toStatus").value("FAILED"))
+                .andExpect(jsonPath("$.data[1].source").value("AUDIT"));
+    }
+
+    @Test
+    @WithMockUser(roles = "PARENT")
+    void oneFamilyCannotReadAnotherFamilysPaymentTimeline() throws Exception {
+        Payment theirs = savePayment(otherParent, "PENDING");
+
+        mockMvc.perform(get("/v1/my/payments/{id}/timeline", theirs.getId())
+                        .requestAttr("userId", myUserId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "PARENT")
+    void aPaymentTimelineForeignIdAndAnIdThatNeverExistedAreIndistinguishable() throws Exception {
+        // A read, so the refusal must be a 404 in both cases and not a 403 that would confirm
+        // the id is real. The error wording is compared too: differing text is the same leak
+        // wearing a status code that happens to match (Payment.md section 45). Only the
+        // response timestamp differs, which carries no information about the row.
+        Payment theirs = savePayment(otherParent, "PENDING");
+
+        MockHttpServletResponse foreign = mockMvc.perform(
+                        get("/v1/my/payments/{id}/timeline", theirs.getId())
+                                .requestAttr("userId", myUserId))
+                .andReturn().getResponse();
+        MockHttpServletResponse missing = mockMvc.perform(
+                        get("/v1/my/payments/{id}/timeline", UUID.randomUUID())
+                                .requestAttr("userId", myUserId))
+                .andReturn().getResponse();
+
+        assertEquals404(foreign.getStatus());
+        assertEquals404(missing.getStatus());
+        String foreignBody = foreign.getContentAsString();
+        String missingBody = missing.getContentAsString();
+        String foreignError = com.jayway.jsonpath.JsonPath.read(foreignBody, "$.error");
+        String missingError = com.jayway.jsonpath.JsonPath.read(missingBody, "$.error");
+        assertEquals(missingError, foreignError,
+                "a foreign payment id must answer exactly like one that was never issued");
+        assertEquals("Payment not found", foreignError,
+                "the refusal must be the plain not-found wording, got " + foreignBody);
+    }
+
+    @Test
+    @WithMockUser(roles = "PARENT")
+    void aPaymentTimelineSaysOnlyWhatWasRecorded() throws Exception {
+        // No audit rows exist for this payment, so the honest answer is the moment it was
+        // created and nothing else - not a reconstructed sequence that looks complete.
+        Payment mine = savePayment(me, "PENDING");
+
+        mockMvc.perform(get("/v1/my/payments/{id}/timeline", mine.getId())
+                        .requestAttr("userId", myUserId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].kind").value("CREATED"))
+                .andExpect(jsonPath("$.data[0].source").value("PAYMENT"));
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    private Payment savePayment(Parent owner, String paymentStatus) {
+        Payment saved = paymentRepository.saveAndFlush(withInstitution(Payment.builder()
+                .parentId(owner.getId())
+                .amount(new BigDecimal("25000"))
+                .currency("TZS")
+                .serviceType("TUITION")
+                .status(paymentStatus)
+                .build(), institutionId));
+        createdPayments.add(saved);
+        return saved;
+    }
 
     private static void assertEquals404(int code) {
         assertTrue(code == 404, "expected the same 404 for both, got " + code);

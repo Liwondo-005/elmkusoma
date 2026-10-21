@@ -211,6 +211,14 @@ public class SecurityConfig {
                         .requestMatchers("/v1/admin", "/v1/admin/**")
                                 .hasAnyRole("ADMIN", "INSTITUTION_ADMIN", "PROVIDER_ADMIN")
                         .requestMatchers("/v1/platform-admin", "/v1/platform-admin/**").hasRole("ADMIN")
+                        // §RO-07: provider financial namespace fence mirroring the class-level
+                        // @PreAuthorize of the provider controllers. The institution scope inside
+                        // those controllers is derived from the authenticated principal, never
+                        // from a client-supplied header, so the fence only decides who may knock:
+                        // every denial below is a role denial, and scope denials happen in the
+                        // controller after membership is re-checked.
+                        .requestMatchers("/v1/provider", "/v1/provider/**")
+                                .hasAnyRole("ADMIN", "INSTITUTION_ADMIN", "PROVIDER_ADMIN", "PROVIDER_STAFF")
                         // The payment detail API is not exposed; deny explicitly so
                         // cross-institution probing gets 403 instead of a 404 oracle.
                         .requestMatchers("/v1/payments", "/v1/payments/**").denyAll()

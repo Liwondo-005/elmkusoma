@@ -143,7 +143,12 @@ test.describe("Parent payments", () => {
 
     // The settled row is labelled COMPLETED and sits in history.
     await expect(page.getByText("COMPLETED")).toBeVisible()
-    await expect(page.getByText("PSP-REF-9911")).toBeVisible()
+
+    // Payment.md §28: the gateway reference is shown, but masked to its last four characters,
+    // and the raw token is nowhere in the settled row.
+    const settledRow = page.locator("li").filter({ hasText: "Term 1 tuition" })
+    await expect(settledRow.getByText("****9911")).toBeVisible()
+    await expect(settledRow.getByText("PSP-REF-9911")).toHaveCount(0)
 
     // The pending row is in its own section, clearly not history.
     // `exact` is required because the section heading "Pending Payments" also contains "PENDING".
@@ -157,6 +162,84 @@ test.describe("Parent payments", () => {
 
     // A pending row offers a cancel; a settled one does not.
     await expect(pendingSection.getByRole("button", { name: "Cancel" })).toHaveCount(1)
+  })
+
+  test("opens a status timeline from recorded events only", async ({ page }) => {
+    await signIn(page, PARENT_USER)
+    await page.route("**/v1/my/payments", (route) => route.fulfill({ json: ok(PAYMENT_ROWS) }))
+    await page.route("**/v1/my/payments/*/timeline", (route) =>
+      route.fulfill({
+        json: ok([
+          {
+            at: "2026-01-01T08:00:00",
+            kind: "CREATED",
+            fromStatus: null,
+            toStatus: null,
+            source: "PAYMENT",
+          },
+          {
+            at: "2026-01-02T11:30:00",
+            kind: "STATUS",
+            fromStatus: "PENDING",
+            toStatus: "COMPLETED",
+            source: "AUDIT",
+          },
+        ]),
+      }),
+    )
+
+    await page.goto("/dashboard/parent/payments")
+
+    const settledRow = page.locator("li").filter({ hasText: "Term 1 tuition" })
+    await settledRow.getByRole("button", { name: "History" }).click()
+
+    // Payment.md §29: the transaction detail carries a status timeline, in the order the steps
+    // were recorded, with the transition shown rather than only the state it ended in.
+    const timeline = settledRow.getByTestId("payment-timeline")
+    await expect(timeline).toBeVisible()
+    await expect(timeline.getByText("Payment History")).toBeVisible()
+    await expect(timeline.getByText("New payment")).toBeVisible()
+    await expect(timeline.getByText("PENDING", { exact: true })).toBeVisible()
+    await expect(timeline.getByText("COMPLETED", { exact: true })).toBeVisible()
+
+    // Opening the detail must not undo the masking of the gateway reference on the same row.
+    await expect(settledRow.getByText("****9911")).toBeVisible()
+    await expect(settledRow.getByText("PSP-REF-9911")).toHaveCount(0)
+  })
+
+  test("a payment with no recorded history shows its creation and nothing else", async ({
+    page,
+  }) => {
+    await signIn(page, PARENT_USER)
+    await page.route("**/v1/my/payments", (route) => route.fulfill({ json: ok(PAYMENT_ROWS) }))
+    await page.route("**/v1/my/payments/*/timeline", (route) =>
+      route.fulfill({
+        json: ok([
+          {
+            at: "2026-01-05T09:00:00",
+            kind: "CREATED",
+            fromStatus: null,
+            toStatus: null,
+            source: "PAYMENT",
+          },
+        ]),
+      }),
+    )
+
+    await page.goto("/dashboard/parent/payments")
+
+    const pendingSection = page.locator("section").filter({ hasText: "Pending Payments" })
+    await pendingSection.getByRole("button", { name: "History" }).first().click()
+
+    const timeline = pendingSection.getByTestId("payment-timeline")
+    await expect(timeline).toBeVisible()
+    await expect(timeline.getByText("New payment")).toBeVisible()
+
+    // Nothing was written down for this payment, so no step is reconstructed from the status
+    // it holds now: a short honest timeline rather than a plausible-looking complete one.
+    await expect(timeline.getByText("COMPLETED")).toHaveCount(0)
+    await expect(timeline.getByText("FAILED")).toHaveCount(0)
+    await expect(timeline.getByText("REFUNDED")).toHaveCount(0)
   })
 
   test("shows an unrecognised status verbatim instead of guessing", async ({ page }) => {
@@ -302,7 +385,10 @@ test.describe("Parent payments — child view", () => {
     // en-GB with a two-digit day renders "01 Jan 2099".
     await expect(page.getByText("Until 01 Jan 2099")).toBeVisible()
 
-    await expect(page.getByText("PSP-CHILD-1")).toBeVisible()
+    // Payment.md §28/§45: a child's payment is just as payer-facing as the account's own, so
+    // the gateway reference is masked here too rather than surviving in one view only.
+    await expect(page.getByText("****LD-1")).toBeVisible()
+    await expect(page.getByText("PSP-CHILD-1")).toHaveCount(0)
     // Only the account's own pending payment is cancellable; the child's settled one is not.
     await expect(page.getByRole("button", { name: "Cancel" })).toHaveCount(1)
   })
@@ -352,7 +438,7 @@ test.describe("Parent payments — child view", () => {
 
     // The history is the part that matters most and must survive a secondary failure.
     await expect(page.getByText("COMPLETED", { exact: true })).toBeVisible()
-    await expect(page.getByText("PSP-REF-9911")).toBeVisible()
+    await expect(page.getByText("****9911")).toBeVisible()
   })
 })
 
@@ -363,7 +449,7 @@ test.describe("Parent payments — filters and export", () => {
     await stubChildren(page)
 
     await page.goto("/dashboard/parent/payments")
-    await expect(page.getByText("PSP-REF-9911")).toBeVisible()
+    await expect(page.getByText("****9911")).toBeVisible()
 
     // By id, not getByLabel: "To" is a substring of the Next.js dev-tools button's label, and a
     // wrapped control's accessible name is not reliably the label's own words.
@@ -371,10 +457,10 @@ test.describe("Parent payments — filters and export", () => {
     await page.locator("#payment-filter-to").fill("2030-12-31")
 
     await expect(page.getByText("No payments in this date range")).toBeVisible()
-    await expect(page.getByText("PSP-REF-9911")).toHaveCount(0)
+    await expect(page.getByText("****9911")).toHaveCount(0)
 
     await page.getByRole("button", { name: "Clear dates" }).click()
-    await expect(page.getByText("PSP-REF-9911")).toBeVisible()
+    await expect(page.getByText("****9911")).toBeVisible()
   })
 
   test("the export is a real CSV of the visible rows with no invented total", async ({ page }) => {
@@ -400,7 +486,9 @@ test.describe("Parent payments — filters and export", () => {
     const lines = csv.trim().split("\r\n")
     expect(lines).toHaveLength(3)
     expect(lines[0]).toContain("Reference")
-    expect(csv).toContain("PSP-REF-9911")
+    // Payment.md §28: the reference travels out masked, and the raw gateway token never does.
+    expect(csv).toContain("****9911")
+    expect(csv).not.toContain("PSP-REF-9911")
     expect(csv).toContain("Term 2 tuition")
     expect(lines.some((l) => /total|sum/i.test(l))).toBe(false)
   })

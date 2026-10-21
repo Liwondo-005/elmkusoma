@@ -456,6 +456,7 @@ const providerNavSections: ProviderNavSection[] = [
       { label: "Sessions", labelKey: "sessions", href: "/dashboard/provider/sessions", icon: CalendarDays },
       { label: "Learners", labelKey: "learners", href: "/dashboard/provider/learners", icon: Users },
       { label: "My Earnings", labelKey: "myEarnings", href: "/dashboard/earnings", icon: Receipt },
+      { label: "Payments", labelKey: "payments", href: "/dashboard/provider/payments", icon: Receipt },
     ],
   },
   {

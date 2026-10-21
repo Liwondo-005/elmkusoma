@@ -276,6 +276,21 @@ public class ParentSelfController {
         return ResponseEntity.ok(ApiResponse.success(payments));
     }
 
+    @GetMapping("/payments/{paymentId}/timeline")
+    @Operation(summary = "Status timeline of one of your payments",
+            description = "Payment.md section 29. Built only from timestamps and audit rows "
+                    + "recorded against this payment, in the order they happened; nothing is "
+                    + "inferred. A payment that is not the caller's answers exactly like one "
+                    + "that does not exist, so the route cannot be walked to discover which "
+                    + "payment ids are real.")
+    public ResponseEntity<ApiResponse<List<ParentPaymentResponse.TimelineEvent>>> getPaymentTimeline(
+            @PathVariable UUID paymentId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                paymentService.getPaymentTimeline(paymentId, userId)));
+    }
+
     // ── Subscriptions ───────────────────────────────────────────────────
 
     @GetMapping("/subscriptions")

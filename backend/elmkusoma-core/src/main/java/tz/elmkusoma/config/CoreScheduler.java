@@ -245,19 +245,27 @@ public class CoreScheduler {
      * Hourly financial reconciliation sweep.
      *
      * <p>{@link tz.elmkusoma.finance.service.ReconciliationService#scan()} was fully
-     * implemented and unit-tested but nothing ever called it, so the five
-     * integrity checks - stale PENDING, COMPLETED-without-entitlement, amount
-     * inconsistencies, refund inconsistencies and duplicate provider
-     * references - only ran if an operator triggered them by hand. Outbound
-     * mobile-money collection makes that matter more: a collection that is
-     * queued, or whose prompt is never approved, leaves a payment PENDING with
-     * a gateway reference, and without a sweep nothing surfaces it.
+     * implemented and unit-tested but nothing ever called it, so the integrity
+     * checks - stale PENDING, COMPLETED-without-entitlement, amount inconsistencies,
+     * refund inconsistencies, currency inconsistencies, earnings-allocation
+     * inconsistencies and duplicate provider references - only ran if an operator
+     * triggered them by hand. Outbound mobile-money collection makes that matter
+     * more: a collection that is queued, or whose prompt is never approved, leaves a
+     * payment PENDING with a gateway reference, and without a sweep nothing surfaces
+     * it.</p>
+     *
+     * <p>{@link tz.elmkusoma.finance.service.ReconciliationService#scanGatewayOutcomes()}
+     * runs as its own step because it re-consults the provider for a bounded batch of
+     * completed payments - it is the only check that can discover a local COMPLETED
+     * whose gateway outcome is uncertain (Payment.md §70). It is kept separate from
+     * the local scan in a second try block so an unreachable gateway cannot suppress
+     * the local integrity checks, and a local failure cannot skip the re-verification.</p>
      *
      * <p>Hourly rather than per-minute because the checks read whole payment
      * tables and the staleness threshold is 24 hours, so a faster cadence adds
-     * load without finding anything sooner. The scan is a pure read that only
-     * ever raises reconciliation exceptions - it never moves money, never
-     * grants or revokes access, and never changes a payment status - and a
+     * load without finding anything sooner. Both steps are reads that only
+     * ever raise reconciliation exceptions - they never move money, never
+     * grant or revoke access, and never change a payment status - and a
      * failure is logged rather than propagated, exactly like the sweeps above.</p>
      */
     @Scheduled(fixedRate = 3600000, initialDelay = 300000)
@@ -271,6 +279,16 @@ public class CoreScheduler {
             }
         } catch (Exception e) {
             log.error("Hourly reconciliation scan failed: {}", e.getMessage());
+        }
+        try {
+            tz.elmkusoma.finance.service.ReconciliationService.ScanResult gatewayResult =
+                    reconciliationService.scanGatewayOutcomes();
+            if (!gatewayResult.newlyRaised().isEmpty()) {
+                log.warn("Gateway reconciliation raised {} new exception(s); {} open",
+                        gatewayResult.newlyRaised().size(), gatewayResult.openExceptions());
+            }
+        } catch (Exception e) {
+            log.error("Gateway reconciliation scan failed: {}", e.getMessage());
         }
     }
 

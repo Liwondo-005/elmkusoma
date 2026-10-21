@@ -29,12 +29,13 @@ public class AuditMapper {
                 log.getRequestMethod(),
                 log.getRequestUrl(),
                 log.getResponseStatus(),
-                log.getDurationMs(),
-                log.getCreatedAt()
-        );
-    }
+                  log.getDurationMs(),
+                  log.getCreatedAt(),
+                  log.getCorrelationId()
+          );
+      }
 
-    public ActivityFeedResponse toActivityFeedResponse(ActivityFeed feed) {
+      public ActivityFeedResponse toActivityFeedResponse(ActivityFeed feed) {
         return ActivityFeedResponse.of(
                 feed.getId(),
                 feed.getInstitutionId(),

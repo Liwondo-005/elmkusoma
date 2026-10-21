@@ -60,7 +60,11 @@ public class TransactionSearchService {
      * One row of a transaction, shaped for display rather than for the database.
      *
      * <p>Derived fields are computed here from stored columns so the UI and the CSV cannot
-     * disagree about the same payment.</p>
+     * disagree about the same payment. {@code providerShareAmount} follows the same null
+     * convention as {@code commissionAmount}: null means no approved rate existed at
+     * confirmation, which is a different fact from a share of zero, and a payment that was
+     * never paid has no {@code paidAt} at all - the stored {@code createdAt} is carried
+     * alongside so a row always has one honest timestamp to display.</p>
      */
     public record TransactionRow(
             UUID paymentId,
@@ -68,16 +72,19 @@ public class TransactionSearchService {
             String providerReference,
             String provider,
             String serviceType,
+            String description,
             String status,
             BigDecimal amount,
             String currency,
             BigDecimal refundedAmount,
             BigDecimal refundableAmount,
             BigDecimal commissionAmount,
+            BigDecimal providerShareAmount,
             String commissionStatus,
             String commissionPolicyKey,
             Integer commissionPolicyVersion,
             LocalDateTime paidAt,
+            LocalDateTime createdAt,
             UUID parentId,
             UUID studentId,
             UUID institutionId) {
@@ -89,16 +96,19 @@ public class TransactionSearchService {
                     p.getProviderReference(),
                     p.getProvider(),
                     p.getServiceType(),
+                    p.getDescription(),
                     p.getStatus(),
                     p.getAmount(),
                     p.getCurrency(),
                     p.getRefundedAmount(),
                     p.refundableAmount(),
                     p.getCommissionAmount(),
+                    p.getProviderShareAmount(),
                     p.getCommissionStatus(),
                     p.getCommissionPolicyKey(),
                     p.getCommissionPolicyVersion(),
                     p.getPaidAt(),
+                    p.getCreatedAt(),
                     p.getParentId(),
                     p.getStudentId(),
                     p.getInstitutionId());

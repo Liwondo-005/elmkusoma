@@ -253,6 +253,22 @@ export interface ParentPayments {
 }
 
 /**
+ * One step of a payment's recorded status history (Payment.md §29).
+ *
+ * `kind` is `CREATED`, `STATUS` or `SETTLED`; `fromStatus` is null when the record did not name
+ * the status before this step; `source` is `PAYMENT` (a timestamp on the payment row itself) or
+ * `AUDIT` (an entry written when it happened). Nothing here is derived on the client, and a
+ * payment with no recorded history simply returns its creation moment.
+ */
+export interface PaymentTimelineEvent {
+  at: string | null
+  kind: string
+  fromStatus: string | null
+  toStatus: string | null
+  source: string | null
+}
+
+/**
  * Mobile-money networks Stakaba accepts. The value is case-sensitive on the
  * wire and must be exactly one of these four strings.
  */
@@ -645,6 +661,16 @@ parentFetch<LiveClassData>(`/v1/my/children/${id}/live-classes`),
   // pending USSD prompt never does on its own.
   getPaymentStatus: (paymentId: string) =>
     parentFetch<PaymentStatusResult>(`/v1/my/payments/${paymentId}/status`, { method: "POST" }),
+
+  /**
+   * The recorded status history of one of your payments.
+   *
+   * Read-only and ownership-checked by the server: a payment that is not the caller's answers
+   * exactly like one that does not exist, so this cannot be used to find out which payment ids
+   * are real. The response contains only what was written down at the time, oldest first.
+   */
+  getPaymentTimeline: (paymentId: string) =>
+    parentFetch<PaymentTimelineEvent[]>(`/v1/my/payments/${paymentId}/timeline`),
 
   getMessages: () => parentFetch<MessageData[]>("/v1/my/messages"),
   getSentMessages: () => parentFetch<MessageData[]>("/v1/my/messages/sent"),
