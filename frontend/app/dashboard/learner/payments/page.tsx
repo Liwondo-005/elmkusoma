@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { AlertCircle, Receipt, ShieldCheck, Clock, XCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth"
@@ -33,40 +33,46 @@ import { formatDate } from "@/lib/format-date"
 export default function LearnerPaymentsPage() {
   const { user } = useAuth()
   const t = useTranslations("learner.payments")
+  const tc = useTranslations("common")
 
   const [payments, setPayments] = useState<MyPayment[]>([])
   const [access, setAccess] = useState<MyAccess[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Guards the state updates that follow a fetch which may already have been superseded, since
+  // the loader itself is now reachable from a retry button and not only from the first mount.
+  const activeRef = useRef(true)
 
   useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      try {
-        setLoading(true)
-        setError(null)
-        // Both are needed and they are independent: a learner may have access granted by a
-        // parent with no payment of their own, and may have a payment with no grant yet.
-        const [paymentRows, accessRows] = await Promise.all([
-          learnerApi.getMyPayments(),
-          learnerApi.getMyAccess(),
-        ])
-        if (cancelled) return
-        setPayments(paymentRows)
-        setAccess(accessRows)
-      } catch {
-        if (!cancelled) setError(t("loadFailed"))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
+    activeRef.current = true
     return () => {
-      cancelled = true
+      activeRef.current = false
+    }
+  }, [])
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      // Both are needed and they are independent: a learner may have access granted by a
+      // parent with no payment of their own, and may have a payment with no grant yet.
+      const [paymentRows, accessRows] = await Promise.all([
+        learnerApi.getMyPayments(),
+        learnerApi.getMyAccess(),
+      ])
+      if (!activeRef.current) return
+      setPayments(paymentRows)
+      setAccess(accessRows)
+    } catch {
+      if (activeRef.current) setError(t("loadFailed"))
+    } finally {
+      if (activeRef.current) setLoading(false)
     }
   }, [t])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || t("defaultLearnerName")
   const activeAccess = access.filter((a) => a.currentlyValid)
@@ -80,11 +86,22 @@ export default function LearnerPaymentsPage() {
 
       {!loading && error && (
         <div
-          className="flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
           role="alert"
         >
-          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-          {error}
+          <span className="inline-flex items-center gap-2">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            {error}
+          </span>
+          {/* A failed read here is almost always transient, and without this the only way back
+              is a full page reload - which also discards the learner's place on the page. */}
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="rounded-lg border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"
+          >
+            {tc("retry")}
+          </button>
         </div>
       )}
 

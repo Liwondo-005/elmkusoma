@@ -60,6 +60,34 @@ export function isCancellable(status: string | null | undefined): boolean {
   return presentPaymentStatus(status).inFlight;
 }
 
+/**
+ * Masks a gateway reference for display (Payment.md §28: "Gateway reference, appropriately
+ * masked").
+ *
+ * The reference is an operational token, not something the payer needs: printing it in full
+ * on a screen or into an exported CSV is exactly how a gateway identifier ends up in a
+ * screenshot, a support ticket or a shared spreadsheet. Only the last four characters
+ * survive, which is enough for a support conversation to match a value without disclosing it.
+ *
+ * Three properties that matter to callers:
+ *
+ *  - `null`, `undefined` and blank all stay null. A payment that never received a reference
+ *    has nothing to hide, and rendering a row of asterisks would read as a real value.
+ *  - A value of four characters or fewer is masked entirely - keeping any of it would leave
+ *    the whole token visible.
+ *  - It is idempotent, so a reference the backend has already masked passes through
+ *    unchanged instead of being masked down to `****` plus four asterisks.
+ */
+export function maskProviderReference(
+  reference: string | null | undefined,
+): string | null {
+  if (reference == null) return null;
+  const value = reference.trim();
+  if (!value) return null;
+  if (value.length <= 4) return "*".repeat(value.length);
+  return `****${value.slice(-4)}`;
+}
+
 /** Tailwind classes per tone, matching the muted palette the existing dashboards use. */
 export function statusToneClasses(tone: PaymentStatusTone): string {
   switch (tone) {

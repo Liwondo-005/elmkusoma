@@ -79,6 +79,20 @@ public class RefundRequest extends BaseEntity {
     @Builder.Default
     private String entitlementAction = ENTITLEMENT_PENDING;
 
+    /**
+     * Platform commission handed back with this refund.
+     *
+     * <p>Set only for a bundle partial refund (BR-02), which is the one path that computes a
+     * split. NULL means "no split was calculated", which is not the same as zero - zero would
+     * assert the platform kept nothing, an assertion this record is not entitled to make.</p>
+     */
+    @Column(name = "commission_reversed", precision = 12, scale = 2)
+    private BigDecimal commissionReversed;
+
+    /** Provider share handed back with this refund - the remainder of the split. */
+    @Column(name = "provider_reversed", precision = 12, scale = 2)
+    private BigDecimal providerReversed;
+
     /** A refund request cannot become a refund without passing through a decision. */
     public boolean isOpen() {
         return STATUS_REQUESTED.equals(status) || STATUS_UNDER_REVIEW.equals(status)

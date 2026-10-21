@@ -79,7 +79,23 @@ export default function PaymentsPage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-sm text-destructive">{error}</div>
+        // The list failing is a transient read, not a dead end: without a way to ask again the
+        // only recovery left is a full page reload, which also throws away the filter and page
+        // this operator had selected.
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-sm text-destructive"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={loading}
+            className="rounded-lg border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+          >
+            {tc("retry")}
+          </button>
+        </div>
       )}
 
       {loading ? (

@@ -10,6 +10,7 @@ import tz.elmkusoma.parent.domain.Entitlement;
 import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.service.ParentPaymentService;
+import tz.elmkusoma.parent.service.PaymentEventNotificationService;
 import tz.elmkusoma.subscription.domain.Subscription;
 import tz.elmkusoma.subscription.repository.SubscriptionRepository;
 
@@ -36,6 +37,7 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final AuditLogRepository auditLogRepository;
     private final ParentRepository parentRepository;
+    private final PaymentEventNotificationService paymentEventNotificationService;
 
     /**
      * Opens the subscription for a payment that has already been verified.
@@ -95,6 +97,10 @@ public class SubscriptionService {
                         "paymentId", payment.getId().toString()));
         log.info("Subscription activated: id={} payment={} period {} -> {}",
                 saved.getId(), payment.getId(), saved.getPeriodStart(), saved.getPeriodEnd());
+        // A period opening is money moving, and nothing else in the platform would say so:
+        // the derived inbox projects payments, not access periods. Reports only, and a failure
+        // here is swallowed by the emitter so it can never undo a subscription already written.
+        paymentEventNotificationService.subscriptionActivated(saved);
         return saved;
     }
 
@@ -281,6 +287,10 @@ private LocalDateTime resolvePeriodStart(Payment payment, Entitlement entitlemen
             }
             subscription.setStatus(Subscription.STATUS_EXPIRED);
             subscriptionRepository.save(subscription);
+            // Reached once per period: EXPIRED is absorbing and the row is no longer selected
+            // by this query afterwards, so the headline cannot repeat. The emitter's own guard
+            // covers a sweep that is interrupted and re-run over a row it already reported.
+            paymentEventNotificationService.subscriptionExpired(subscription);
             audit(subscription, "Subscription Expired",
                     java.util.Map.of("status", Subscription.STATUS_ACTIVE),
                     java.util.Map.of("status", Subscription.STATUS_EXPIRED,

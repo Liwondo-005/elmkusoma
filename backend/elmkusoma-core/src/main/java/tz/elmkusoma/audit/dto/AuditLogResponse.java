@@ -24,6 +24,8 @@ public class AuditLogResponse {
     private Integer responseStatus;
     private Long durationMs;
     private LocalDateTime createdAt;
+    /** Correlation id of the request that produced the row; null for background writers. */
+    private String correlationId;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -61,6 +63,8 @@ public class AuditLogResponse {
     public void setDurationMs(Long durationMs) { this.durationMs = durationMs; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String correlationId) { this.correlationId = correlationId; }
 
     public static AuditLogResponse of(UUID id, UUID institutionId, UUID userId,
                                       String userEmail, String userRole, String entityType,
@@ -68,7 +72,7 @@ public class AuditLogResponse {
                                       Map<String, Object> oldValues, Map<String, Object> newValues,
                                       String ipAddress, String userAgent, String requestMethod,
                                       String requestUrl, Integer responseStatus, Long durationMs,
-                                      LocalDateTime createdAt) {
+                                      LocalDateTime createdAt, String correlationId) {
         AuditLogResponse resp = new AuditLogResponse();
         resp.id = id;
         resp.institutionId = institutionId;
@@ -88,6 +92,7 @@ public class AuditLogResponse {
         resp.responseStatus = responseStatus;
         resp.durationMs = durationMs;
         resp.createdAt = createdAt;
+        resp.correlationId = correlationId;
         return resp;
     }
 }

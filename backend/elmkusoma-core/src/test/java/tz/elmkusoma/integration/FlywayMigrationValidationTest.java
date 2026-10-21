@@ -739,6 +739,57 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * V184 gives every audit row the correlation id of the request that produced it (AU-03).
+     *
+     * <p>AuditLog fills the value from the MDC in {@code @PrePersist}, so Hibernate's test
+     * schema always has the column and the whole suite stays green either way. A missing or
+     * mistyped migration would therefore only surface against a real database - as an
+     * unknown-column error on the very first audit insert, which would lose the audit trail
+     * for the event that failed. That is the exact defect class this suite exists to catch.</p>
+     */
+    @Test
+    void auditLogCorrelationId_IsDeclaredInMigrations() throws IOException {
+        Map<String, String> declared = declaredColumns(Set.of("audit_logs.correlation_id"));
+
+        String type = declared.get("audit_logs.correlation_id");
+        assertNotNull(type,
+                "AuditLog maps @Column(name = \"correlation_id\") but no migration declares it, "
+                        + "so every audit insert would fail with an unknown-column error against a "
+                        + "real database while the Hibernate-built test schema kept passing");
+        assertTrue(type.startsWith("character varying") || type.startsWith("varchar"),
+                "audit_logs.correlation_id must be a varchar to match the String it maps, but is \""
+                        + type + "\"");
+
+        String migration = readMigration("V184__audit_logs_correlation_id.sql");
+        assertTrue(migration.contains("64"),
+                "audit_logs.correlation_id must be length-bounded to the filter's 64-character rule");
+
+        // Comments and the partial index are stripped before inspecting the column constraint:
+        // the index's own "WHERE correlation_id IS NOT NULL" is about index coverage, not about
+        // the column, and reading it as a column constraint would invert this assertion.
+        StringBuilder body = new StringBuilder();
+        for (String line : migration.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("--")) {
+                continue;
+            }
+            body.append(trimmed).append(' ');
+        }
+        Matcher added = Pattern.compile(
+                "ALTER\\s+TABLE\\s+audit_logs\\s+ADD\\s+COLUMN\\s+"
+                        + "(?:IF\\s+NOT\\s+EXISTS\\s+)?correlation_id\\b(.*?);",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL).matcher(body.toString());
+        assertTrue(added.find(), "V184 must add audit_logs.correlation_id");
+        assertFalse(added.group(1).toUpperCase().contains("NOT NULL"),
+                "audit_logs.correlation_id must stay nullable: schedulers, migrations and imports "
+                        + "write audit rows outside any request, and NOT NULL would lose them");
+
+        // Additive only: retrofitting the column must never rewrite existing audit history.
+        assertFalse(migration.matches("(?s).*(DROP COLUMN|ALTER COLUMN|RENAME TO|TRUNCATE).*"),
+                "V184 must be purely additive; existing audit history must never be rewritten");
+    }
+
+    /**
      * V171 makes the refundable-balance invariant a property of the database.
      *
      * <p>The application now routes both refund paths through one adjustment that takes a row

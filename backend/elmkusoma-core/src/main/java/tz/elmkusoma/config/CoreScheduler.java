@@ -53,6 +53,7 @@ public class CoreScheduler {
     private final NotificationService notificationService;
     private final tz.elmkusoma.oversight.service.OversightAnnouncementService oversightAnnouncementService;
     private final tz.elmkusoma.subscription.service.SubscriptionService subscriptionService;
+    private final tz.elmkusoma.parent.service.ParentPaymentService parentPaymentService;
 
     /**
      * Marks elapsed subscription periods EXPIRED.
@@ -77,6 +78,29 @@ public class CoreScheduler {
             }
         } catch (Exception e) {
             log.warn("Subscription expiry sweep failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Marks elapsed entitlement periods EXPIRED.
+     *
+     * <p>Bookkeeping, not enforcement: every access path independently checks {@code expiresAt},
+     * so a missed or delayed run can only leave a status string stale for a report - it can never
+     * keep a lapsed learner entitled or cut off one who is still inside their period. The sweep
+     * exists so the stored status agrees with the boundary the rest of the platform reads.
+     *
+     * <p>Idempotent: only rows that are still ACTIVE with a passed {@code expiresAt} are selected,
+     * EXPIRED is absorbing, and a row with no expiry records no end so it is never selected.
+     */
+    @Scheduled(fixedRate = 300000, initialDelay = 180000)
+    public void expireElapsedEntitlements() {
+        try {
+            int expired = parentPaymentService.expireElapsedEntitlements(LocalDateTime.now());
+            if (expired > 0) {
+                log.info("Marked {} elapsed entitlement(s) EXPIRED", expired);
+            }
+        } catch (Exception e) {
+            log.warn("Entitlement expiry sweep failed: {}", e.getMessage());
         }
     }
     private final tz.elmkusoma.course.service.LiveClassService liveClassService;
@@ -221,19 +245,27 @@ public class CoreScheduler {
      * Hourly financial reconciliation sweep.
      *
      * <p>{@link tz.elmkusoma.finance.service.ReconciliationService#scan()} was fully
-     * implemented and unit-tested but nothing ever called it, so the five
-     * integrity checks - stale PENDING, COMPLETED-without-entitlement, amount
-     * inconsistencies, refund inconsistencies and duplicate provider
-     * references - only ran if an operator triggered them by hand. Outbound
-     * mobile-money collection makes that matter more: a collection that is
-     * queued, or whose prompt is never approved, leaves a payment PENDING with
-     * a gateway reference, and without a sweep nothing surfaces it.
+     * implemented and unit-tested but nothing ever called it, so the integrity
+     * checks - stale PENDING, COMPLETED-without-entitlement, amount inconsistencies,
+     * refund inconsistencies, currency inconsistencies, earnings-allocation
+     * inconsistencies and duplicate provider references - only ran if an operator
+     * triggered them by hand. Outbound mobile-money collection makes that matter
+     * more: a collection that is queued, or whose prompt is never approved, leaves a
+     * payment PENDING with a gateway reference, and without a sweep nothing surfaces
+     * it.</p>
+     *
+     * <p>{@link tz.elmkusoma.finance.service.ReconciliationService#scanGatewayOutcomes()}
+     * runs as its own step because it re-consults the provider for a bounded batch of
+     * completed payments - it is the only check that can discover a local COMPLETED
+     * whose gateway outcome is uncertain (Payment.md §70). It is kept separate from
+     * the local scan in a second try block so an unreachable gateway cannot suppress
+     * the local integrity checks, and a local failure cannot skip the re-verification.</p>
      *
      * <p>Hourly rather than per-minute because the checks read whole payment
      * tables and the staleness threshold is 24 hours, so a faster cadence adds
-     * load without finding anything sooner. The scan is a pure read that only
-     * ever raises reconciliation exceptions - it never moves money, never
-     * grants or revokes access, and never changes a payment status - and a
+     * load without finding anything sooner. Both steps are reads that only
+     * ever raise reconciliation exceptions - they never move money, never
+     * grant or revoke access, and never change a payment status - and a
      * failure is logged rather than propagated, exactly like the sweeps above.</p>
      */
     @Scheduled(fixedRate = 3600000, initialDelay = 300000)
@@ -247,6 +279,16 @@ public class CoreScheduler {
             }
         } catch (Exception e) {
             log.error("Hourly reconciliation scan failed: {}", e.getMessage());
+        }
+        try {
+            tz.elmkusoma.finance.service.ReconciliationService.ScanResult gatewayResult =
+                    reconciliationService.scanGatewayOutcomes();
+            if (!gatewayResult.newlyRaised().isEmpty()) {
+                log.warn("Gateway reconciliation raised {} new exception(s); {} open",
+                        gatewayResult.newlyRaised().size(), gatewayResult.openExceptions());
+            }
+        } catch (Exception e) {
+            log.error("Gateway reconciliation scan failed: {}", e.getMessage());
         }
     }
 

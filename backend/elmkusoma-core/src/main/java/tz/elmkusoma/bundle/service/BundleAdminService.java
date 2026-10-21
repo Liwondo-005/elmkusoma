@@ -12,7 +12,10 @@ import tz.elmkusoma.bundle.repository.BundleRepository;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.administration.service.InstitutionScopeService;
+import tz.elmkusoma.pricing.domain.PricingPolicy;
+import tz.elmkusoma.pricing.repository.PricingPolicyRepository;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +38,7 @@ public class BundleAdminService {
     private final BundleRepository bundleRepository;
     private final BundleItemRepository bundleItemRepository;
     private final InstitutionScopeService scopeService;
+    private final PricingPolicyRepository pricingPolicyRepository;
 
     /** Fails closed before anything is read or written. */
     public void requireScope(UUID userId, UUID institutionId) {
@@ -44,6 +48,28 @@ public class BundleAdminService {
     @Transactional(readOnly = true)
     public List<Bundle> listForInstitution(UUID institutionId) {
         return bundleRepository.findAllByInstitutionIdAndIsDeletedFalseOrderByNameAsc(institutionId);
+    }
+
+    /**
+     * The service type names this institution may name in a bundle item.
+     *
+     * <p>The bundle editor only validates server-side that an item names a service the platform
+     * actually sells, so an author who types an unsupported name gets a refusal after submitting
+     * rather than a list to choose from. {@code GET /v1/platform-admin/pricing} would be that
+     * list, but it is gated to the platform admin and returns amounts, margins and policy
+     * versions, none of which an institution admin needs or may read.
+     *
+     * <p>So this exposes names only: enough for the picker to be honest about what can be priced,
+     * and nothing about how it is priced. It is also not scoped to the caller's institution,
+     * because the catalogue is the platform's, not the institution's - but it carries no
+     * institution-specific figure either.</p>
+     *
+     * @return sorted, deduplicated names of service types with an ACTIVE pricing policy
+     */
+    @Transactional(readOnly = true)
+    public List<String> serviceTypeNames() {
+        return pricingPolicyRepository
+                .findDistinctServiceTypesByStatus(PricingPolicy.STATUS_ACTIVE);
     }
 
     /**
@@ -75,6 +101,7 @@ public class BundleAdminService {
             throw new IllegalArgumentException("A bundle must contain at least one item");
         }
         requireDistinctItems(request.getItems());
+        requirePricedServices(serviceTypesOf(request.getItems()));
 
         Bundle bundle = bundleRepository.saveAndFlush(Bundle.builder()
                 .institutionId(institutionId)
@@ -99,6 +126,7 @@ public class BundleAdminService {
             throw new IllegalArgumentException("A bundle must contain at least one item");
         }
         requireDistinctItems(request.getItems());
+        requirePricedServices(serviceTypesOf(request.getItems()));
 
         bundle.setName(request.getName());
         bundle.setDescription(request.getDescription());
@@ -133,6 +161,10 @@ public class BundleAdminService {
             throw new IllegalStateException(
                     "A bundle needs an access duration before it can be published");
         }
+        // Publication is the activation gate, so the catalogue is re-checked here even though it
+        // was checked when the items were written: a policy can be retired between drafting and
+        // publishing, and a bundle must never go on sale naming a service that is no longer priced.
+        requirePricedServices(items.stream().map(BundleItem::getServiceType).toList());
         bundle.setStatus(Bundle.STATUS_PUBLISHED);
         return bundleRepository.saveAndFlush(bundle);
     }
@@ -189,6 +221,47 @@ public class BundleAdminService {
             if (!seen.add(key)) {
                 throw new IllegalArgumentException(
                         "A bundle cannot contain the same service twice: " + item.getServiceType());
+            }
+        }
+    }
+
+    private static List<String> serviceTypesOf(List<BundleItemRequest> items) {
+        List<String> types = new ArrayList<>();
+        for (BundleItemRequest item : items) {
+            types.add(item.getServiceType() == null ? "" : item.getServiceType().trim());
+        }
+        return types;
+    }
+
+    /**
+     * Every item must name a service the platform actually sells.
+     *
+     * <p>{@code bundle_items.service_id} carries no foreign key, and nothing else in the write
+     * path resolved it, so an item could point at a UUID belonging to no course, resource or event
+     * at all. The grant then copied that UUID straight onto an {@code ACTIVE} entitlement, which is
+     * access to nothing while still looking like a purchase. The catalogue that can be trusted is
+     * the pricing catalogue: a service type the platform sells has an ACTIVE policy, and that same
+     * policy is what {@code BundleTopUpService} resolves the item's price from. Checking it here is
+     * therefore not a new financial rule - it is the existing price-resolution rule applied at the
+     * moment the item is written, and again at publication.</p>
+     *
+     * <p>Nothing is invented when the catalogue does not contain a name. The refusal names the
+     * offending type and says what to do, because the correction is a policy decision the platform
+     * admin makes, not one this service can make by guessing a price.</p>
+     */
+    private void requirePricedServices(List<String> serviceTypes) {
+        for (String serviceType : serviceTypes) {
+            if (serviceType.isEmpty()) {
+                throw new IllegalArgumentException("A bundle item must name a service type");
+            }
+            if (!pricingPolicyRepository.existsByServiceTypeAndStatusAndIsDeletedFalse(
+                    serviceType, PricingPolicy.STATUS_ACTIVE)) {
+                throw new IllegalArgumentException(
+                        "Bundle item names a service the platform does not currently sell: '"
+                                + serviceType + "'. Each item needs an ACTIVE pricing policy, "
+                                + "because that policy is what resolves its price and what the "
+                                + "entitlement grant keys on. Activate or add the policy first, "
+                                + "or name a service the catalogue already prices.");
             }
         }
     }

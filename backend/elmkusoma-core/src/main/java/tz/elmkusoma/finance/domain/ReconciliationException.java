@@ -34,6 +34,14 @@ public class ReconciliationException extends BaseEntity {
     public static final String TYPE_FEE_MISMATCH = "FEE_MISMATCH";
     public static final String TYPE_INCONSISTENT_STATUS = "INCONSISTENT_STATUS";
     public static final String TYPE_MISSING_INTERNAL_RECORD = "MISSING_INTERNAL_RECORD";
+    public static final String TYPE_CURRENCY_MISMATCH = "CURRENCY_MISMATCH";
+    /**
+     * The gateway could not be consulted, so a locally-completed payment's outcome is still
+     * uncertain. Deliberately distinct from {@link #TYPE_INCONSISTENT_STATUS}, which means the
+     * gateway <b>did</b> answer and disagreed. "We could not ask" must never be reported as
+     * "they said no".
+     */
+    public static final String TYPE_GATEWAY_UNCERTAIN = "GATEWAY_UNCERTAIN";
 
     public static final String STATUS_OPEN = "OPEN";
     public static final String STATUS_IN_PROGRESS = "IN_PROGRESS";

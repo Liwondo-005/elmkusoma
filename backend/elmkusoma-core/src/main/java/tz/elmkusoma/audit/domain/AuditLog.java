@@ -3,6 +3,7 @@ package tz.elmkusoma.audit.domain;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.slf4j.MDC;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -72,6 +73,24 @@ public class AuditLog {
     @Column(name = "session_id")
     private String sessionId;
 
+    /**
+     * Correlation id of the request that produced this row (Payment.md §58/§71, AU-03).
+     *
+     * <p>Read from the MDC rather than passed in by every caller, because more than a dozen
+     * services build audit rows directly through {@code auditLogRepository.save(...)} and a
+     * parameter each of them would have to remember is a parameter most of them would forget.
+     * Populating it here means no writer can leave it out.</p>
+     *
+     * <p>Nullable: schedulers, migrations and imports run outside any request thread and have
+     * no correlation id, and NULL says that honestly instead of inventing one. It is never
+     * backfilled and never defaulted.</p>
+     *
+     * <p>The key is a literal to keep a JPA entity free of a dependency on a servlet filter;
+     * {@code AuditLogCorrelationIdTest} pins it to {@code RequestCorrelationFilter.MDC_KEY}.</p>
+     */
+    @Column(name = "correlation_id", length = 64)
+    private String correlationId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -85,7 +104,33 @@ public class AuditLog {
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
         if (isDeleted == null) isDeleted = false;
+        if (correlationId == null) correlationId = currentCorrelationId();
     }
+
+    /** MDC key written by {@code RequestCorrelationFilter}; see the field javadoc. */
+    static final String CORRELATION_MDC_KEY = "correlationId";
+
+    /**
+     * The request's correlation id, or null when this row was written outside a request.
+     *
+     * <p>The filter already rejects anything that does not match {@code [A-Za-z0-9._-]{1,64}},
+     * so the length guard below never fires in practice; it exists so that a rogue MDC value
+     * can never abort an audit insert and lose the very row that would have explained it.</p>
+     */
+    private static String currentCorrelationId() {
+        String value = MDC.get(CORRELATION_MDC_KEY);
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.length() > 64 ? trimmed.substring(0, 64) : trimmed;
+    }
+
+    public String getCorrelationId() { return correlationId; }
+    public void setCorrelationId(String correlationId) { this.correlationId = correlationId; }
 
     public Boolean getIsDeleted() { return isDeleted; }
     public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }

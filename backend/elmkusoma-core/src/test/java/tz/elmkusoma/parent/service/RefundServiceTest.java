@@ -31,6 +31,7 @@ class RefundServiceTest {
     @Mock private EntitlementRepository entitlementRepository;
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private ReceiptService receiptService;
+    @Mock private PaymentEventNotificationService paymentEventNotificationService;
 
     @InjectMocks private RefundService refundService;
 

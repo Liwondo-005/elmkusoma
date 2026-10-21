@@ -3,6 +3,7 @@ package tz.elmkusoma.config.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -146,6 +147,22 @@ public class SecurityConfig {
         return registration;
     }
 
+    /**
+     * Correlation id filter. Unlike the JWT filters this one is deliberately registered
+     * standalone and kept out of the security chain: it has to cover the chain's own
+     * logging and requests that never reach authentication, and because it is not a
+     * bean of type {@code Filter} the container cannot register it a second time.
+     * Order +1 puts it after the encoding filter and ahead of the security chain (-100).
+     */
+    @Bean
+    public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilterRegistration() {
+        FilterRegistrationBean<RequestCorrelationFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new RequestCorrelationFilter());
+        registration.addUrlPatterns("/*");
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+        return registration;
+    }
+
     @Bean
     public OrganizationContextHolder organizationContextHolder() {
         return new OrganizationContextHolder();
@@ -194,6 +211,14 @@ public class SecurityConfig {
                         .requestMatchers("/v1/admin", "/v1/admin/**")
                                 .hasAnyRole("ADMIN", "INSTITUTION_ADMIN", "PROVIDER_ADMIN")
                         .requestMatchers("/v1/platform-admin", "/v1/platform-admin/**").hasRole("ADMIN")
+                        // §RO-07: provider financial namespace fence mirroring the class-level
+                        // @PreAuthorize of the provider controllers. The institution scope inside
+                        // those controllers is derived from the authenticated principal, never
+                        // from a client-supplied header, so the fence only decides who may knock:
+                        // every denial below is a role denial, and scope denials happen in the
+                        // controller after membership is re-checked.
+                        .requestMatchers("/v1/provider", "/v1/provider/**")
+                                .hasAnyRole("ADMIN", "INSTITUTION_ADMIN", "PROVIDER_ADMIN", "PROVIDER_STAFF")
                         // The payment detail API is not exposed; deny explicitly so
                         // cross-institution probing gets 403 instead of a 404 oracle.
                         .requestMatchers("/v1/payments", "/v1/payments/**").denyAll()

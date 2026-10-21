@@ -841,9 +841,13 @@ public class EventServiceImpl implements EventService {
         if (event != null) {
             // Â§69: free a seat â€” reopen FULL events when a registrant cancels
             if (event.getMaxParticipants() != null) {
-                long count = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(eventId, "REGISTERED");
-                event.setCurrentRegistrations((int) count);
-                if (count < event.getMaxParticipants()
+                // Seats, not rows. A group booking holds several seats on one registration, so
+                // counting rows understates what is still held and would reopen an event that is
+                // in fact full. This is the same measure confirmSeat uses when it refuses to
+                // oversell, and the one markFullIfAtCapacity writes back.
+                long held = registrationRepository.sumHeldSeats(eventId);
+                event.setCurrentRegistrations((int) held);
+                if (held < event.getMaxParticipants()
                         && currentStatus(event) == EventStatus.FULL
                         && currentStatus(event).canTransitionTo(EventStatus.REGISTRATION_OPEN)) {
                     applyStatus(event, EventStatus.REGISTRATION_OPEN);

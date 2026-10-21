@@ -18,6 +18,22 @@ public interface EntitlementRepository extends JpaRepository<Entitlement, UUID> 
     List<Entitlement> findByUserIdAndIsDeletedFalse(UUID userId);
     List<Entitlement> findByStudentIdAndIsDeletedFalse(UUID studentId);
     Optional<Entitlement> findByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(UUID studentId, String serviceType, UUID serviceId);
+    /**
+     * Every live row for one (learner, service) key, newest periods kept alongside older ones.
+     *
+     * <p>A list, not an {@link Optional}: nothing constrains this key to a single row, and the
+     * repurchase-after-expiry rule needs to see the elapsed period so it can close it out rather
+     * than trip over a "more than one row" failure at the moment money has already been taken.
+     */
+    List<Entitlement> findAllByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(UUID studentId, String serviceType, UUID serviceId);
+    /**
+     * Entitlements whose stored status still says ACTIVE although their period has already ended.
+     *
+     * <p>Nothing else in the codebase ever flips this status, so without this query an elapsed
+     * entitlement stays ACTIVE forever and every count, filter or report that trusts the string
+     * overstates live access.
+     */
+    List<Entitlement> findAllByStatusAndExpiresAtLessThanEqualAndIsDeletedFalse(String status, java.time.LocalDateTime now);
     boolean existsByStudentIdAndServiceTypeAndServiceIdAndStatusAndIsDeletedFalse(UUID studentId, String serviceType, UUID serviceId, String status);
     List<Entitlement> findByStudentIdAndServiceTypeAndIsDeletedFalse(UUID studentId, String serviceType);
     long countByStudentIdAndStatusAndIsDeletedFalse(UUID studentId, String status);

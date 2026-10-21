@@ -820,6 +820,25 @@ public class ParentDashboardServiceImpl implements ParentDashboardService {
     }
 
     @Override
+    public List<ParentNotificationResponse.NotificationItem> getFinancialNotifications(UUID userId) {
+        List<Parent> parents = parentRepository.findAllByUserId(userId);
+        if (parents.isEmpty()) {
+            return List.of();
+        }
+        Parent parent = parents.get(0);
+
+        List<ParentNotificationResponse.NotificationItem> items = new ArrayList<>();
+        for (ParentStudentLink link : studentLinkRepository.findAllByParentId(parent.getId())) {
+            Student student = getStudent(link.getStudentId());
+            // The assembler reads this parent's own payments, receipts and refunds for this child
+            // only, applies the feeAlerts preference, and returns nothing when it is off.
+            items.addAll(parentFinancialNotificationAssembler.assemble(
+                    parent.getId(), link.getStudentId(), getStudentName(student)));
+        }
+        return items;
+    }
+
+    @Override
     public ParentUpcomingResponse getUpcomingActivities(UUID userId) {
         Parent parent = resolveParentStrict(userId);
         List<ParentStudentLink> links = studentLinkRepository.findAllByParentId(parent.getId());

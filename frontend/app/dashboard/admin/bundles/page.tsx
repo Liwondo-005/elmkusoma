@@ -9,6 +9,7 @@ import {
   updateBundle,
   publishBundle,
   suspendBundle,
+  listServiceTypeCatalogue,
   type Bundle,
 } from "@/lib/bundle-api"
 
@@ -43,6 +44,77 @@ function Field({
     </label>
   )
 }
+/**
+ * A service type, chosen from the types the platform actually sells.
+ *
+ * <p>The server already refuses a name it cannot price, so this is not where the rule lives - it
+ * is what stops the author from having to know those names by heart and discover them through a
+ * failed submit. Two details matter:
+ *
+ * <p>The current value is always offered as an option even when the catalogue no longer lists it.
+ * A draft naming a service that has since been retired must still open with that service showing,
+ * because a select that silently fell back to a blank option would rewrite the bundle the moment
+ * anyone pressed save - quietly trading a refusal they could see for a change they could not.
+ *
+ * <p>And when no catalogue is available - nothing sold yet, or the lookup failed - it stays a
+ * plain text field. An empty picker would be a dead end, and the server is the authority anyway.
+ */
+function ServiceTypeControl({
+  options,
+  value,
+  onChange,
+  id,
+  label,
+  placeholder,
+  inline,
+}: {
+  options: string[] | null
+  value: string
+  onChange: (next: string) => void
+  id?: string
+  label: string
+  /** Shown only by the text fallback; a select carries its prompt as the blank option instead. */
+  placeholder?: string
+  /** Inside an item row there is no label element to hang spacing off, so it is dropped. */
+  inline?: boolean
+}) {
+  const sizing = "w-full rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm"
+  const className = inline ? sizing : `mt-1 ${sizing}`
+
+  if (options === null || options.length === 0) {
+    return (
+      <input
+        id={id}
+        aria-label={label}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={className}
+      />
+    )
+  }
+
+  const current = value.trim()
+  const offered = options.includes(current)
+  return (
+    <select
+      id={id}
+      aria-label={label}
+      value={current}
+      onChange={(e) => onChange(e.target.value)}
+      className={className}
+    >
+      <option value="">{label}</option>
+      {!offered && current !== "" && <option value={current}>{current}</option>}
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 type ItemDraft = { serviceType: string; serviceId: string }
 
 type FormState = {
@@ -76,6 +148,10 @@ export default function AdminBundlesPage() {
   // The item list is loaded on its own because update replaces the whole set: an editor that
   // opened without it would delete every service in the bundle simply by saving.
   const [openingId, setOpeningId] = useState<string | null>(null)
+  // Service types the platform sells, for the picker. Loaded separately from the bundle list so a
+  // catalogue that cannot be read never stops an administrator from seeing or editing their
+  // bundles - it only falls back to typing the name. null means "not known yet", not "empty".
+  const [serviceTypes, setServiceTypes] = useState<string[] | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,6 +165,22 @@ export default function AdminBundlesPage() {
       setLoading(false)
     }
   }, [t])
+
+  useEffect(() => {
+    let cancelled = false
+    void listServiceTypeCatalogue()
+      .then((names) => {
+        if (!cancelled) setServiceTypes(names)
+      })
+      .catch(() => {
+        // Left null on purpose: the picker degrades to a text field rather than showing a
+        // catalogue of nothing, and the server still refuses any name it cannot price.
+        if (!cancelled) setServiceTypes(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     void load()
@@ -281,11 +373,12 @@ export default function AdminBundlesPage() {
               />
             </Field>
             <Field label={t("serviceType")} id="bundle-service-type">
-              <input
+              <ServiceTypeControl
                 id="bundle-service-type"
+                options={serviceTypes}
                 value={form.serviceType}
-                onChange={(e) => setForm({ ...form, serviceType: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm"
+                onChange={(next) => setForm({ ...form, serviceType: next })}
+                label={t("serviceType")}
               />
             </Field>
             <Field label={t("description")} id="bundle-description">
@@ -319,12 +412,13 @@ export default function AdminBundlesPage() {
                   key={index}
                   className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-center"
                 >
-                  <input
-                    aria-label={t("itemServiceType")}
-                    placeholder={t("itemServiceType")}
+                  <ServiceTypeControl
+                    inline
+                    options={serviceTypes}
                     value={item.serviceType}
-                    onChange={(e) => setItem(index, { serviceType: e.target.value })}
-                    className="w-full rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm"
+                    onChange={(next) => setItem(index, { serviceType: next })}
+                    label={t("itemServiceType")}
+                    placeholder={t("itemServiceType")}
                   />
                   <input
                     aria-label={t("itemServiceId")}

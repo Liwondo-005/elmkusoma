@@ -68,6 +68,7 @@ import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -273,6 +274,21 @@ public class ParentSelfController {
         requireChildAccess(userId, studentId);
         List<ParentPaymentResponse.PaymentItem> payments = paymentService.getPaymentsByStudent(studentId);
         return ResponseEntity.ok(ApiResponse.success(payments));
+    }
+
+    @GetMapping("/payments/{paymentId}/timeline")
+    @Operation(summary = "Status timeline of one of your payments",
+            description = "Payment.md section 29. Built only from timestamps and audit rows "
+                    + "recorded against this payment, in the order they happened; nothing is "
+                    + "inferred. A payment that is not the caller's answers exactly like one "
+                    + "that does not exist, so the route cannot be walked to discover which "
+                    + "payment ids are real.")
+    public ResponseEntity<ApiResponse<List<ParentPaymentResponse.TimelineEvent>>> getPaymentTimeline(
+            @PathVariable UUID paymentId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                paymentService.getPaymentTimeline(paymentId, userId)));
     }
 
     // ── Subscriptions ───────────────────────────────────────────────────
@@ -898,11 +914,7 @@ public class ParentSelfController {
         List<LearnerNotification> notifications =
                 learnerNotificationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId);
 
-        long unreadCount = notifications.stream().filter(n -> !Boolean.TRUE.equals(n.getIsRead())).count();
-
         List<ParentNotificationResponse.NotificationItem> items = notifications.stream()
-                .skip((long) page * size)
-                .limit(size)
                 .map(n -> ParentNotificationResponse.NotificationItem.builder()
                         .id(n.getId().toString())
                         .title(n.getTitle())
@@ -916,8 +928,27 @@ public class ParentSelfController {
                         .build())
                 .collect(Collectors.toList());
 
+        // Money the parent is entitled to see: payment, receipt and refund events for their own
+        // verified children. Computed by the assembler through the dashboard service, which only
+        // ever reads and honours the feeAlerts preference. Without this the assembler's output had
+        // no caller anywhere, so a completed payment never reached the parent's inbox at all.
+        items.addAll(dashboardService.getFinancialNotifications(userId));
+
+        // Sorted before pagination so a recent payment cannot be pushed off the end of the first
+        // page by older learner notifications. Null-safe: a learner row may carry no timestamp.
+        items.sort(Comparator.comparing(
+                ParentNotificationResponse.NotificationItem::getCreatedAt,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+
+        long unreadCount = items.stream().filter(n -> !Boolean.TRUE.equals(n.getIsRead())).count();
+
+        List<ParentNotificationResponse.NotificationItem> pageItems = items.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+
         return ResponseEntity.ok(ApiResponse.success(ParentNotificationResponse.builder()
-                .notifications(items)
+                .notifications(pageItems)
                 .unreadCount(unreadCount)
                 .build()));
     }
@@ -925,11 +956,24 @@ public class ParentSelfController {
     @PutMapping("/notifications/{notificationId}/read")
     @Operation(summary = "Mark a notification as read")
     public ResponseEntity<ApiResponse<String>> markNotificationRead(
-            @PathVariable UUID notificationId) {
-        learnerNotificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setIsRead(true);
-            learnerNotificationRepository.save(n);
-        });
+            @PathVariable UUID notificationId, HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        // Ownership is part of the lookup, not a check after it. This endpoint used to take any
+        // notification id in the database and mark it read for its owner, so any authenticated
+        // parent could quietly clear another user's inbox simply by guessing or being shown a row
+        // id. A row that is not the caller's is now indistinguishable from one that does not
+        // exist, which is also what stops this from confirming an id to anyone who can probe it.
+        learnerNotificationRepository
+                .findByIdAndUserIdAndIsDeletedFalse(notificationId, userId)
+                .ifPresentOrElse(n -> {
+                    n.setIsRead(true);
+                    learnerNotificationRepository.save(n);
+                }, () -> {
+                    log.warn("IDOR blocked: user={} attempted to mark unauthorized notification={}",
+                            userId, notificationId);
+                    throw new tz.elmkusoma.exception.ResourceNotFoundException(
+                            "Notification", "notificationId", notificationId);
+                });
         return ResponseEntity.ok(ApiResponse.success("Marked as read", null));
     }
 

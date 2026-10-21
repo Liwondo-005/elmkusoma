@@ -12,6 +12,7 @@ import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.domain.RefundRequest;
 import tz.elmkusoma.parent.dto.ParentPaymentResponse;
 import tz.elmkusoma.parent.dto.ParentPaymentResponse.PaymentItem;
+import tz.elmkusoma.parent.dto.ParentPaymentResponse.TimelineEvent;
 import tz.elmkusoma.parent.repository.EntitlementRepository;
 import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.PaymentRepository;
@@ -21,6 +22,8 @@ import tz.elmkusoma.pricing.service.PricingService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,6 +50,7 @@ public class ParentPaymentService {
     private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
     private final tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
     private final tz.elmkusoma.bundle.service.BundleTopUpService bundleTopUpService;
+    private final PaymentEventNotificationService paymentEventNotificationService;
 
     /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
      * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
@@ -184,6 +188,10 @@ public class ParentPaymentService {
         log.info("Payment initiated: {} for student {} amount {} {} (policy {} v{})",
                 payment.getId(), studentId, net, serviceType,
                 resolved.policyKey(), resolved.policyVersion());
+        // The derived inbox is silent about PENDING rows on purpose, so without this the payer
+        // would hear nothing at all until the gateway answered. Reports only: it touches no
+        // entitlement, and a failure here never fails the payment that was just written.
+        paymentEventNotificationService.paymentInitiated(payment);
         return payment;
     }
 
@@ -340,6 +348,49 @@ public class ParentPaymentService {
     }
 
     /**
+     * Marks entitlements whose period has run out as EXPIRED.
+     *
+     * <p>Nothing in the codebase ever wrote EXPIRED to an entitlement, so an elapsed row reported
+     * itself ACTIVE forever. Access itself was never at risk - every read path checks the
+     * timestamp as well as the status - but anything counting or filtering on the string
+     * overstated live access, and the bundle grant gate trusted the string alone, which is what
+     * let a repurchase after expiry be charged while its grant was refused.
+     *
+     * <p>Idempotent: a row already EXPIRED or REVOKED is not selected again, EXPIRED is absorbing,
+     * and only rows whose own {@code expiresAt} has passed are touched. A null expiry records no
+     * end and is therefore never selected. A delayed run can only leave a status stale for a
+     * report; it cannot grant or deny access, which is decided from the boundary itself.
+     *
+     * @return how many rows were closed out
+     */
+    @Transactional
+    public int expireElapsedEntitlements(LocalDateTime now) {
+        List<Entitlement> elapsed = entitlementRepository
+                .findAllByStatusAndExpiresAtLessThanEqualAndIsDeletedFalse("ACTIVE", now);
+        for (Entitlement entitlement : elapsed) {
+            entitlement.setStatus("EXPIRED");
+            entitlementRepository.save(entitlement);
+            AuditLog auditLog = new AuditLog();
+            auditLog.setInstitutionId(entitlement.getInstitutionId());
+            auditLog.setUserId(null);
+            auditLog.setUserEmail(WEBHOOK_SYSTEM_ACTOR);
+            auditLog.setUserRole("SYSTEM");
+            auditLog.setEntityType("Entitlement");
+            auditLog.setEntityId(entitlement.getId());
+            auditLog.setEntityName("Entitlement Expiry");
+            auditLog.setAction(AuditLog.AuditAction.UPDATE);
+            auditLog.setOldValues(Map.of("status", "ACTIVE"));
+            auditLog.setNewValues(Map.of("status", "EXPIRED",
+                    "expiresAt", String.valueOf(entitlement.getExpiresAt())));
+            auditLogRepository.save(auditLog);
+        }
+        if (!elapsed.isEmpty()) {
+            log.info("Marked {} elapsed entitlement(s) EXPIRED", elapsed.size());
+        }
+        return elapsed.size();
+    }
+
+    /**
      * Hands over the event seats a verified ticket payment paid for.
      *
      * <p>Idempotent: the payment reaches COMPLETED once, and confirmSeat itself returns early when
@@ -392,7 +443,9 @@ public class ParentPaymentService {
             return;
         }
         try {
-            subscriptionService.activateFromVerifiedPayment(payment, entitlement);
+            tz.elmkusoma.subscription.domain.Subscription opened =
+                    subscriptionService.activateFromVerifiedPayment(payment, entitlement);
+            paymentEventNotificationService.subscriptionActivated(opened);
         } catch (RuntimeException ex) {
             log.error("Subscription activation failed for completed payment {} (serviceType={}); "
                             + "payment is NOT rolled back and the entitlement stands",
@@ -575,6 +628,146 @@ public class ParentPaymentService {
         return refreshed;
     }
 
+    /** Machine names for the timeline steps. These are codes the UI maps, not sentences. */
+    static final String TIMELINE_CREATED = "CREATED";
+    static final String TIMELINE_STATUS = "STATUS";
+    static final String TIMELINE_SETTLED = "SETTLED";
+    static final String TIMELINE_SOURCE_PAYMENT = "PAYMENT";
+    static final String TIMELINE_SOURCE_AUDIT = "AUDIT";
+    static final String TIMELINE_ENTITY_TYPE = "Payment";
+    static final String TIMELINE_STATUS_KEY = "status";
+    static final String STATUS_COMPLETED = "COMPLETED";
+
+    /**
+     * The status timeline of one payment, for Payment.md section 29's "status timeline".
+     *
+     * <p>Assembled only from facts that were written down at the time they happened: the
+     * payment row's own timestamps, and the audit rows recorded against this payment. Nothing
+     * is interpolated, back-dated or inferred from the current status, so a payment whose
+     * history was never recorded returns its creation moment and stops - an honest short
+     * timeline rather than a plausible-looking long one. The audit rows are read by entity id
+     * only after ownership of the payment has been established, so this cannot be used to
+     * probe which payment identifiers exist.</p>
+     *
+     * <p>{@code paidAt} is a stored fact as well, but the verification that set it also wrote
+     * an audit row reporting the same moment; the settlement step is therefore only added when
+     * no audit row already records a COMPLETED status, so one settlement never reads as two.</p>
+     *
+     * @return the steps in chronological order; never null
+     */
+    @Transactional(readOnly = true)
+    public List<TimelineEvent> getPaymentTimeline(UUID paymentId, UUID callerUserId) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException(
+                        "Payment not found"));
+        requireTimelineAccess(payment, callerUserId, "Payment not found");
+
+        List<TimelineEvent> events = new ArrayList<>();
+
+        if (payment.getCreatedAt() != null) {
+            events.add(TimelineEvent.builder()
+                    .at(payment.getCreatedAt())
+                    .kind(TIMELINE_CREATED)
+                    .source(TIMELINE_SOURCE_PAYMENT)
+                    .build());
+        }
+
+        boolean auditRecordsSettlement = false;
+        // The unpaged lookup on purpose: a timeline that stopped at a page boundary would show
+        // a payment a partial history, and the paged counterpart of this query is explicitly
+        // there for list screens, not for reading one entity's whole record. Soft-deleted rows
+        // are dropped here rather than in the query so the read still cannot return them.
+        for (AuditLog entry : auditLogRepository
+                .findByEntityTypeAndEntityId(TIMELINE_ENTITY_TYPE, paymentId)) {
+            if (Boolean.TRUE.equals(entry.getIsDeleted())) {
+                continue;
+            }
+            String fromStatus = recordedStatus(entry.getOldValues());
+            String toStatus = recordedStatus(entry.getNewValues());
+            if (fromStatus == null && toStatus == null) {
+                // The row says nothing about this payment's status, so it is not a step of it.
+                continue;
+            }
+            if (toStatus == null) {
+                // A row that only records the status in force at that moment is a snapshot,
+                // not a transition from an unknown state.
+                toStatus = fromStatus;
+                fromStatus = null;
+            }
+            if (entry.getCreatedAt() == null) {
+                continue;
+            }
+            if (STATUS_COMPLETED.equals(toStatus)) {
+                auditRecordsSettlement = true;
+            }
+            events.add(TimelineEvent.builder()
+                    .at(entry.getCreatedAt())
+                    .kind(TIMELINE_STATUS)
+                    .fromStatus(fromStatus)
+                    .toStatus(toStatus)
+                    .source(TIMELINE_SOURCE_AUDIT)
+                    .build());
+        }
+
+        if (payment.getPaidAt() != null && !auditRecordsSettlement) {
+            events.add(TimelineEvent.builder()
+                    .at(payment.getPaidAt())
+                    .kind(TIMELINE_SETTLED)
+                    .toStatus(STATUS_COMPLETED)
+                    .source(TIMELINE_SOURCE_PAYMENT)
+                    .build());
+        }
+
+        events.sort(Comparator.comparing(TimelineEvent::getAt));
+        return events;
+    }
+
+    /** Reads the {@code status} entry an audit row carried, if it carried one. */
+    private static String recordedStatus(Map<String, Object> values) {
+        if (values == null) {
+            return null;
+        }
+        Object raw = values.get(TIMELINE_STATUS_KEY);
+        if (raw == null) {
+            return null;
+        }
+        String value = raw.toString().trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    /**
+     * Ownership rule for a payment read, mirroring {@code ReceiptController.requireOwnsOrAdmin}
+     * on the same column. Both identifier spaces are compared, because a dashboard payment
+     * records the parent's user id while an event ticket records the parent record's own id,
+     * and comparing only one of them refuses a payer their own history.
+     *
+     * <p>Unlike that helper there is no administrator bypass: this serves {@code /v1/my/**},
+     * which is fenced to {@code hasRole('PARENT')}, so an administrator never reaches this
+     * method and a dead branch would only widen it.</p>
+     *
+     * <p>A foreign id and an id that was never issued raise the same not-found, so the answer
+     * cannot be used to discover which payment ids exist (Payment.md section 45).</p>
+     */
+    private void requireTimelineAccess(Payment payment, UUID callerUserId, String notFoundMessage) {
+        if (callerUserId == null) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "An authenticated user is required");
+        }
+        if (callerUserId.equals(payment.getParentId())) {
+            return;
+        }
+        boolean ownsParentRecord = parentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
+                .map(parent -> parent.getId().equals(payment.getParentId()))
+                .orElse(false);
+        if (ownsParentRecord) {
+            return;
+        }
+        log.warn("IDOR blocked: user {} attempted to read the timeline of payment {} owned by {}",
+                callerUserId, payment.getId(), payment.getParentId());
+        throw new tz.elmkusoma.exception.ResourceNotFoundException(notFoundMessage);
+    }
+
     private PaymentItem toPaymentItem(Payment p) {
         return PaymentItem.builder()
                 .id(p.getId().toString())
@@ -585,7 +778,38 @@ public class ParentPaymentService {
                 .status(p.getStatus())
                 .paidAt(p.getPaidAt())
                 .createdAt(p.getCreatedAt())
-                .providerReference(p.getProviderReference())
+                .providerReference(maskProviderReference(p.getProviderReference()))
                 .build();
+    }
+
+    /**
+     * Gateway reference as it may be handed to a payer (Payment.md §28: "Gateway reference,
+     * appropriately masked").
+     *
+     * <p>A payer has no operational use for the full gateway token. Reconciliation, refund
+     * handling and support lookup are the only things that need it, and those are Platform
+     * Admin surfaces - so the raw value is never placed on a payer-facing payload in the first
+     * place, rather than being hidden after the fact. Only the last four characters survive,
+     * which is enough for a support conversation to match a value without disclosing it.</p>
+     *
+     * <p>Null and blank stay null: a payment that never received a reference has nothing to
+     * hide, and turning that into a row of asterisks would read as a real value.</p>
+     *
+     * <p>Idempotent, so a value that arrives already masked is unchanged rather than being
+     * masked down to {@code ****} plus four asterisks. The frontend applies the same rule, so
+     * either layer alone is enough.</p>
+     */
+    static String maskProviderReference(String reference) {
+        if (reference == null) {
+            return null;
+        }
+        String value = reference.trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+        if (value.length() <= 4) {
+            return "*".repeat(value.length());
+        }
+        return "****" + value.substring(value.length() - 4);
     }
 }

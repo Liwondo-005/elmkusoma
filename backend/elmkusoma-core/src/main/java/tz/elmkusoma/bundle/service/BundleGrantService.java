@@ -118,11 +118,28 @@ public class BundleGrantService {
     }
 
     /**
-     * Grants one item, or leaves an existing grant alone.
+     * Grants one item, or leaves a still-running grant alone.
      *
-     * <p>An entitlement the learner already holds is not re-created and not extended. Whether a
-     * re-purchase should top up an existing period is a commercial decision this service is not
-     * entitled to make, so it stays a no-op rather than guessing.
+     * <p>Whether the learner already holds this item is decided by <em>time</em>, not by the stored
+     * status string. An entitlement row keeps status {@code ACTIVE} until something flips it, so
+     * reading status alone told this method that an entitlement which expired months ago was still
+     * held and refused the grant - while the quote side, which does read the timestamp, had already
+     * charged the parent for it. The two sides now agree on the same predicate the rest of the
+     * platform uses ({@code ParentPaymentService.isCurrentlyValid}).
+     *
+     * <p>Under the approved expiry rule:
+     * <ul>
+     *   <li>a period that has not elapsed is still held - a repurchase that lands while it runs is
+     *       neither re-created nor extended;</li>
+     *   <li>a period that has elapsed is closed out as {@code EXPIRED} so the previous period stays
+     *       auditable, then a new period begins now;</li>
+     *   <li>there is no grace period: the new period starts at the moment of repurchase, never
+     *       backdated to when the old one lapsed;</li>
+     *   <li>a row that never expires cannot elapse and therefore still blocks a re-grant.</li>
+     * </ul>
+     *
+     * <p>Only reached for a payment that has already reached COMPLETED, so a pending, failed or
+     * unverified payment can never open a period here.
      */
     private boolean grantOne(Payment payment, BundleItem item, LocalDateTime now, int accessDays) {
         if (payment.getStudentId() == null) {
@@ -133,12 +150,33 @@ public class BundleGrantService {
         // "not held" before either held anything, which is the race this exists to close.
         entitlementRepository.lockGrantKey(
                 payment.getStudentId() + ":" + item.getServiceType() + ":" + item.getServiceId());
-        boolean alreadyHeld = entitlementRepository
-                .existsByStudentIdAndServiceTypeAndServiceIdAndStatusAndIsDeletedFalse(
-                        payment.getStudentId(), item.getServiceType(), item.getServiceId(), "ACTIVE");
-        if (alreadyHeld) {
+
+        List<Entitlement> existing = entitlementRepository
+                .findAllByStudentIdAndServiceTypeAndServiceIdAndIsDeletedFalse(
+                        payment.getStudentId(), item.getServiceType(), item.getServiceId());
+
+        boolean stillHeld = existing.stream().anyMatch(e -> isActive(e) && isUnexpired(e, now));
+        if (stillHeld) {
             return false;
         }
+
+        // Close out an elapsed period before opening the new one, so the old row is never left
+        // claiming ACTIVE while its timestamp says otherwise and the history of what was bought
+        // remains readable. Rows already EXPIRED or REVOKED are left exactly as they are.
+        boolean closedOut = false;
+        for (Entitlement entitlement : existing) {
+            if (isActive(entitlement) && !isUnexpired(entitlement, now)) {
+                entitlement.setStatus("EXPIRED");
+                entitlementRepository.save(entitlement);
+                closedOut = true;
+            }
+        }
+        if (closedOut) {
+            log.info("Closed out an elapsed period for student {} service {}:{} before granting "
+                            + "the repurchased one",
+                    payment.getStudentId(), item.getServiceType(), item.getServiceId());
+        }
+
         // Seam for the concurrency test. It sits in the exact window the race lives in - after the
         // coverage check, before the insert - so a test can hold both transactions inside the
         // window and make the interleaving deterministic instead of hoping timing lines up. It is
@@ -157,6 +195,18 @@ public class BundleGrantService {
                 .expiresAt(now.plus(Duration.ofDays(accessDays)))
                 .build());
         return true;
+    }
+
+    private static boolean isActive(Entitlement entitlement) {
+        return "ACTIVE".equals(entitlement.getStatus());
+    }
+
+    /**
+     * Whether an entitlement's period has not elapsed. A null expiry means the row records no end,
+     * so nothing has passed and the period still holds.
+     */
+    private static boolean isUnexpired(Entitlement entitlement, LocalDateTime now) {
+        return entitlement.getExpiresAt() == null || entitlement.getExpiresAt().isAfter(now);
     }
 
     /** Whether a service type currently corresponds to a bundle. Used by discovery endpoints. */

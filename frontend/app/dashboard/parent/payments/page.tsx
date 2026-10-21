@@ -19,19 +19,21 @@ import {
   normaliseMsisdn,
   type PaymentItem,
   type ParentPayments,
+  type PaymentTimelineEvent,
   type ChildOverview,
   type EntitlementItem,
   type MobileMoneyNetwork,
   type PricingQuote,
 } from "@/lib/parent-api"
 import { useLocale } from "@/hooks/use-locale"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, formatDateTime } from "@/lib/format-date"
 import { formatMoney } from "@/lib/money"
 import {
   presentPaymentStatus,
   isCancellable,
   statusToneClasses,
   describeExpiry,
+  maskProviderReference,
 } from "@/lib/payment-status"
 import { toCsv, downloadCsv, exportFilename } from "@/lib/csv"
 import SubscriptionsSection from "@/components/parent/subscriptions-section"
@@ -234,7 +236,12 @@ export default function ParentPaymentsPage() {
         { header: tp("columns.amount"), value: (p) => p.amount },
         { header: tp("columns.currency"), value: (p) => p.currency },
         { header: tp("columns.status"), value: (p) => p.status },
-        { header: tp("columns.providerReference"), value: (p) => p.providerReference },
+        {
+          header: tp("columns.providerReference"),
+          // Masked on the way out as well as on screen: an exported CSV outlives the session
+          // it came from and is the form most likely to be forwarded to someone else.
+          value: (p) => maskProviderReference(p.providerReference) ?? "",
+        },
       ]),
     )
   }
@@ -996,6 +1003,124 @@ function NewPaymentForm({ onInitiated }: { onInitiated: () => void | Promise<voi
   )
 }
 
+/**
+ * One payment's recorded status history (Payment.md §29).
+ *
+ * Opened on demand rather than loaded with the list: a family with twenty payments would
+ * otherwise issue twenty requests to see the timeline of one of them. The server returns only
+ * what was written down when it happened, so a payment whose history was never recorded shows
+ * its creation moment and stops - never a sequence reconstructed from the status it holds now.
+ *
+ * Labels reuse keys this page and the shared namespace already carry; no new wording was added,
+ * because the translation files are not ours to extend here.
+ */
+function PaymentTimeline({ paymentId, locale }: { paymentId: string; locale: string }) {
+  const tn = useTranslations("nav")
+  const tp = useTranslations("parent.payments")
+  const tc = useTranslations("common")
+  const [open, setOpen] = useState(false)
+  const [events, setEvents] = useState<PaymentTimelineEvent[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    setFailed(false)
+    try {
+      setEvents(await parentApi.getPaymentTimeline(paymentId))
+    } catch {
+      setFailed(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    if (next && events === null && !loading && !failed) void load()
+  }
+
+  const chip = (value: string) =>
+    `inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusToneClasses(
+      presentPaymentStatus(value).tone,
+    )}`
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+      >
+        {tn("history")}
+      </button>
+
+      {open && (
+        <div
+          className="mt-2 rounded-lg border border-border bg-background p-3"
+          data-testid="payment-timeline"
+        >
+          <p className="text-xs font-semibold text-muted-foreground">{tp("historyTitle")}</p>
+
+          {loading && <p className="mt-2 text-xs text-muted-foreground">{tc("loading")}</p>}
+
+          {failed && !loading && (
+            <div className="mt-2 flex items-center gap-3">
+              <p className="text-xs text-red-700 dark:text-red-400">{tc("error")}</p>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="rounded-lg border border-border px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
+              >
+                {tc("retry")}
+              </button>
+            </div>
+          )}
+
+          {!loading && !failed && events !== null && events.length === 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">{tc("none")}</p>
+          )}
+
+          {!loading && !failed && events !== null && events.length > 0 && (
+            <ol className="mt-2 space-y-2">
+              {events.map((event, index) => (
+                <li
+                  key={`${event.kind}-${event.at ?? ""}-${index}`}
+                  className="flex flex-wrap items-center justify-between gap-2"
+                >
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {event.fromStatus && (
+                      <>
+                        <span className={chip(event.fromStatus)}>{event.fromStatus}</span>
+                        <span aria-hidden="true" className="text-muted-foreground">
+                          →
+                        </span>
+                      </>
+                    )}
+                    {event.toStatus ? (
+                      <span className={chip(event.toStatus)}>{event.toStatus}</span>
+                    ) : (
+                      <span className="text-xs text-foreground">{tp("newPayment")}</span>
+                    )}
+                  </div>
+                  <time
+                    className="text-xs text-muted-foreground"
+                    dateTime={event.at ?? undefined}
+                  >
+                    {formatDateTime(event.at, locale)}
+                  </time>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PaymentRow({
   payment,
   locale,
@@ -1033,9 +1158,11 @@ function PaymentRow({
           </p>
           {payment.providerReference && (
             <p className="mt-1 break-all text-xs text-muted-foreground">
-              {tp("reference")}: <span className="font-mono">{payment.providerReference}</span>
+              {tp("reference")}:{" "}
+              <span className="font-mono">{maskProviderReference(payment.providerReference)}</span>
             </p>
           )}
+          <PaymentTimeline paymentId={payment.id} locale={locale} />
         </div>
         <div className="flex items-center gap-3">
           <p className="text-sm font-semibold tabular-nums text-foreground">

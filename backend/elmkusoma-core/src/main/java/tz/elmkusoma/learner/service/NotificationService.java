@@ -133,7 +133,7 @@ public class NotificationService {
         return switch (type) {
             case "ATTENDANCE" -> Boolean.TRUE.equals(prefs.getAttendanceAlerts());
             case "GRADE", "GRADES", "REPORT" -> Boolean.TRUE.equals(prefs.getGradeAlerts());
-            case "FEE", "FEES", "PAYMENT", "PAYMENTS" -> Boolean.TRUE.equals(prefs.getFeeAlerts());
+            case "FEE", "FEES", "PAYMENT", "PAYMENTS", "REFUND", "SUBSCRIPTION" -> Boolean.TRUE.equals(prefs.getFeeAlerts());
             case "ANNOUNCEMENT", "GENERAL" -> Boolean.TRUE.equals(prefs.getGeneralAnnouncements());
             default -> true;
         };

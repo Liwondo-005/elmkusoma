@@ -53,6 +53,7 @@ public class RefundService {
     private final EntitlementRepository entitlementRepository;
     private final AuditLogRepository auditLogRepository;
     private final ReceiptService receiptService;
+    private final PaymentEventNotificationService paymentEventNotificationService;
 
     private static final List<String> OPEN_STATES = List.of(
             RefundRequest.STATUS_REQUESTED, RefundRequest.STATUS_UNDER_REVIEW,
@@ -115,6 +116,7 @@ public class RefundService {
                 .entitlementAction(RefundRequest.ENTITLEMENT_PENDING)
                 .build();
         request = refundRequestRepository.save(request);
+        paymentEventNotificationService.refundStatusChanged(request, payment);
 
         audit(requestedBy, payment, "Refund requested",
                 Map.of("refundId", request.getId().toString(),
@@ -159,6 +161,7 @@ public class RefundService {
         request.setEntitlementAction(revokeEntitlement
                 ? RefundRequest.ENTITLEMENT_REVOKE : RefundRequest.ENTITLEMENT_RETAIN);
         request = refundRequestRepository.save(request);
+        paymentEventNotificationService.refundStatusChanged(request, paymentOf(request));
 
         audit(decidedBy, paymentOf(request), "Refund approved",
                 Map.of("refundId", request.getId().toString(),
@@ -186,6 +189,7 @@ public class RefundService {
         request.setDecidedAt(LocalDateTime.now());
         request.setDecisionNote(note);
         request = refundRequestRepository.save(request);
+        paymentEventNotificationService.refundStatusChanged(request, paymentOf(request));
 
         audit(decidedBy, paymentOf(request), "Refund rejected",
                 Map.of("refundId", request.getId().toString(),
@@ -212,6 +216,7 @@ public class RefundService {
         request.setStatus(RefundRequest.STATUS_PROCESSING);
         request.setRefundReference(refundReference);
         request = refundRequestRepository.save(request);
+        paymentEventNotificationService.refundStatusChanged(request, paymentOf(request));
         audit(actor, paymentOf(request), "Refund sent for processing",
                 Map.of("refundId", request.getId().toString()),
                 Map.of("status", RefundRequest.STATUS_PROCESSING));
@@ -280,6 +285,7 @@ public class RefundService {
         request.setCompletedAt(LocalDateTime.now());
         request.setRefundReference(refundReference != null ? refundReference : request.getRefundReference());
         request = refundRequestRepository.save(request);
+        paymentEventNotificationService.refundStatusChanged(request, payment);
 
         audit(actor, payment, "Refund completed",
                 Map.of("refundId", request.getId().toString(),
@@ -301,6 +307,7 @@ public class RefundService {
         }
         request.setStatus(RefundRequest.STATUS_CANCELLED);
         request = refundRequestRepository.save(request);
+        paymentEventNotificationService.refundStatusChanged(request, paymentOf(request));
         audit(actor, paymentOf(request), "Refund cancelled",
                 Map.of("refundId", request.getId().toString()),
                 Map.of("status", RefundRequest.STATUS_CANCELLED));
@@ -362,6 +369,7 @@ public class RefundService {
         }
         request.setStatus(to);
         request = refundRequestRepository.save(request);
+        paymentEventNotificationService.refundStatusChanged(request, paymentOf(request));
         audit(actor, paymentOf(request), action,
                 Map.of("refundId", request.getId().toString()),
                 Map.of("status", to));
