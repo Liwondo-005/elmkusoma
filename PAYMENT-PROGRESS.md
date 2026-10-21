@@ -6,7 +6,8 @@ real test evidence — not what is planned.
 
 **Baseline:** `main` @ `23d69e87` (synced with `origin/main`) — the original full-suite baseline,
 kept for history.
-**Current:** `main` @ `2c19597f` plus the P-05/S-09/R-07 work recorded in §5.
+**Current:** `main` @ `43da0d8d` (synced with `origin/main`) plus the uncommitted §61
+notification and §45 read-oracle work described in §5 items 9–10.
 **Spec:** `Payment.md`, 1,811 lines, last modified 10-17 01:41.
 
 ---
@@ -122,6 +123,46 @@ Frontend on the same tree: `npx tsc --noEmit` exit 0, `node scripts/check-i18n-k
 one more binding than before, and **no message file was edited to get there**; the retry buttons
 reuse `common.retry`), `npm run build` exit 0.
 
+### Re-verified after the §61 / §45 / correlation work
+
+The §61 notification emitter, the §45 read-oracle fixes and the §58/§71 correlation filter each
+touched production code, so the whole suite was rerun unsharded on the whole working tree:
+
+```
+Command : mvn -o test                          (JAVA_HOME=jdk-21.0.12.1, loadenv-min.ps1)
+Exit    : 0   BUILD SUCCESS   Total time: 20:04 min
+Result  : Tests run: 2478, Failures: 0, Errors: 0, Skipped: 5
+Classes : 198
+```
+
+**Coverage verified, not assumed:** 198 `*Test.java` files under `src/test` and 198 surefire
+reports — none missing, none extra.
+
+**The +22 over the 2456 baseline is fully accounted for**, with no other test having moved:
+
+| Change | Tests |
+|---|---|
+| `PaymentEventNotificationServiceTest` (new — §61) | +12 |
+| `RequestCorrelationFilterTest` (new — §58/§71 correlation) | +7 |
+| `PaymentSpecSecurityCoverageTest` 17 → 19 (§45 unknown-id oracle; correlation wiring) | +2 |
+| `PaymentIdorHardeningTest` 11 → 12 (§61: an inbox row grants no access) | +1 |
+| **total** | **+22 → 2478** |
+
+The same three test classes needed a mock added because `RefundService` and
+`ParentPaymentService` gained a fourth collaborator: `RefundServiceTest` and
+`ParentPaymentServiceTest` both `@InjectMocks`, and `@InjectMocks` silently leaves a
+constructor argument `null` when no matching `@Mock` exists — which surfaced as an NPE on
+`paymentInitiated`/`refundStatusChanged` rather than as a compile error. The mocks are in
+`RefundServiceTest` and `ParentPaymentServiceTest` now. The 5 skips are unchanged and all belong
+to the integration package. No `[ERROR]` line appears anywhere in the run.
+
+Frontend on the same tree: `npx tsc --noEmit` exit 0, `node scripts/check-i18n-keys.mjs` exit 0
+(540 files / 967 bindings), `npm run build` exit 0. `git diff --check` reports no whitespace
+errors (only line-ending warnings). Safety greps clean: no `@Disabled`/`@Ignore`/`skip`/`fixme`
+in the suites, no `assertTrue(true)`, `STAKABA_ALLOW_LIVE` still `false`, no
+`repair`/`baseline`/`dropAll` issued anywhere.
+
+
 ---
 
 ## 1b. Frontend payment surface — verified WIRED (corrected)
@@ -171,6 +212,7 @@ Rehearsed on a disposable database seeded to match production:
 
 **Status: schema DONE, population PENDING.** ``EventBookingService`` records the
 organiser for event tickets next, followed by a per-beneficiary earnings endpoint.
+
 ## 1d. Per-beneficiary earnings - DONE (endpoint, page, sidebar, en/sw)
 
 `EarningsService.summaryForBeneficiary(beneficiaryId, from, to)` and
@@ -191,7 +233,11 @@ person's revenue.
 beneficiary; one beneficiary can never see another's; payments with no beneficiary
 are never attributed to anyone; null beneficiary refused.
 
-**Remaining:** no frontend page consumes `/v1/earnings/me` yet.
+**Delivered end to end:** `app/dashboard/earnings/page.tsx` fetches `GET /v1/earnings/me` and
+renders gross, refunded, commission and provider share; it is linked from the learner, provider
+and institution sidebars with its own `en`/`sw` message keys. It reports no commission rate and
+no net figure rather than inventing either (see A-05).
+
 ## 1e. Bundles / packages - DONE (domain, admin API, catalog, purchase, top-up, admin UI)
 
 ### Audit findings (do not re-derive these)
@@ -323,8 +369,6 @@ Each row was executed and observed in this session. Exit code and counts are rea
 
 ## 1f. Approved business policies - BR-01, BR-02, BR-03
 
-
-
 Bundle **admin UI** is done too: `app/dashboard/admin/bundles/page.tsx` lists this
 institution's bundles with their status, publishes drafts and suspends published ones,
 linked from the admin sidebar. No price field exists on it by design - a bundle's price comes
@@ -338,9 +382,7 @@ verbatim, because "a bundle needs an access duration" is more useful than anythi
 invented client-side.
 
 Creation and item editing are done as well. The page creates a draft, edits one, publishes and
-suspends, and lists this institution's bundles. No price field exists on it by design - a bundle's
-price comes from the approved pricing policy, so accepting one here would create a second,
-ungoverned way to change what a learner pays.
+suspends, and lists this institution's bundles.
 
 Editing needed one thing the admin list could not supply. `update` replaces the bundle's whole
 item set, so an editor that opened without the items would delete every service in the bundle
@@ -349,11 +391,6 @@ purpose. So there is now `GET /v1/institution/bundles/{bundleId}`, institution-s
 same `ownedBundle` check as every other admin call, returning the draft and its items in authored
 order. The editor loads that before opening and will not open at all if the load fails, rather
 than opening an editor it cannot fill in correctly.
-
-The UI mirrors what the server enforces but is not the rule: hiding a button is presentation
-and `BundleAdminController` refuses the call regardless. Server refusals are shown
-verbatim, because "a bundle needs an access duration" is more useful than anything
-invented client-side.
 
 `BundleAdminServiceTest` 10/10; `BundleCatalogControllerTest` 4/4; `BundleGrantServiceTest` 5/5;
 `BundleTopUpServiceTest` 6/6; `BundleRefundPolicyTest` 9/9; tsc 0 errors; i18n exit 0;
@@ -532,8 +569,8 @@ Recorded because they were real and non-obvious:
 
 | Item | Status | Blocker |
 |---|---|---|
-| Full backend suite green | **DONE — re-verified on current code** | 2409 run / 0 failures / 0 errors / 5 skipped, 193/193 test classes — see §1a |
-| Frontend Payments & Transactions nav/dashboards | **PARTIAL** | Verified wired end-to-end — see §1b |
+| Full backend suite green | **DONE — re-verified on current code** | 2478 run / 0 failures / 0 errors / 5 skipped, 198/198 test classes — see §1a |
+| Frontend Payments & Transactions nav/dashboards | **DONE** | Verified wired end-to-end — see §1b; §2a rows UI-01–UI-04 record the residual gaps |
 | Provider/teacher/organizer earnings views | **DONE** | Endpoint + page + sidebar — see §1d |
 | Bundles/packages | **DONE — grant path, admin API, admin UI** | `next build` exit 0; see §1f. Known gap below |
 | Subscription cancellation API | **DONE** | `GET /v1/my/subscriptions` + `POST .../{id}/cancel`, payer-scoped, UI on parent payments — see §1f |
@@ -547,7 +584,28 @@ Recorded because they were real and non-obvious:
 ## 2a. Requirement traceability matrix
 
 Read against `Payment.md` (1811 lines, 90 numbered sections). Every row records what the code
-actually does today, not what a section title implies. "Evidence" is a recorded test run.
+actually does today, not what a section title implies. "Evidence" is a code symbol or a test
+class/method that was actually read.
+
+**Two passes.** The first nine groups below (`F-`, `G-`, `S-`, `B-`, `E-`, `P-`, `R-`, `A-`,
+`D-`) were built in the earlier rounds and cover spec §14–§27, §33, §46–§57 and §59–§63. The
+completion pass then audited every section the first pass had never reached and added ten more
+groups: `UI-` (§28–§31), `RO-` (§32–§42), `AP-`/`AV-` (§43–§45), `RC-` (§56), `AU-` (§58),
+`NT-` (§61–§62), `TC-` (§64–§69), `OP-` (§70–§71) and `AC-` (§83–§86). Before this pass the
+matrix reached about fifteen of the ninety sections; it now reaches every section that states a
+product requirement.
+
+**Status vocabulary.** `DONE` — implemented and evidenced by a cited symbol or test. `PARTIAL` —
+the substantial behaviour exists and is evidenced, with a specific named remainder recorded in
+the row. `MISSING` — the code for it does not exist. `BLOCKED` — correct implementation is
+impossible until an owner decision or an external approval lands. `N/A` — the spec itself scopes
+it out. `NEEDS VERIFICATION` — nobody has confirmed either way. `BROKEN` — exists but behaves
+wrongly. A row is never `DONE` on the strength of a section title.
+
+**Sections that are process, not product.** §72–§81 are the phase gates this record is itself
+executed under; §87 is the format of the final report; §88–§90 are the working rules. They are
+evaluated in the report rather than given rows, because a row saying "followed the process" can
+only ever be self-certified. §82 is discharged by this table existing at all.
 
 ### Payment foundation (spec §14–16, §15 invariants)
 
@@ -711,16 +769,216 @@ The remaining §63 cases are covered through the generic wiring tests
 `CrossOrgAttackTest` for tenant isolation, `PrivilegeEscalationTest` for role fences) rather than
 one test per row; they are not re-listed here to avoid citing the same evidence twice.
 
-**Counts: DONE 61 · PARTIAL 1 · NEEDS VERIFICATION 0 · BLOCKED 5 · N/A 1. MISSING 0, BROKEN 0.**
-Recomputed from the rows themselves, not asserted: 67 ID rows in §2a break down as 61 DONE,
-5 BLOCKED (G-06, G-07, A-05, A-07, D-06), 1 PARTIAL (E-05); plus the single non-ID N/A row
-(bank/card payment methods, §3) = 68. This Decision 1 / Decision 5 / IDOR round changed
-*implementations and evidence* within existing rows — A-06 now owner-approved, B-07 and B-10 and
-S-09 and P-06 re-cited — so **no row changed status and the totals are unchanged**.
+### Unified frontend and UX (spec §28–§31)
 
-`MISSING` is zero because the two UI gaps the audit found (bundle create/edit, refund admin)
-were closed rather than reported. `BROKEN` is zero because the one genuinely broken path found —
-BR-03 rejecting the correct top-up amount at initiation — was fixed.
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| UI-01 | One shared payment module on the existing design system; no per-role duplicate payment application | Shared `frontend/lib/payment-status.ts` (`presentPaymentStatus`, `statusToneClasses`, `isCancellable`), `lib/money.ts`, `lib/csv.ts` shared by every role's page | `frontend/lib/payment-status.ts`; learner/parent/platform-admin/finance pages; no `components/payments` directory exists | PARTIAL |
+| UI-02 | Capabilities mapped onto real existing routes with no duplicate page where an equivalent already exists | Learner, parent and platform-admin payments + finance routes exist; transaction-details, payment-attempts, receipts and orders routes do not; sidebar carries both Finance and Payments | no `payments/[id]` route; `platform-admin-sidebar.tsx:53-54` Finance + Payments | PARTIAL |
+| UI-03 | Area exposes overview, history, details, orders, attempts, receipts, subscriptions, bundles, refunds, earnings, reconciliation, notifications, reports and admin controls | Present: history, purchases, entitlements, bundles, refund dialog, earnings, reconciliation, CSV export, admin controls. Missing: transaction details, attempts and receipts pages; subscription page is a placeholder | `dashboard/subscription/page.tsx` ("unavailable"); `finance/page.tsx` tabs payments/transactions/entitlements/exceptions/catalogue | PARTIAL |
+| UI-04 | Transaction shows reference, order reference, service, payer, beneficiary, amount, currency, method, status and timestamps | `FinancialTransaction` carries providerReference, commission fields, paidAt, receiptNumber; `Payment` has no paymentMethod or orderReference column | `lib/platform-admin-api.ts` `FinancialTransaction`; `parent/domain/Payment.java`; `V178`/`V179__payment_*_attribution.sql` | PARTIAL |
+| UI-05 | Transaction exposes a **status timeline**, not only the current status | Status pill only; no `status_history` or `payment_attempts` table in any migration and no timeline UI | grep `status_history\|payment_attempts` over `db/migration` → none; status pill in `learner/payments/page.tsx` | MISSING |
+| UI-06 | Gateway reference is **masked** where displayed | Full `providerReference` rendered in the parent receipt table; no masking helper anywhere | `parent/payments/page.tsx:1034-1038`; `payment-surfaces.spec.ts` asserts `PSP-REF-9911` visible | MISSING |
+| UI-07 | Receipt, subscription/entitlement, event booking and refund history reachable from the transaction | `receiptNumber` shown inline; backend receipt endpoints exist; no frontend receipt fetch, download or print surface | `ReceiptController.java:48,64,76`; `parent-api.ts:319` (field only); `learner/payments/page.tsx:200` | PARTIAL |
+| UI-08 | Available actions and their eligibility shown | `isCancellable` limits cancel to PENDING/PROCESSING; refund only on COMPLETED; ineligible actions are hidden rather than shown with a reason | `lib/payment-status.ts` `isCancellable`; e2e "a failed cancel leaves the row on screen" | PARTIAL |
+| UI-09 | Payer, student, parent, attendee, provider, organizer and beneficiary never conflated | Payer/recipient split plus per-child grants in the parent view; purchaser/beneficiary attribution migrated | e2e "shows the payer/recipient split and per-child access grants"; `V178`/`V179` | PARTIAL |
+| UI-10 | Loading state | `role="status"` aria-live loader (parent), shared `LoadingState` (learner) | `parent/payments/page.tsx` loader; `components/learner/shared/LoadingState` | DONE |
+| UI-11 | Empty state | Honest empty states, and an explicit explanation when a filter excludes everything | e2e "shows an honest empty state, not a zero-filled dashboard"; parent `noMatchTitle`/`noMatchBody`; `payment-surfaces.spec.ts:360` | DONE |
+| UI-12 | Error state | `role="alert"` errors; a secondary endpoint failure does not blank the primary view | e2e "surfaces a load failure with a retry that refetches"; "an entitlement endpoint failure does not blank the payment history" | DONE |
+| UI-13 | Retry state | Retry buttons refetch on the payment surfaces | `payment-surfaces.spec.ts:194`; `learner/payments/page.tsx:103`, `parent/payments/page.tsx:278`, `earnings/page.tsx:96` | DONE |
+| UI-14 | Pending / verified / failed / cancelled / expired / refund states rendered distinctly and never as paid | `PRESENTATION` map (PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED, REFUNDED — only COMPLETED settled); text + icon, unknown status rendered verbatim | `lib/payment-status.ts`; e2e "renders FAILED and REFUNDED distinctly", "shows an unrecognised status verbatim" | DONE |
+| UI-15 | Disabled actions carry an explanation | Refund dialog disables with `aria-describedby` help text; cancel confirmation explains cancel ≠ refund; plain rows simply hide ineligible actions with no reason | `partial-refund-dialog.tsx`; `subscriptions-section.tsx` `nothingToCancel` | PARTIAL |
+| UI-16 | Pagination and filtering states | Finance pager; search-scope disclosure; backend counts used rather than page sums | `finance/page.tsx` pager + "rows on this page only"; e2e "reports the backend's own record counts, not a page sum" | DONE |
+| UI-17 | No status by colour alone, no fabricated metrics, no success shown for a failure | No page-local totals; CSV export carries no total row; commission and earnings reported "not calculable, never zero" | e2e:405,635 (no total/sum row); e2e:531; earnings page omits profit rather than showing 0 | DONE |
+| UI-18 | Accessible labels, keyboard navigation and clear status text | `role="tablist"`/`role="tab"`/`aria-selected`, `htmlFor` labels, `sr-only` captions, `aria-live` regions | `finance/page.tsx` tabs and labels; `frontend/e2e/accessibility.spec.ts` | DONE |
+| UI-19 | Small mobile screens supported; responsive tables or equivalent mobile layouts | `overflow-x-auto` wrappers on learner, platform-admin and finance tables; parent uses a responsive card grid instead of a table | `overflow-x-auto` ×1/×1/×4; `parent/payments/page.tsx:294` `sm:grid-cols-2`; `responsive.spec.ts` | DONE |
+| UI-20 | Accidental duplicate submission prevented | `initiatePayment` takes an idempotency key, enforced by a partial unique index and gateway replay; **mobile-money send button has no busy guard** | `parent-api.ts:628`; `V170__financial_integrity_*.sql:36-38`; `PaymentGatewayServiceTest.initiate_isIdempotentWhenReferenceAlreadyStored` | PARTIAL |
+| UI-21 | Existing localization conventions followed | Payment pages use `useTranslations` against `en`/`sw` messages; a key checker runs in verification | `frontend/scripts/check-i18n-keys.mjs`; `frontend/messages/en.json`, `sw.json` | DONE |
+
+### Role capabilities (spec §32–§42)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| RO-01 | Student sees own transactions, orders, attempts, receipts, subscriptions, entitlements, paid content, bookings, retries, eligible refund requests and notifications | `MyPurchasesController` (`requireOwnStudent`) + learner payments page + `/v1/my/purchases/access`; no attempts UI, no receipts page, no student refund-request flow | `MyPurchasesController.java`; e2e `returnsOnlyTheCallersOwnPayments` | PARTIAL |
+| RO-02 | A student cannot reach another student's financial records by manipulating an identifier | Own-purchases controller takes no caller-chosen identifier; IDOR tests across learner and parent paths | `MyPurchasesControllerTest.endpoint_takesNoIdentifierThatCouldBeSwappedForSomebodyElses`; `PaymentIdorHardeningTest` | DONE |
+| RO-03 | Student can retry an eligible payment attempt | Parent checkout offers failed → try again (new attempt); the learner page's retry button re-fetches the list only | `parent/payments/page.tsx:724-733` (`retryHint`/`tryAgain`); `learner/payments/page.tsx:103` | PARTIAL |
+| RO-04 | Parent access resolved from authoritative parent–child relationships, never from numeric ID equality | `ParentAuthorizationService.requireChildAccess` + link-integrity tests + child switch reloads server-side | `ParentAuthorizationServiceTest.requireChildAccess_throwsForbidden_whenNotLinked`; `ParentStudentLinkIntegrityTest`; e2e "switching child reloads that child's data" | DONE |
+| RO-05 | Teacher/trainer sees sales, gross revenue, refunds, fees, net earnings, pending/held/available earnings, settled amounts where verified, service-level reports — without unnecessary payer personal data | `GET /v1/earnings/me` + `MyEarningsPage` (gross, refunded, commission, providerShare); no service-level reports; no payouts | `BeneficiaryEarningsController.java` `@PreAuthorize` incl. TEACHER; `dashboard/earnings/page.tsx` | PARTIAL |
+| RO-06 | Organizer sees event transactions, ticket sales, bookings, seat capacity/reservations/utilisation, payment status, refunds, gross revenue, deductions, net earnings, reports | Seats and capacity come from authoritative booking data; no ticket-revenue or net-earnings view for organizers | `EventServiceImpl` summary `maxCapacity`/`currentRegistrations`; `EventController` `GET /{id}/registrations`; event summary page has no revenue | PARTIAL |
+| RO-07 | Provider sees provider-owned service sales, orders, transactions, refunds, commissions, net earnings, bundle performance, refund cases, reports and staff activity | No provider-scoped orders/transactions controller or UI; provider earnings reachable only through the shared `/v1/earnings/me`; provider nav has no Payments entry | no `earning`/`transaction`/`order` match in provider `*Controller.java`; `dashboard-sidebar.tsx` `providerNavSections` | MISSING |
+| RO-08 | Provider Admin restricted to the assigned Provider and explicitly delegated permissions; no cross-provider, global control, gateway secret or platform-wide financial access | Provider-scope security tests + `provider_staff_scope` migration | `ProviderIsolationSecurityTest.providerAdmin_readsForeignEvent_404`, `..._pagedEventList_scopedToOwnEvents`; `V165__provider_staff_scope.sql` | DONE |
+| RO-09 | Institution/College Admin gets institution-scoped transactions, student/cohort summaries, receipts, pending payments, refunds, and earnings only as an approved beneficiary | Backend `GET /v1/institution/earnings/summary` exists; no institution payments/transactions page and no institution-scoped transaction list endpoint | `InstitutionEarningsController.java:34-43`; no frontend consumer of `/v1/institution/earnings` | PARTIAL |
+| RO-10 | NGO/CBO, religious and corporate owners reuse the existing Provider/service-owner model; no redundant financial roles or modules | No NGO/CBO value in the role enum; provider/service-owner model reused | `User.java:87` `Role` enum (13 values); `README-01` §3.1 role table | DONE |
+| RO-11 | Ordinary registered users get authorized access to own purchases, transaction history, receipts, subscriptions and entitlements | `/dashboard/learner/payments` exists; the learner sidebar section carries no Payments entry | `dashboard-sidebar.tsx:320-372` `learnerNavSections` has no payments item; `:295` university section does | PARTIAL |
+| RO-12 | Platform Admin sees transactions, attempts, gateway health, callback exceptions, pricing policies, subscriptions, entitlements, refunds, earnings, allocations, reconciliation, receipts, reports, audit logs and support ops | ADMIN-only `FinancialReportingController` + finance/payments/health pages; missing: payment-attempts UI, refund-request review queue, receipts page, financial summary consumer | `FinancialReportingController.java` `@PreAuthorize hasRole('ADMIN')`; `platform-admin-api.requestPartialRefund` (:1007, POST only); health page `HealthRow` payments | PARTIAL |
+| RO-13 | No permanent Super Admin above Platform Admin, and no separate Finance Staff or Payment Support Staff roles | `User.Role` contains none of SUPER_ADMIN / FINANCE_ADMIN / PAYMENT_SUPPORT; delegation authorities exclude finance | `User.java:87`; `PlatformAdminService.DELEGATION_AUTHORITIES` (no finance authority) | DONE |
+| RO-14 | Every actual role's navigation, accessible records, permitted actions and restrictions documented | Role→workspace→access-boundary table (13 roles) + per-role route inventory + payment map for parent/learner/platform-admin; learner row unverified; teacher/provider/organizer payment actions undocumented | `README-01` §3.1 (L86-99); `README-02` route tables (L400-448); §1b above | PARTIAL |
+| RO-15 | Multi-role users combine only the permissions legitimately granted by those roles and their scopes | `getCombinedPermissions` unions membership permissions, applied to effective memberships in org context | `PermissionService.java:83-89`; `OrganizationContextResolver.java:153` | DONE |
+
+### API inventory and required capabilities (spec §43–§44)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| AP-01 | Endpoint inventory recording route, method, controller, DTOs, service, authn/authz, ownership, validation, transaction boundary, errors, idempotency, audit, tests and frontend consumers | `docs/PAYMENT-API-CONTRACT-DEVELOPER-01.md` | 344-line doc but stale paths (`v1/parents/payments/initiate` vs real `/v1/my/payments/initiate`, `ParentSelfController:308`) and no authz/DTO/transaction/audit/frontend columns; `api-reference.md` lists module prefixes only | PARTIAL |
+| AP-02 | Listing authorized transactions | `ParentSelfController`, `FinancialReportingController` | `GET /v1/my/payments` (:259); `GET /v1/platform-admin/financial/transactions` (:69, class `@PreAuthorize ADMIN`) | DONE |
+| AP-03 | Retrieving a single transaction | `ParentSelfController`, `ReceiptController` | No `GET`-by-id transaction; single read only via `POST /v1/my/payments/{id}/status` (:369, gateway re-query) or `GET .../receipt` (:48) | PARTIAL |
+| AP-04 | Listing orders | `ParentSelfController`, `PlatformAdminController` | No `Order` entity — the `Payment` row is the order record: `GET /v1/my/payments` (:259), `GET /v1/platform-admin/payments` (:313) | DONE |
+| AP-05 | Creating an eligible purchase | `ParentSelfController` | `POST /v1/my/payments/initiate` (:308) → `ParentPaymentService.initiatePayment`; child access enforced (:145); events via `EventBookingService.book` (:123) | DONE |
+| AP-06 | Initiating a payment attempt | `ParentSelfController` | `POST /v1/my/payments/{paymentId}/mobile-money` (:347) → `PaymentGatewayService.initiateCollectionForOwnedPayment` (:86) | DONE |
+| AP-07 | Checking payment status | `ParentSelfController` | `POST /v1/my/payments/{paymentId}/status` (:369) → `PaymentGatewayService.verifyPaymentWithGateway` (:187); the server re-queries the gateway | DONE |
+| AP-08 | Retrying an eligible attempt | `MobileMoneyInitiateRequest`, `PaymentGatewayService` | Route documented "initiating or retrying"; only PENDING retriable; an existing providerReference is replayed (:111-120); `PaymentGatewayServiceTest.initiate_isIdempotentWhenReferenceAlreadyStored` | DONE |
+| AP-09 | Viewing receipts | `ReceiptController` | `GET /v1/parents/payments/{id}/receipt` (:48), `GET /v1/parents/receipts/{number}` (:64), `GET /v1/parents/receipts` (:76), each `requireOwnsOrAdmin` | DONE |
+| AP-10 | Viewing subscriptions | `ParentSelfController` | `GET /v1/my/subscriptions` (:281-287) → `SubscriptionService.listForPayer(userId)` | DONE |
+| AP-11 | Viewing entitlements | `ParentSelfController`, `MyPurchasesController` | `GET /v1/my/children/{studentId}/entitlements` (:518, `requireChildAccess` → 404); `GET /v1/my/purchases/access` (:103); admin `GET /v1/platform-admin/entitlements` | DONE |
+| AP-12 | Requesting a refund | `RefundController` | `POST /v1/parents/payments/{paymentId}/refund-requests` (:47) → `RefundService.requestRefund` (:80), amount ≤ refundable | DONE |
+| AP-13 | Reviewing refunds with proper permissions | `RefundController` | `POST /v1/platform-admin/refunds/{id}/approve\|reject\|complete` (:106,:114,:127) `@PreAuthorize hasRole('ADMIN')`; `PaymentSpecSecurityCoverageTest.aPlatformAdminPassesTheApprovalGate` | DONE |
+| AP-14 | Viewing authorized earnings | `BeneficiaryEarningsController`, `InstitutionEarningsController` | `GET /v1/earnings/me` (:45) → `EarningsService.summaryForBeneficiary(caller)`; `GET /v1/institution/earnings/summary` (:43) | DONE |
+| AP-15 | Viewing reconciliation exceptions | `FinancialReportingController` | `GET /v1/platform-admin/financial/reconciliation/exceptions` (:161) → `ReconciliationService.openExceptions`; `openExceptions_listsOnlyOpenOnes` | DONE |
+| AP-16 | Updating approved pricing policy | `PricingGovernanceController` | Lifecycle only — activate (:71) / retire (:78) via `PricingPolicyAdminService:109,124`; **no endpoint edits policy values** | PARTIAL |
+| AP-17 | Producing authorized reports and exports | `FinancialReportingController`, `PlatformAdminController` | `GET .../financial/transactions/export` (:93, `exportCsv:209`, `EXPORT_LIMIT 10_000`); `GET /v1/platform-admin/export` (:826); both class-level `@PreAuthorize ADMIN` | DONE |
+
+### API validation (spec §45)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| AV-01 | Prices resolved server-side; caller-supplied amount never trusted | `ParentPaymentService.initiatePayment`, `PricingService` | `initiatePayment` uses `PricingService.ResolvedPrice`; `requireAmountMatches:164`; `initiatePayment_usesTheAuthoritativePolicyPrice_notTheCallerAmount` | DONE |
+| AV-02 | Amount and currency validated | `InitiatePaymentRequest`, `PaymentGatewayService` | `@DecimalMin 0.01` / `@DecimalMax 10000000`; currency from policy only; non-TZS refused (:122); `initiate_rejectsNonTzsPayment` | DONE |
+| AV-03 | Order/payment ownership validated server-side | `PaymentGatewayService`, `ParentSelfController` | `requireOwnership:86-90`; `requireChildAccess:145` → 404; `verify_crossParentAccess_isRefusedBeforeAnyGatewayCall` | DONE |
+| AV-04 | Beneficiary eligibility validated | `EventBookingService` | beneficiary set server-side only (:189-190 `organizerId`); **no approved-beneficiary eligibility check exists** on earnings/beneficiary paths | PARTIAL |
+| AV-05 | Event capacity validated | `EventBookingService` | `confirmSeat:236-244` sums held seats against `maxParticipants` under a locked read; `aGroupBookingLargerThanCapacityIsRefusedAtConfirmation` | DONE |
+| AV-06 | Subscription eligibility validated | `SubscriptionService` | `activateFromVerifiedPayment:54-65` requires COMPLETED; `refusesToOpenASubscriptionFromAnUnverifiedPayment` | DONE |
+| AV-07 | Idempotency keys validated where supported | `InitiatePaymentRequest`, `ParentPaymentService` | `@Size(max=128)` key; replay via `findByIdempotencyKeyAndIsDeletedFalse`; unique index `V170__financial_integrity...:36-38`; `initiatePayment_replaysOnTheSameIdempotencyKey...` | DONE |
+| AV-08 | Unexpected state transitions rejected | `RefundService`, `PaymentGatewayService` | `transition`/`OPEN_STATES` guards (:59-96, :136); `lifecycle_cannotSkipReviewStraightToProcessing`; `initiateCollection` refuses non-PENDING (:108-110) | DONE |
+| AV-09 | Permissions enforced for exports and downloads | `FinancialReportingController`, `PlatformAdminController` | class-level `@PreAuthorize hasRole('ADMIN')` covers both export routes (:93, :826); no anonymous download route | DONE |
+| AV-10 | Mass assignment of financial state prevented | `InitiatePaymentRequest`, `RefundController` | request DTOs carry no `status`/`refundedAmount`; `Payment` built server-side (`ParentPaymentService:162-183`); `approve` accepts only note + revokeEntitlement; webhook payload compared, never bound | DONE |
+| AV-11 | Never accepts arbitrary `success=true` / `paid=true` as proof of payment | `PaymentWebhookController`, `StakabaWebhookController` | `X-Webhook-Secret` + amount/currency reconciliation (:48-105); Stakaba endpoint unauthenticated (:63-85) **but** re-verifies via gateway `GET /api/v1/transactions/{ref}`; `webhook_forgedSuccess_apiSaysFailed_neverFulfils` | PARTIAL |
+| AV-12 | Consistent error responses across payment endpoints | `GlobalExceptionHandler`, `ApiResponse` | single `ApiResponse.error` shape for all payment endpoints; `SecurityExceptionHandlingTest` | DONE |
+| AV-13 | Private record existence not leaked — foreign id and unknown id indistinguishable on read paths | `ReceiptController`, `RefundController` (**fixed this round**), `NotificationService` | `anUnknownPaymentIdAndAForeignOneAreIndistinguishable` (receipts, both 404/`Payment not found`); refund-request read now 404 (`RefundController.get`); learner `markAsRead` and event read paths still answer 403-vs-success | PARTIAL |
+
+### Receipts and invoices (spec §56)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| RC-01 | Unique receipt reference | `ReceiptService` | `receiptNumber` derived from the payment id (:131); `@Column(unique=true)`; unique index `V170:167`; `receiptsDifferPerPayment` | DONE |
+| RC-02 | Correct order/transaction association, payer, service, amount, currency, status and dates | `ReceiptService` | `issueFor:54-93` copies `paymentId`/`parentId`/`studentId`/`serviceType`/`amount`/`currency`/`paidAt` from the `Payment` row; refuses non-COMPLETED | DONE |
+| RC-03 | Authorized view, **download and print** of a receipt | `ReceiptController` | three authorized JSON `GET`s only — **no download, PDF or print endpoint**; `frontend/lib/parent-api.ts` has no consumer for `/v1/parents/receipts` | PARTIAL |
+| RC-04 | Receipt verification where supported | `ReceiptController` | `GET /v1/parents/receipts/{receiptNumber}` (:64), still `requireOwnsOrAdmin`; no public verification route (receipts are private by design) | DONE |
+| RC-05 | Refund references recorded against the original receipt | `RefundService`, `ReceiptService` | `completeRefund:282` → `receiptService.recordCreditNote(...)`; `creditNote_keepsTheOriginalReceiptIntact` | DONE |
+| RC-06 | Reissue/correction history preserved | `ReceiptService`, `ReconciliationService` | credit note preserves the original; `raiseReceiptFailure:221-252` records `resolvedBy`/`resolvedAt`/`resolutionNote` for human reissue; **no reissue/version endpoint or table** | PARTIAL |
+| RC-07 | A final paid receipt is never issued for an unverified transaction | `ReceiptService` | `issueFor` refuses any payment that is not COMPLETED; `issueFor_refusesToDocumentMoneyThatWasNeverReceived` | DONE |
+| RC-08 | Receipts never exposed through unrestricted or guessable download URLs | `ReceiptController` | every route `requireOwnsOrAdmin`; a guessed number yields 404 (this round made foreign and unknown identical); no signed/token receipt route exists | DONE |
+
+### Financial audit (spec §58)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| AU-01 | Audit events record actor, action, target and timestamp | `AuditLog` | `user_id`/`user_email`/`user_role`, `action` enum, `entity_type`/`entity_id`/`entity_name`, `created_at`; written by `PaymentGatewayService.audit:456-469` | DONE |
+| AU-02 | Audit events record a **result** | `AuditLog`, `PlatformIntegrationService` | `audit_logs` has no result column — the outcome lives in `oldValues`/`newValues` status (`ParentPaymentService:257-264`) or in `webhook_events.processing_result` via `recordWebhook:216-235`; the `responseStatus` column is never set | PARTIAL |
+| AU-03 | Audit events record **correlation identifiers** | `RequestCorrelationFilter` carries the id for every request; **`audit_logs` still has no correlation column** | the log half is done — `X-Correlation-Id` validated and put in the MDC for the whole chain, echoed to the caller, printed by `logging.pattern.level`, wiring asserted by `everyRequestCarriesACorrelationIdThatIsWiredAheadOfTheSecurityChain`; the row half is not: `audit_logs` has no correlation column (a nullable `V184` would close it), and `PlatformAdminService:828-829` records request method/url only | PARTIAL |
+| AU-04 | Logs protected from tampering and free of unnecessary personal information | `V18__create_audit_tables.sql`, `PlatformIntegrationService` | `audit_logs` is soft-delete like any table — no trigger, no append-only enforcement, no `REVOKE` on UPDATE/DELETE in any migration; the only redaction is `PlatformIntegrationService.redact:343`; no logback masking and no secret-logging test | PARTIAL |
+| AU-05 | History traceable; explicit adjustments instead of silent edits to historical transactions | `RefundService`, `ReconciliationService` | `refunded_amount` accumulated under a row lock (:277); `V171` `chk_refunded_not_overpaid`; `ReconciliationService.resolve` sets resolution fields only; no `.setAmount(` on a settled row in `src/main` | DONE |
+
+### Notifications (spec §61–§62)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| NT-01 | Existing notification infrastructure reused; no parallel system invented | `NotificationService` + `LearnerNotification`; `PaymentEventNotificationService` delegates to it | `PaymentEventNotificationServiceTest.aPaymentInitiatedHeadlineGoesToThePayerAndNobodyElse` verifies the `notifyUser` call; the assembler persists nothing | DONE |
+| NT-02 | **Payment initiated** event supported | `ParentPaymentService.initiatePayment` → `PaymentEventNotificationService.paymentInitiated` | `PaymentEventNotificationServiceTest.aPaymentInitiatedHeadlineGoesToThePayerAndNobodyElse` | DONE |
+| NT-03 | **Payment verified** event supported | `ParentFinancialNotificationAssembler` projects COMPLETED payments into `GET /v1/my/notifications` | `ParentFinancialNotificationAssemblerTest.aCompletedPaymentProjectsPaymentAndReceiptItems`; `ParentFinancialNotificationEndpointTest.aCompletedPaymentForAChildReachesThatParentsInbox` | DONE |
+| NT-04 | **Payment failed** event supported | `ParentFinancialNotificationAssembler.addPaymentItem` renders non-completed statuses HIGH; `PaymentWebhookController:116` sets FAILED | `ParentFinancialNotificationAssemblerTest.aFailedPaymentIsHighPriority` | DONE |
+| NT-05 | **Payment cancelled or expired** event supported | generic status render `ParentFinancialNotificationAssembler:103-119`; `CANCELLED` set at `ParentPaymentService:544` | CANCELLED covered by the code path only — **no test asserts a cancelled/expired payment alert**, and no EXPIRED payment state exists | PARTIAL |
+| NT-06 | **Receipt available** event supported | `ParentFinancialNotificationAssembler.addReceiptItem` ("Receipt Available", stable id `receipt-<paymentId>`) | `ParentFinancialNotificationAssemblerTest.aCompletedPaymentProjectsPaymentAndReceiptItems`; endpoint test asserts the `receipt-` id | DONE |
+| NT-07 | **Subscription activated or expiring** event supported | `PaymentEventNotificationService.subscriptionActivated`/`subscriptionExpired`, called from `SubscriptionService:103,293` | `PaymentEventNotificationServiceTest.anOpeningPeriodIsReportedAsItsOwnEvent`, `aClosingPeriodIsReportedToo`; **no advance "expiring soon" warning exists** | PARTIAL |
+| NT-08 | **Booking confirmed** event supported | "Registration confirmed" at `EventServiceImpl:722,746`; the paid-seat confirm path (`EventBookingService.confirmSeat`, reached from `ParentPaymentService:409`) emits none | `EventLifecycleE2ETest.registration_ConfirmationNotificationCreated`; no notification call in `EventBookingService` | PARTIAL |
+| NT-09 | **Refund status changed** event supported | `RefundService:119,164,192,219,288,310,372` → `PaymentEventNotificationService.refundStatusChanged` | `PaymentEventNotificationServiceTest.eachIntermediateRefundStateIsReportedWithItsOwnHeadline`, `aCompletedPartialRefundIsReportedHereBecauseTheProjectionStaysSilent` | DONE |
+| NT-10 | Duplicate notifications made safe | `PaymentEventNotificationService.notifyOnce` exists-check on (user, target, type, headline); assembler derives on read with ids stable per payment | `theSameHeadlineIsNeverToldTwice`, `aReplayedWebhookStillReachesTheGuardRatherThanFiringTwice`, `theSamePaymentAlwaysProjectsTheSameItemId` | DONE |
+| NT-11 | Existing preference model respected | `NotificationService.isNotificationAllowed` (feeAlerts extended to REFUND and SUBSCRIPTION this round); assembler `financialAlertsEnabled` | `turningFeeAlertsOffRemovesEveryFinancialItem`, `aTurnedOffFeePreferenceSuppressesEveryFinancialItem`, `anAbsentPreferenceStillShowsMoneyRatherThanHidingIt` | DONE |
+| NT-12 | Notifications never independently grant access | `PaymentEventNotificationService` and `NotificationService.notifyUser` write only a `LearnerNotification` row (`NotificationService:45-53`) | `PaymentIdorHardeningTest.aMoneyNotificationOnItsOwnGrantsNoAccess` drives the real emitter against the real database and then proves the family's access did not move: the inbox row exists, the held entitlement keeps its status and expiry, no entitlement was created for the unpaid service, and the quote still reports the same coverage | DONE |
+| NT-13 | `ParentFinancialNotificationAssembler` actually integrated into `ParentDashboardServiceImpl` and surfaced by the API | `ParentDashboardServiceImpl:616` (`getChildNotifications`), `:835` (`getFinancialNotifications`), merged at `ParentSelfController:920` `GET /v1/my/notifications` | `ParentFinancialNotificationEndpointTest` (`@SpringBootTest` + MockMvc); **`getAllChildrenNotifications` (`:749-820`) never calls the assembler** | PARTIAL |
+| NT-14 | Verified links, feeAlerts, preserved assignments/attendance/live classes/announcements, stable deduplicated ids, no financial writes on reads, integration test for the actual API response | assembler + `ParentDashboardServiceImpl.getChildNotifications`; ids derived from the payment id | `ParentFinancialNotificationEndpointTest` (links, feeAlerts, cross-family); `theSamePaymentAlwaysProjectsTheSameItemId`; `itemsAreNeverMarkedReadByTheProjection`; no test asserts assignment/attendance/live-class/announcement preservation | PARTIAL |
+
+### Test coverage (spec §64–§69)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| TC-01 | Baseline commands exist and are documented: backend build/unit/integration, Flyway validation, frontend type check, lint where configured, frontend build, e2e, security, migration | `frontend/package.json` (`build`, `test:e2e`, `check:i18n`); `FlywayMigrationValidationTest`; security and migration suites present | §1a records `mvn -o test`, `npx tsc --noEmit`, `npm run build` and the i18n check with exit codes; **no eslint config exists → lint is N/A** | DONE |
+| TC-02 | Lifecycle tests: verified success, pending, failure, cancellation, timeout | `PaymentGatewayService`, `ParentPaymentService`, `PaymentWebhookController` | `initiate_storesReference_andStaysPending`, `initiate_timeoutFlagsAmbiguous_andRethrowsWithoutCompleting`, `verify_gatewaySaysFailed_marksPaymentFailed`, `verifyPayment_marksCompleteAndGrantsEntitlement`, `parent_cancelOwnPayment_200_cancelled` | DONE |
+| TC-03 | Lifecycle tests: duplicate callbacks, replayed callbacks, unknown references | `PaymentWebhookController` duplicate/replay guards; `PaymentGatewayService.handleStakabaWebhook` | `samePaymentRetry_isIdempotentSuccess`, `providerReferenceReplayAcrossPayments_is409`, `webhook_unknownReference_isAcknowledgedAndIgnored`, `unknownReference_isAcknowledgedWithoutFulfilment` | DONE |
+| TC-04 | Lifecycle tests: amount mismatch, currency mismatch, **incorrect merchant** | callback amount/currency guards (`PaymentWebhookController:86-96`); provider guard `PaymentGatewayService:338` | `amountMismatch_is422AndPendingPreserved`, `currencyMismatch_is422WithNoCompletion`, `verify_amountMismatch_refusesFulfilment`; **no test for incorrect merchant/provider** | PARTIAL |
+| TC-05 | Lifecycle tests: **out-of-order callbacks** | guard exists — FAILED after COMPLETED is ignored (`PaymentWebhookController:115`) | only duplicate-after-completion is tested (`webhook_duplicateDelivery_afterCompletion_isHarmless`); **no payment test exercises late/out-of-order ordering** | PARTIAL |
+| TC-06 | Lifecycle tests: retry and duplicate fulfillment | idempotent verify/fulfil pipeline (`ParentPaymentService.verifyPayment`) | `webhook_verificationInfrastructureFailure_propagatesForRetry`, `verificationInfrastructureFailure_is500SoProviderRetries`, `webhook_duplicateDelivery_afterCompletion_isHarmless`, `verify_alreadyCompleted_isIdempotent_noSecondGatewayCall` | DONE |
+| TC-07 | Lifecycle tests: receipt consistency and notification failure | `ReceiptService`, `ReconciliationService.raiseReceiptFailure`, notification catch-and-log | `issueFor_issuesAReceiptForACompletedPayment`, `verifyPayment_stillCompletesWhenReceiptIssuanceFails`, `raiseReceiptFailure_recordsItButLeavesThePaymentCompleted`, `anInboxFailureNeverBecomesAFailureInTheCaller` | DONE |
+| TC-08 | Lifecycle tests: reconciliation, concurrent attempts, partial-processing recovery | `ReconciliationService`; concurrency locks in booking/refund/grant | `ReconciliationServiceTest` (11 methods), `concurrentConfirmations_neverOversellTheLastSeat`, `concurrentLegacyRefunds_exactlyOneSucceedsAndTheAmountIsNeverDoubled`, `aRejectedGrantLeavesNoEntitlementAndDoesNotLeaveALockHeld` | DONE |
+| TC-09 | Subscription tests: first purchase, renewal before/after expiry, boundaries, persisted duration, concurrency, duplicate callback, expiry scheduler, idempotency, recovery, DB constraints, entitlement correctness | `SubscriptionService`, `CoreScheduler` sweeps, `SubscriptionMigrationConstraintTest` | `activatesFromAVerifiedPayment_usingTheApprovedAccessDuration`, `renewingWhileAPeriodIsLive_chainsTheNewPeriodAfterIt`, `renewalAfterALapseStartsNowRatherThanBackfillingTheGap`, `aPeriodThatEndsNowIsExpiredButOneSecondAwayIsNot`, `concurrentRenewalsAreSerialisedByTheDatabase`, `hasEntitlement_returnsFalse_afterExpiry_evenThoughStatusIsStillActive` | DONE |
+| TC-10 | Event tests: organizer-paid group booking, individual payment, identity, verified seat, invalid payment rejection, duplicate callback, capacity concurrency, cancellation/refund effects, scope | `EventBookingService`, `EventSeatCapacityConcurrencyTest`; organizer-paid flow not implemented (E-05) | `aSeatIsConfirmedOnlyAfterThePaymentIsCompleted`, `aGroupBookingConsumesEverySeatItBuys`, `aSeatIsNotConfirmedWhenThePaymentFailedOrIsStillPending`, `concurrentConfirmations_neverOversellTheLastSeat`, `registrations_CrossUser_ManipulatedUserId_Returns403` | PARTIAL |
+| TC-11 | Frontend tests: role navigation, permission-dependent actions, listing, filtering/pagination, details, receipts, subscription access, refund states | `frontend/e2e/payment-surfaces.spec.ts`, `p0-workspace.spec.ts`, `provider-workspace.spec.ts`, `oversight.spec.ts` | listing/filters/pagination and FAILED/REFUNDED rendering covered; role guards covered; **no e2e for transaction details, receipts or subscription-access gating** (no such surfaces exist to test) | PARTIAL |
+| TC-12 | Frontend tests: loading/empty, errors and retries, mobile, accessibility, no fabricated values, no false success, no unauthorized exposure | `payment-surfaces.spec.ts`, `responsive.spec.ts`, `accessibility.spec.ts` | "shows an honest empty state", "surfaces a load failure with a retry that refetches", "never calls pending paid", "no invented total", "switching child … does not leak the other" | DONE |
+| TC-13 | Regression rules: no test disabled for a green build, no mocked test passed off as a gateway test, no competing builds, per-command results recorded | §1a, §6, §7 above | grep: 0 `@Disabled`/`@Ignore` in backend, 0 `skip`/`fixme`/`.only` in e2e; §7 separates mock from sandbox rungs (G-06 BLOCKED); §6 mandates one Maven build at a time | DONE |
+
+### Reconciliation and operational visibility (spec §70–§71)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| OP-01 | Compare authoritative gateway records with local transactions where the gateway supports it | `PaymentGatewayService.verify` + `StakabaGatewayClientImpl.getTransaction` per payment; **no batch gateway comparison** | `getTransaction_parsesStatusAmountAndCurrency`, `verify_alreadyCompleted_isIdempotent_noSecondGatewayCall`; `CoreScheduler.hourlyReconciliationScan:264` runs a local-only `ReconciliationService.scan()` | PARTIAL |
+| OP-02 | Detect gateway success with missing local fulfillment | `ReconciliationService.scanMissingEntitlements` (COMPLETED payment with no entitlement) | `ReconciliationServiceTest.scan_flagsACompletedPaymentThatGrantedNoEntitlement`; **detection is local-only, not driven by gateway records** | PARTIAL |
+| OP-03 | Detect local success with uncertain gateway outcome | — | `ReconciliationException.TYPE_INCONSISTENT_STATUS` declared (:35) but **never raised by any scan** | MISSING |
+| OP-04 | Detect unknown gateway references | `PaymentGatewayService:330` `log.warn` + `recordWebhook("…Unknown internalReference…")` | `webhook_unknownReference_isAcknowledgedAndIgnored`, `unknownReference_isAcknowledgedWithoutFulfilment`, `verify_unknownGatewayReference_keepsPendingForLater`; **no reconciliation exception type for it** | PARTIAL |
+| OP-05 | Detect amount mismatches | `ReconciliationService.scanAmountInconsistencies` + callback amount guard | `amountMismatch_is422AndPendingPreserved`, `verify_amountMismatch_refusesFulfilment`; the scan itself is untested | DONE |
+| OP-06 | Detect **currency** mismatches | callback-time guard only (`PaymentGatewayService:293`, `PaymentWebhookController:92`) | `currencyMismatch_is422WithNoCompletion`; **`ReconciliationService.scan()` has no currency check** | PARTIAL |
+| OP-07 | Detect stale pending attempts | `ReconciliationService.scanStalePending` (24 h), wired to `CoreScheduler.hourlyReconciliationScan:264` | `scan_flagsAPaymentStuckForOverTwentyFourHours`, `scan_leavesAFreshPendingPaymentAlone` | DONE |
+| OP-08 | Detect duplicate gateway events | `ReconciliationService.scanDuplicateProviderReferences` + callback replay guard | `scan_flagsADuplicateProviderReference`, `providerReferenceReplayAcrossPayments_is409`, `webhook_duplicateDelivery_afterCompletion_isHarmless` | DONE |
+| OP-09 | Detect refund inconsistencies | `ReconciliationService.scanRefundInconsistencies` (over-refund, or REFUNDED with zero refunded) | implementation at `ReconciliationService:146-166`; **no test exercises it** | PARTIAL |
+| OP-10 | Detect **earnings allocation** discrepancies | — | `ReconciliationException.TYPE_FEE_MISMATCH` declared only; **no scan compares `commissionAmount`/`providerShareAmount`** | MISSING |
+| OP-11 | Never silently modify balances to force reconciliation; classify exceptions and recover only through authorized, auditable procedures | `ReconciliationService` (read-and-record only) + `resolve(id,resolvedBy,note)`/`assign`; `FinancialReportingController /v1/platform-admin/financial/reconciliation/*` `@PreAuthorize hasRole('ADMIN')` | `resolve_closesAnExceptionWithANote_andRecordsWho`, `assign_movesAnExceptionToInProgressUnderAnOwner`, `aPlatformAdminCanReadReconciliationExceptions`, `anInstitutionAdminCannotReadReconciliationExceptions` | DONE |
+| OP-12 | Operational visibility across the 12 listed failure classes | logs in `PaymentGatewayService:150,330`, `PaymentWebhookController` `recordWebhook` (:56-125), `ParentPaymentService` fulfillment errors, `ReconciliationService.raise`, `CoreScheduler:80,273`; ops endpoint `GET /v1/platform-admin/webhook-events` (`PlatformAdminController:855`); `infrastructure/monitoring/prometheus.yml` + grafana/otel configs | classes recorded via `PlatformIntegrationService.recordWebhook` (`WebhookEvent`) and reconciliation exceptions; monitoring config files exist | DONE |
+| OP-13 | **Correlation IDs** used in operational logs | `RequestCorrelationFilter` + `logging.pattern.level` | every request gets an `X-Correlation-Id` (inbound id reused only when it matches `[A-Za-z0-9._-]{1,64}`, otherwise replaced, so a hostile header is never echoed or logged), held in the MDC for the whole chain and cleared in `finally`; printed on every log line as `%5p [%X{correlationId:-}]`; registered ahead of the security chain by `SecurityConfig.requestCorrelationFilterRegistration` (`HIGHEST_PRECEDENCE + 1`); `RequestCorrelationFilterTest` 7/7 + `PaymentSpecSecurityCoverageTest.everyRequestCarriesACorrelationIdThatIsWiredAheadOfTheSecurityChain` | DONE |
+| OP-14 | No secrets, auth tokens or unnecessary personal data logged | — | no secret or token values found in log statements (`PaymentWebhookController:55-60` names only; `StakabaGatewayClientImpl:247` names the env var); **emails are logged** (`AuthServiceImpl:341`, `JwtAuthenticationFilter:66`); no test asserts redaction | PARTIAL |
+
+### Acceptance (spec §83–§86)
+
+| Req | Requirement | Implementation | Evidence | Status |
+|---|---|---|---|---|
+| AC-01 | Functional: purchase creation, payment initiation, gateway verification, transaction history and details | `ParentPaymentService.initiatePayment`/`verifyPayment`, `PaymentGatewayService`, `TransactionSearchService` | `initiatePayment_usesTheAuthoritativePolicyPrice_notTheCallerAmount`, `verifyPayment_marksCompleteAndGrantsEntitlement`, `verify_matchingSuccess_completesExactlyOnceViaExistingPipeline`, `search_returnsStoredPaymentsWithoutInventingAny` | DONE |
+| AC-02 | Functional: receipts, subscription activation, entitlement fulfillment, renewal and expiry | `ReceiptService`, `SubscriptionService`, `BundleGrantService`, `CoreScheduler` sweeps | `issueFor_issuesAReceiptForACompletedPayment`, `activatesFromAVerifiedPayment_usingTheApprovedAccessDuration`, `everyItemInTheBundleIsGranted`, `theScheduledSweepMarksRealElapsedRowsExpiredAndLeavesLiveOnesAlone` | DONE |
+| AC-03 | Functional: individual purchases, bundles, event bookings, group payments, seat integrity | `MyPurchasesController`, `BundleGrantService`/`BundleTopUpService`, `EventBookingService`, `EventSeatCapacityConcurrencyTest` | `returnsOnlyTheCallersOwnPayments`, `twoConcurrentPurchasesCannotGrantTheSameServiceTwice`, `aGroupBookingConsumesEverySeatItBuys`, `concurrentRegistrations_neverExceedTheSeatCap` | DONE |
+| AC-04 | Functional: parent/guardian scope, provider/teacher/organizer financial views, pricing governance | `ParentAuthorizationService`, `EarningsService`, `PricingPolicyAdminService` | `ParentAuthorizationServiceTest`, `earningsAreStatedOnlyForTheRecordedBeneficiary`, `oneBeneficiaryCanNeverSeeAnotherBeneficiarysEarnings`, `activate_movesADraftToActiveAndAuditsWhoApprovedIt` | DONE |
+| AC-05 | Functional: refund workflow, reconciliation, notifications | `RefundService`, `BundleRefundService`, `ReconciliationService`, notification services | `RefundServiceTest` (`completeRefund_accumulatesTheRefundedAmountAndReachesREFUNDED`), `ReconciliationServiceTest`, `ParentFinancialNotificationEndpointTest`, `PaymentEventNotificationServiceTest` | DONE |
+| AC-06 | Security: backend authorization, resource ownership, provider/institution scope, parent–child relationships, IDOR protection | `PaymentIdorHardeningTest`, `PaymentSpecSecurityCoverageTest`, `ParentAuthorizationServiceTest`, `ProviderIsolationSecurityTest`, `InstitutionScopeSecurityTest` | `aForeignIdAndAnIdThatNeverExistedAreIndistinguishable`, `anotherParentCannotReadIt`, `aParentCannotQuoteForAChildBelongingToAnotherFamily`, `endpoint_isForbiddenToANonAdmin` | DONE |
+| AC-07 | Security: callback authentication, amount/currency validation, idempotency, safe receipt downloads, export authorization | `PaymentWebhookController`, `StakabaWebhookController`, `ReceiptController`, `FinancialReportingController` | `missingSecret_is401WithNoStateChange`, `amountMismatch_is422AndPendingPreserved`, `samePaymentRetry_isIdempotentSuccess`, `aParentReadsTheReceiptForAPaymentTheyMade`, `endpoint_isForbiddenToANonAdmin` (CSV export) | DONE |
+| AC-08 | Security: refund and payout authorization, audit logging, secret protection | `RefundService` (+`AuditLogRepository`), `BundleRefundService.requirePlatformAdmin`, `StakabaProperties` webhook secret wiring | `institutionAdmin_refundsForeignCompletedPayment_403_statusUnchanged`, `RefundServiceTest` verifies `auditLogRepository.save`, `paymentWebhookSecret_envVarReachesThePropertyControllersRead`; **payouts not implemented (A-05, out of scope)** | PARTIAL |
+| AC-09 | Quality: backend tests, frontend type check, frontend build, integration, security and migration tests | `mvn -o test`; `npx tsc --noEmit`; `npm run build`; `integration/`, `security/`, `FlywayMigrationValidationTest`, `SubscriptionMigrationConstraintTest` | recorded in §1a with exit codes and class counts | DONE |
+| AC-10 | Quality: responsive UI, accessibility, failure recovery, documentation consistency | `frontend/e2e/responsive.spec.ts`, `accessibility.spec.ts`; in-place retry on the payment surfaces | `mobile viewport hides sidebar`, `login page has proper heading structure`, "surfaces a load failure with a retry that refetches"; **documentation is maintained by hand with no consistency check** | PARTIAL |
+| AC-11 | Production readiness reported separately from code completion | §7 nine-rung verification ladder + final verdict below | the ladder records rungs 1–9 individually, "Highest rung actually reached: 2", "It is not ready for money" — mock evidence is never presented as sandbox evidence | DONE |
+| AC-12 | Remaining production-readiness blockers listed rather than claimed | §3 PARTIAL/MISSING/BLOCKED table, §7 rungs 4–9, `docs/PAYMENT-OWNER-DECISIONS.md` summary | G-06, G-07, A-05, A-07, D-06 plus 5 open decisions are explicit; **prod config, secret management, monitoring, operational recovery and security verification are not itemised as blockers** | PARTIAL |
+
+**Counts: DONE 143 · PARTIAL 46 · NEEDS VERIFICATION 0 · BLOCKED 5 · MISSING 5. BROKEN 0.**
+Recomputed from the rows themselves, not asserted. The matrix now holds **199 ID rows** across
+19 groups: the original 67 (`F`,`G`,`S`,`B`,`E`,`P`,`R`,`A`,`D`) contribute 61 DONE, 1 PARTIAL
+(E-05) and 5 BLOCKED (G-06, G-07, A-05, A-07, D-06); the completion pass added **132 rows**
+(`UI` 21, `RO` 15, `AP` 17, `AV` 13, `RC` 8, `AU` 5, `NT` 14, `TC` 13, `OP` 14, `AC` 12)
+contributing 82 DONE, 45 PARTIAL and 5 MISSING. Adding the single non-ID N/A row (bank/card
+payment methods, §3) gives **200 entries**. The 14 §63 security rows above are held as
+cross-referenced evidence for the one section they come from and are deliberately not counted
+again.
+
+**Against the 98 % target: not met, and the arithmetic is the point.**
+- Strict — DONE ÷ ID rows: **143 / 199 = 71.9 %**.
+- Generous — DONE + PARTIAL ÷ ID rows: **189 / 199 = 95.0 %** (counting N/A as satisfied:
+  190 / 200 = 95.0 %).
+
+The earlier record stood at 61/67 = 91.0 % because the first pass only enumerated the sections it
+had already built against. Expanding the denominator to every requirement-bearing section drops
+the figure by ~19 points; that drop is a measurement correction, not a regression. Three rows then
+closed inside the same round — OP-13 and NT-12 to DONE, AU-03 from MISSING to PARTIAL — which is
+why these figures are 71.9/95.0 rather than the 70.9/94.0 the expansion first produced.
+
+`MISSING` is 5 rather than 0 because this pass reports gaps it did not close: UI-05 (status
+timeline), UI-06 (masked gateway reference), RO-07 (provider payment surface), OP-03
+(local-success/gateway-uncertain) and OP-10 (earnings allocation discrepancy). `BROKEN` remains 0
+because the one genuinely broken path found in the earlier pass — BR-03 rejecting the correct
+top-up amount at initiation — was fixed, and because this round's two fixes (receipt and
+refund-request read oracles) closed rather than introduced defects.
+
 
 ---
 
@@ -855,8 +1113,24 @@ Ordered by what blocks a controlled test, not by what is easiest.
    V175. **Two are now answered and implemented — Decision 1 (rules 1–6, no grace period) and
    Decision 5 (type-names-only catalogue picker), recorded at §1e/§2a (A-06, B-07, B-10) and
    defects 6–8 in §2.** Five remain: commission rate (§2 → A-05), component refund valuation
-   (§3 → A-07), organizer-paid booking rules (§4 → E-05), sandbox pricing activation (§6 → G-06),
-   V175 (→ D-06). Items 1, 4, 6, 7 above all still resolve behind those.
+    (§3 → A-07), organizer-paid booking rules (§4 → E-05), sandbox pricing activation (§6 → G-06),
+    V175 (→ D-06). Items 1, 4, 6, 7 above all still resolve behind those.
+9. **§61 notification coverage — DONE.** `PaymentEventNotificationService` emits the four events the
+   derived parent inbox cannot project (payment initiated, subscription activated, subscription
+   expired, refund status changed) through the existing `NotificationService`, so preferences and
+   dedupe still apply. Hooked at `ParentPaymentService.initiatePayment` and
+   `SubscriptionService.create`/`expireElapsed`, and at all seven `RefundService` transitions.
+   Booking confirmed was already emitted at `EventServiceImpl:722,746`; payment
+   verified/failed/cancelled and receipt-available stay derived on read, which is what keeps a
+   replayed callback from telling a parent twice. A refund completion is skipped only when the
+   payment is *fully* refunded, so a completed **partial** refund is still reported. Evidence:
+   `PaymentEventNotificationServiceTest` 12/12.
+10. **§45 read-path existence oracles — DONE.** `ReceiptController` and `RefundController.get`
+    now answer 404 with the same wording for a foreign id and an id that never existed, instead of
+    403 for foreign, which let a caller probe which ids are real. Mutation paths (refund approve/
+    reject, payment cancel) deliberately stay 403. Evidence:
+    `PaymentSpecSecurityCoverageTest.anUnknownPaymentIdAndAForeignOneAreIndistinguishable`.
+
 
 ---
 

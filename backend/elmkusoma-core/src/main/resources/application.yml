@@ -247,3 +247,7 @@ logging:
   level:
     tz.elmkusoma: INFO
     org.springframework.security: WARN
+  pattern:
+    # Every line carries the request's correlation id (see RequestCorrelationFilter),
+    # so a payment or reconciliation line can be tied back to the call that produced it.
+    level: "%5p [%X{correlationId:-}]"

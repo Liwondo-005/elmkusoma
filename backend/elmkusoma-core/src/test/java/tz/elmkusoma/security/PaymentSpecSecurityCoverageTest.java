@@ -61,6 +61,7 @@ class PaymentSpecSecurityCoverageTest {
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private PaymentReceiptRepository paymentReceiptRepository;
     @Autowired private tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
+    @Autowired private org.springframework.context.ApplicationContext applicationContext;
 
     private final List<UUID> createdUsers = new ArrayList<>();
 
@@ -106,6 +107,27 @@ class PaymentSpecSecurityCoverageTest {
 
     // ---------------------------------------------------------- §63 case 2: receipts
 
+    // -------------------------------------------- spec 58 / 71: correlation identifiers
+
+    @Test
+    void everyRequestCarriesACorrelationIdThatIsWiredAheadOfTheSecurityChain() {
+        // Spec 58 and 71 both ask for correlation identifiers in operational logs. A filter
+        // class that is never registered proves nothing, and one registered behind the
+        // security chain never sees the authentication failures it exists to explain - so
+        // what is asserted here is the wiring, not the class.
+        var registration = applicationContext.getBean(
+                "requestCorrelationFilterRegistration",
+                org.springframework.boot.web.servlet.FilterRegistrationBean.class);
+
+        assertTrue(registration.isEnabled(),
+                "the correlation filter must be registered with the container, not disabled");
+        assertTrue(registration.getOrder() < 0,
+                "the id has to be set before the security chain logs anything; order was "
+                        + registration.getOrder());
+        assertTrue(registration.getUrlPatterns().contains("/*"),
+                "every request path, not just the payment ones, must carry the id");
+    }
+
     @Test
     @WithMockUser(roles = "PARENT")
     void aParentReadsTheReceiptForAPaymentTheyMade() throws Exception {
@@ -132,10 +154,29 @@ class PaymentSpecSecurityCoverageTest {
     @Test
     @WithMockUser(roles = "PARENT")
     void anotherParentCannotReadIt() throws Exception {
+        // Refused with the same not-found an unknown id gets, not with a refusal: a refusal here
+        // would tell a caller that this payment id is real and merely not theirs, which is the
+        // existence leak Payment.md section 45 forbids.
         mockMvc.perform(get("/v1/parents/payments/{id}/receipt", dashboardShapedPayment.getId())
                         .requestAttr("userId", strangerUserId)
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "PARENT")
+    void anUnknownPaymentIdAndAForeignOneAreIndistinguishable() throws Exception {
+        mockMvc.perform(get("/v1/parents/payments/{id}/receipt", UUID.randomUUID())
+                        .requestAttr("userId", strangerUserId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Payment not found"));
+
+        mockMvc.perform(get("/v1/parents/payments/{id}/receipt", dashboardShapedPayment.getId())
+                        .requestAttr("userId", strangerUserId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Payment not found"));
     }
 
     @Test

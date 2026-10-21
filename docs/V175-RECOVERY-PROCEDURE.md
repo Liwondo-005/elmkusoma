@@ -6,7 +6,7 @@ Nothing in this document has been executed against a shared database. `flyway_sc
 has never been edited, deleted, baselined or repaired. The application has never been pointed at
 `elmkusoma` in a way that would trigger a Flyway repair.
 
-**Prepared:** 2026-10-20 · **Repo:** `main` @ `9391b424` · **Migration chain:** V1 → V183
+**Prepared:** 2026-10-20 · **Repo:** `main` @ `43da0d8d` · **Migration chain:** V1 → V183
 
 ---
 

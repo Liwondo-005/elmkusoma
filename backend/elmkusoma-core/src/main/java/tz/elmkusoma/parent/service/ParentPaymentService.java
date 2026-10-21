@@ -47,6 +47,7 @@ public class ParentPaymentService {
     private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
     private final tz.elmkusoma.bundle.service.BundleGrantService bundleGrantService;
     private final tz.elmkusoma.bundle.service.BundleTopUpService bundleTopUpService;
+    private final PaymentEventNotificationService paymentEventNotificationService;
 
     /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
      * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
@@ -184,6 +185,10 @@ public class ParentPaymentService {
         log.info("Payment initiated: {} for student {} amount {} {} (policy {} v{})",
                 payment.getId(), studentId, net, serviceType,
                 resolved.policyKey(), resolved.policyVersion());
+        // The derived inbox is silent about PENDING rows on purpose, so without this the payer
+        // would hear nothing at all until the gateway answered. Reports only: it touches no
+        // entitlement, and a failure here never fails the payment that was just written.
+        paymentEventNotificationService.paymentInitiated(payment);
         return payment;
     }
 
@@ -435,7 +440,9 @@ public class ParentPaymentService {
             return;
         }
         try {
-            subscriptionService.activateFromVerifiedPayment(payment, entitlement);
+            tz.elmkusoma.subscription.domain.Subscription opened =
+                    subscriptionService.activateFromVerifiedPayment(payment, entitlement);
+            paymentEventNotificationService.subscriptionActivated(opened);
         } catch (RuntimeException ex) {
             log.error("Subscription activation failed for completed payment {} (serviceType={}); "
                             + "payment is NOT rolled back and the entitlement stands",

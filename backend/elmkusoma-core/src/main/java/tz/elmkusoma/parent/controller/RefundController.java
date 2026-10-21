@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +32,7 @@ import java.util.UUID;
  */
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Refunds")
 public class RefundController {
 
@@ -80,8 +82,12 @@ public class RefundController {
                 || userId.equals(refund.getDecidedBy())
                 || userId.equals(payment.getParentId());
         if (!party) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "You are not a party to this refund request");
+            // Answered exactly as an id that was never issued would be. Refusing a known id with
+            // a refusal and an unknown one with a not-found would let these endpoints be walked
+            // to discover which refund requests exist; both must look the same (Payment.md 45).
+            log.warn("IDOR blocked: user {} attempted to read refund {} they are not party to",
+                    userId, refundId);
+            throw new ResourceNotFoundException("Refund request not found");
         }
         return ResponseEntity.ok(ApiResponse.success(refund));
     }

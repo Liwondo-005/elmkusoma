@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,9 +28,15 @@ import java.util.UUID;
  * <p>A receipt documents money that was actually received, so it is only ever returned for a
  * COMPLETED payment. Access is ownership-checked on the payment: knowing or guessing a receipt
  * number is not authorisation, and a parent may only read receipts for payments they made.</p>
+ *
+ * <p>Refusals on this controller answer with the same not-found an id that was never issued
+ * would get, not with a refusal. A foreign payment id and a made-up one are the same answer, so
+ * these endpoints cannot be walked to discover which payment or receipt identifiers exist -
+ * which is what Payment.md section 45 means by avoiding a leak of private record existence.</p>
  */
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Receipts")
 public class ReceiptController {
 
@@ -46,7 +53,7 @@ public class ReceiptController {
         Payment payment = paymentRepository.findById(paymentId)
                 .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
-        requireOwnsOrAdmin(request, payment.getParentId());
+        requireOwnsOrAdmin(request, payment.getParentId(), "Payment not found");
 
         PaymentReceipt receipt = receiptService.findByPayment(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -62,7 +69,7 @@ public class ReceiptController {
         PaymentReceipt receipt = paymentReceiptRepository
                 .findByReceiptNumberAndIsDeletedFalse(receiptNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Receipt not found"));
-        requireOwnsOrAdmin(request, receipt.getParentId());
+        requireOwnsOrAdmin(request, receipt.getParentId(), "Receipt not found");
         return ResponseEntity.ok(ApiResponse.success(receipt));
     }
 
@@ -84,7 +91,15 @@ public class ReceiptController {
                         ownerIds)));
     }
 
-    private void requireOwnsOrAdmin(HttpServletRequest request, UUID ownerUserId) {
+    /**
+     * @param notFoundMessage the exact wording the caller already gets for an id that does not
+     *                         exist. It is passed in rather than fixed here because the two
+     *                         call sites address different identifier spaces, and both must
+     *                         answer a foreign id identically to an unknown one or the message
+     *                         itself becomes the oracle the status code no longer is.
+     */
+    private void requireOwnsOrAdmin(HttpServletRequest request, UUID ownerUserId,
+                                    String notFoundMessage) {
         UUID userId = currentUserId(request);
         if (request.isUserInRole("ADMIN")) {
             return;
@@ -108,8 +123,9 @@ public class ReceiptController {
         }
         // A payment with no parent record at all belongs to a staff or teacher ticket and is
         // readable by the platform admin and nobody else.
-        throw new org.springframework.security.access.AccessDeniedException(
-                "You may only read your own receipts");
+        log.warn("IDOR blocked: user {} attempted to read a receipt owned by {}",
+                userId, ownerUserId);
+        throw new ResourceNotFoundException(notFoundMessage);
     }
 
     private UUID currentUserId(HttpServletRequest request) {

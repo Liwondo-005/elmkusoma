@@ -47,6 +47,9 @@ class SubscriptionServiceTest {
     @Mock
     private ParentRepository parentRepository;
 
+    @Mock
+    private tz.elmkusoma.parent.service.PaymentEventNotificationService paymentEventNotificationService;
+
     private SubscriptionService service;
 
     @BeforeEach
@@ -56,7 +59,8 @@ class SubscriptionServiceTest {
         org.mockito.Mockito.lenient()
                 .when(parentRepository.findByIdForUpdate(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(Optional.of(new tz.elmkusoma.parent.domain.Parent()));
-        service = new SubscriptionService(subscriptionRepository, auditLogRepository, parentRepository);
+        service = new SubscriptionService(subscriptionRepository, auditLogRepository, parentRepository,
+                paymentEventNotificationService);
     }
 
     private Payment paidPayment(Integer accessDays) {

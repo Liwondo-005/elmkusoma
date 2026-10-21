@@ -4,9 +4,11 @@ One consolidated request. Every item below is something `Payment.md` explicitly 
 or a commercial rule the code cannot infer. Each lists the exact choice, the proposed default, and
 what it costs if the default is accepted or refused.
 
-Nothing here has been implemented. No rate, window, grace period or payer rule was assumed.
+**Decisions 1 and 5 have been accepted and are implemented** (entitlement expiry rules, and the
+type-names-only catalogue picker). **No rate, window, grace period or payer rule was assumed for
+the five decisions that are still open.**
 
-**Prepared:** 2026-10-20 · **Repo:** `main` @ `9391b424` · **Spec:** `Payment.md`
+**Prepared:** 2026-10-20 · **Repo:** `main` @ `43da0d8d` · **Spec:** `Payment.md`
 
 ---
 

@@ -33,4 +33,16 @@ public interface LearnerNotificationRepository extends JpaRepository<LearnerNoti
 
     List<LearnerNotification> findByTargetIdAndNotificationTypeAndIsDeletedFalse(
             UUID targetId, String notificationType);
+
+    /**
+     * Idempotency guard for a repeated or re-run payment event (Payment.md section 61).
+     *
+     * <p>Scoped by headline as well as by target and type because one target legitimately
+     * produces several distinct headlines: a refund passes through review, approval and
+     * processing, and each is its own event worth telling the payer about. What must never
+     * happen is the same event being told twice - a retried webhook, a replayed idempotency
+     * key or a sweep that runs again all reach this check and stop there.</p>
+     */
+    boolean existsByUserIdAndTargetIdAndNotificationTypeAndTitleAndIsDeletedFalse(
+            UUID userId, UUID targetId, String notificationType, String title);
 }

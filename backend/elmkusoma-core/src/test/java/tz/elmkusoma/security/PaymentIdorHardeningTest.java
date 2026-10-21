@@ -22,15 +22,19 @@ import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.parent.domain.Entitlement;
 import tz.elmkusoma.parent.domain.Parent;
 import tz.elmkusoma.parent.domain.ParentStudentLink;
+import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.repository.EntitlementRepository;
 import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
+import tz.elmkusoma.parent.repository.PaymentRepository;
+import tz.elmkusoma.parent.service.PaymentEventNotificationService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.testutil.TestDataSeeder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,8 +78,11 @@ class PaymentIdorHardeningTest {
     @Autowired private EntitlementRepository entitlementRepository;
     @Autowired private BundleRepository bundleRepository;
     @Autowired private BundleItemRepository bundleItemRepository;
+    @Autowired private PaymentRepository paymentRepository;
+    @Autowired private PaymentEventNotificationService paymentEventNotificationService;
 
     private final List<UUID> createdUsers = new ArrayList<>();
+    private final List<Payment> createdPayments = new ArrayList<>();
 
     private UUID institutionId;
     private UUID myUserId;
@@ -143,6 +150,7 @@ class PaymentIdorHardeningTest {
     void tearDown() {
         bundleItemRepository.deleteAll();
         bundleRepository.deleteAll();
+        paymentRepository.deleteAll(createdPayments);
         entitlementRepository.deleteAll();
         notificationRepository.deleteAll(List.of(myNotification, theirNotification));
         linkRepository.deleteAll();
@@ -309,6 +317,59 @@ class PaymentIdorHardeningTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.fullyCovered").value(true));
+    }
+
+    // ------------------------------------- a notification can never open a door by itself
+
+    @Test
+    @WithMockUser(roles = "PARENT")
+    void aMoneyNotificationOnItsOwnGrantsNoAccess() throws Exception {
+        // Spec 61 asks that notifications never independently grant access. That property is
+        // only worth asserting if the inbox write is driven through the real service against
+        // the real database, because the interesting failure is a side effect nobody wrote
+        // deliberately - an entitlement row, a status flip, a seat - rather than the alert.
+        //
+        // The service reached here is one the parent cannot call over HTTP. The point is not
+        // that an attacker can emit an alert; it is that emitting one changes nothing about
+        // what the family can reach.
+        UUID uncoveredService = UUID.randomUUID();
+        Entitlement heldBefore = entitlementRepository.findAll().stream()
+                .filter(entitlement -> coveredService.equals(entitlement.getServiceId()))
+                .findFirst().orElseThrow();
+
+        Payment payment = paymentRepository.saveAndFlush(withInstitution(Payment.builder()
+                .parentId(me.getId())
+                .amount(new BigDecimal("15000"))
+                .currency("TZS")
+                .serviceType("COURSE_ACCESS")
+                .serviceId(uncoveredService)
+                .status("COMPLETED")
+                .build(), institutionId));
+        createdPayments.add(payment);
+
+        paymentEventNotificationService.paymentInitiated(payment);
+
+        assertTrue(notificationRepository.existsByUserIdAndTargetIdAndNotificationTypeAndTitleAndIsDeletedFalse(
+                        myUserId, payment.getId(), PaymentEventNotificationService.TYPE_PAYMENT,
+                        PaymentEventNotificationService.TITLE_PAYMENT_INITIATED),
+                "the payer must actually be told about the payment, or this proves nothing");
+
+        // Access is still read from the entitlement, and only from the entitlement.
+        mockMvc.perform(get("/v1/bundles/{id}/quote", bundle.getId())
+                        .requestAttr("userId", myUserId)
+                        .param("studentId", myChild.getId().toString())
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.fullyCovered").value(true));
+
+        Entitlement heldAfter = entitlementRepository.findById(heldBefore.getId()).orElseThrow();
+        assertTrue("ACTIVE".equals(heldAfter.getStatus())
+                        && heldBefore.getExpiresAt().equals(heldAfter.getExpiresAt()),
+                "an inbox row must not extend, shorten or revoke access that already exists");
+
+        assertTrue(entitlementRepository.findAll().stream()
+                        .noneMatch(entitlement -> uncoveredService.equals(entitlement.getServiceId())),
+                "writing an inbox row must not create an entitlement for anything");
     }
 
     // ------------------------------------------------------------------ helpers

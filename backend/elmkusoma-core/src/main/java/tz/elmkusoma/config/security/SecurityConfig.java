@@ -3,6 +3,7 @@ package tz.elmkusoma.config.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -143,6 +144,22 @@ public class SecurityConfig {
         FilterRegistrationBean<JwtRequestAttributeFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(filter);
         registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * Correlation id filter. Unlike the JWT filters this one is deliberately registered
+     * standalone and kept out of the security chain: it has to cover the chain's own
+     * logging and requests that never reach authentication, and because it is not a
+     * bean of type {@code Filter} the container cannot register it a second time.
+     * Order +1 puts it after the encoding filter and ahead of the security chain (-100).
+     */
+    @Bean
+    public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilterRegistration() {
+        FilterRegistrationBean<RequestCorrelationFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new RequestCorrelationFilter());
+        registration.addUrlPatterns("/*");
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
         return registration;
     }
 
