@@ -22,6 +22,7 @@ import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.event.domain.Replay;
 import tz.elmkusoma.event.repository.ReplayRepository;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.learning.domain.Lesson;
@@ -95,6 +96,7 @@ public class LiveClassServiceImpl implements LiveClassService {
      * of the private object-storage location.
      */
     private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
+    private final tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
 
     /**
      * Runs each expiry in its own transaction so one failing session cannot abort the rest of
@@ -399,6 +401,17 @@ public class LiveClassServiceImpl implements LiveClassService {
         LiveClass liveClass = liveClassRepository.findById(liveClassId)
                 .filter(lc -> lc.getTeacherId().equals(teacherId) && !lc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
+
+        // Delivery gate 1: starting a session delivers the service to learners, so the class
+        // must carry Platform Admin approval — SCHEDULED alone never authorized delivery.
+        if (!LiveClass.PublicationStatus.APPROVED.name().equals(liveClass.getPublicationStatus())
+                && !LiveClass.PublicationStatus.PUBLISHED.name().equals(liveClass.getPublicationStatus())) {
+            throw new ForbiddenException(
+                    "Only platform-approved live classes can be started. Current publication status: "
+                            + liveClass.getPublicationStatus());
+        }
+        // Delivery gate 2: the teacher themselves must hold formal verification.
+        teacherVerificationStateService.requireTeacherVerifiedByTeacherRow(teacherId);
 
         if (!LiveClassStatus.SCHEDULED.name().equals(liveClass.getStatus())) {
             throw new IllegalArgumentException("Only SCHEDULED classes can be started. Current status: " + liveClass.getStatus());

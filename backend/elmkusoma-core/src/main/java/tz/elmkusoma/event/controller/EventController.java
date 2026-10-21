@@ -24,9 +24,25 @@ import java.util.UUID;
 public class EventController {
 
     private final EventService eventService;
+    private final tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
 
-    public EventController(EventService eventService) {
+    public EventController(EventService eventService,
+                           tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService) {
         this.eventService = eventService;
+        this.teacherVerificationStateService = teacherVerificationStateService;
+    }
+
+    /**
+     * Teacher publish/delivery gate. Only teachers are subject to it (the guard exempts
+     * other roles); DRAFT work is never gated, so provisional teachers keep full access
+     * to content preparation.
+     */
+    private void gateTeacherPublish(HttpServletRequest request, String requestedStatus) {
+        if (requestedStatus != null
+                && tz.elmkusoma.event.domain.EventStatus.PUBLISHED
+                        == tz.elmkusoma.event.domain.EventStatus.fromString(requestedStatus)) {
+            teacherVerificationStateService.requirePublishAllowed(getUserId(request));
+        }
     }
 
     @GetMapping
@@ -137,6 +153,7 @@ public class EventController {
         UUID userId = getUserId(httpRequest);
         // §48: provider_id is server-authoritative on create — never trusted from the client
         request.setProviderId(resolveCreatedProviderId(request.getProviderId(), httpRequest));
+        gateTeacherPublish(httpRequest, request.getStatus());
         EventResponse event = eventService.createEvent(institutionId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Event created", event));
@@ -152,6 +169,7 @@ public class EventController {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
+        gateTeacherPublish(httpRequest, request.getStatus());
         EventResponse event = eventService.updateEvent(id, request);
         return ResponseEntity.ok(ApiResponse.success("Event updated", event));
     }
@@ -235,6 +253,7 @@ public class EventController {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
+        teacherVerificationStateService.requirePublishAllowed(getUserId(httpRequest));
         EventResponse event = eventService.publishEvent(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Event published", event));
     }
@@ -265,6 +284,8 @@ public class EventController {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
+        // Going live delivers the event to its audience — same gate as publishing.
+        teacherVerificationStateService.requirePublishAllowed(getUserId(httpRequest));
         EventResponse event = eventService.startLiveEvent(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Event started live", event));
     }

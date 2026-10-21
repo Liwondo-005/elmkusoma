@@ -131,7 +131,11 @@ public class TeacherServiceImpl implements TeacherService {
 
     @Override
     public TeacherResponse updateTeacher(UUID institutionId, UUID teacherId, TeacherRequest request) {
-        Teacher teacher = teacherRepository.findByIdAndInstitutionId(teacherId, institutionId)
+        // An independent teacher (no institution context) may still manage their own row;
+        // affiliated teachers remain scoped exactly as before.
+        Teacher teacher = (institutionId == null
+                ? teacherRepository.findById(teacherId).filter(t -> t.getInstitutionId() == null)
+                : teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
 
         if (request.getEmployeeNumber() != null) teacher.setEmployeeNumber(request.getEmployeeNumber());

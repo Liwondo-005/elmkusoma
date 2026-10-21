@@ -74,6 +74,9 @@ class LiveClassServiceTest {
     // AudienceTargetGuard has its own tests. An absent mock would leave the dependency null and
     // every create would NPE rather than exercise the code under test.
     @Mock private tz.elmkusoma.common.AudienceTargetGuard audienceTargetGuard;
+    // The teacher-verification gate has its own integration suite; an absent mock would leave
+    // the dependency null and every startSession would NPE rather than test session lifecycle.
+    @Mock private tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
 
     @InjectMocks
     private LiveClassServiceImpl liveClassService;
@@ -1138,6 +1141,10 @@ class LiveClassServiceTest {
                 .scheduledAt(LocalDateTime.now().plusDays(1))
                 .durationMinutes(60)
                 .status(LiveClassStatus.SCHEDULED.name())
+                // startSession delivers to learners, so its fixtures carry Platform approval;
+                // the publication gate itself has no dedicated test here (see the
+                // TeacherVerificationGateSecurityTest integration suite).
+                .publicationStatus(LiveClass.PublicationStatus.PUBLISHED.name())
                 .maxParticipants(50)
                 .subjectId(UUID.randomUUID())
                 .sessionType(LiveClassSessionType.LECTURE)

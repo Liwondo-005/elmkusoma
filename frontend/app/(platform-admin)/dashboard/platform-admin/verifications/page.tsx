@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState, useCallback } from "react"
-import { CheckCircle, XCircle, Loader2, ShieldCheck, Plus, MessageSquareWarning } from "lucide-react"
+import { CheckCircle, XCircle, Loader2, ShieldCheck, Plus, MessageSquareWarning, Ban, RotateCcw, UserCog } from "lucide-react"
 import { platformAdminApi, type VerificationSummary } from "@/lib/platform-admin-api"
 import { formatDateTime } from "@/lib/format-date"
 import { useLocale } from "@/hooks/use-locale"
@@ -23,6 +23,9 @@ export default function VerificationsPage() {
   const [documents, setDocuments] = useState("")
   const [submitNotes, setSubmitNotes] = useState("")
   const [reviewNotes, setReviewNotes] = useState("")
+  const [showTeacherTool, setShowTeacherTool] = useState(false)
+  const [teacherUserId, setTeacherUserId] = useState("")
+  const [teacherReason, setTeacherReason] = useState("")
 
   const load = useCallback(() => {
     setLoading(true); setError(null)
@@ -55,6 +58,33 @@ export default function VerificationsPage() {
     } finally { setBusy(null) }
   }
 
+  async function setTeacherState(action: "suspend" | "reactivate") {
+    const userId = teacherUserId.trim()
+    if (!userId) { setError(t("verifications.teacherIdRequired")); return }
+    setBusy(`teacher-${action}`); setError(null); setFlash(null)
+    try {
+      if (action === "suspend") {
+        await platformAdminApi.suspendTeacherVerification(userId, teacherReason.trim() || undefined)
+        setFlash(t("verifications.teacherSuspendedFlash"))
+        setItems(prev => prev.filter(x => !(x.entityType === "TEACHER" && x.entityId === userId)))
+      } else {
+        await platformAdminApi.reactivateTeacherVerification(userId, teacherReason.trim() || undefined)
+        setFlash(t("verifications.teacherReactivatedFlash"))
+      }
+      setTeacherReason("")
+    } catch (e: any) { setError(e.message) } finally { setBusy(null) }
+  }
+
+  /** One-click suspension from a pending teacher row; the shared reviewer-notes field is the reason. */
+  async function suspendFromRow(v: VerificationSummary) {
+    setBusy(v.id); setError(null); setFlash(null)
+    try {
+      await platformAdminApi.suspendTeacherVerification(v.entityId, reviewNotes.trim() || undefined)
+      setFlash(t("verifications.teacherSuspendedFlash"))
+      setItems(prev => prev.filter(x => x.id !== v.id))
+    } catch (e: any) { setError(e.message) } finally { setBusy(null) }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!entityId.trim()) { setError("Entity ID is required"); return }
@@ -79,9 +109,14 @@ export default function VerificationsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("verifications.pendingVerifications")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("verifications.reviewAndApprovePending")}</p>
         </div>
-        <button onClick={() => setShowSubmit((s) => !s)} className="inline-flex items-center gap-2 self-start rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:self-center">
-          <Plus className="size-4" /> Submit request
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowSubmit((s) => !s)} className="inline-flex items-center gap-2 self-start rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:self-center">
+            <Plus className="size-4" /> Submit request
+          </button>
+          <button onClick={() => setShowTeacherTool((s) => !s)} className="inline-flex items-center gap-2 self-start rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted sm:self-center">
+            <UserCog className="size-4" /> {t("verifications.teacherToolTitle")}
+          </button>
+        </div>
       </div>
 
       {flash && <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{flash}</div>}
@@ -108,6 +143,25 @@ export default function VerificationsPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {showTeacherTool && (
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <h2 className="text-sm font-semibold text-foreground">{t("verifications.teacherToolTitle")}</h2>
+          <p className="text-xs text-muted-foreground">{t("verifications.teacherToolHint")}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input value={teacherUserId} onChange={(e) => setTeacherUserId(e.target.value)} placeholder={t("verifications.teacherUserIdPlaceholder")} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            <input value={teacherReason} onChange={(e) => setTeacherReason(e.target.value)} placeholder={t("verifications.reasonPlaceholder")} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setTeacherState("suspend")} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">
+              {busy === "teacher-suspend" ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />} {t("verifications.suspendAction")}
+            </button>
+            <button type="button" onClick={() => setTeacherState("reactivate")} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-lg border border-green-200 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50">
+              {busy === "teacher-reactivate" ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />} {t("verifications.reactivateAction")}
+            </button>
+          </div>
+        </div>
       )}
 
       {loading ? (
@@ -139,6 +193,10 @@ export default function VerificationsPage() {
                     <MessageSquareWarning className="size-3" /> Request changes</button>
                   <button onClick={() => review(v, "REJECTED")} disabled={busy !== null} className="inline-flex items-center gap-1 rounded-xl border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">
                     <XCircle className="size-3" /> {t("verifications.reject")}</button>
+                  {v.entityType === "TEACHER" && (
+                    <button onClick={() => suspendFromRow(v)} disabled={busy !== null} className="inline-flex items-center gap-1 rounded-xl border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">
+                      <Ban className="size-3" /> {t("verifications.suspendRow")}</button>
+                  )}
                 </div>
               </div>
             </div>

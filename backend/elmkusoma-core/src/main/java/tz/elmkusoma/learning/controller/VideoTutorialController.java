@@ -31,6 +31,7 @@ public class VideoTutorialController {
     private final VideoTutorialService videoTutorialService;
     private final tz.elmkusoma.learning.service.ResourceAnalyticsService resourceAnalyticsService;
     private final tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
+    private final tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
 
     @PostMapping("/attach-recording")
     @Operation(summary = "Attach a live recording to the video tutorial library")
@@ -136,6 +137,8 @@ public class VideoTutorialController {
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") String userId,
             @RequestAttribute("userRole") String userRole) {
+        // Teacher publish gate (role-aware, fails closed); admins keep their governance path.
+        teacherVerificationStateService.requirePublishAllowed(userId);
         VideoTutorialResponse response = videoTutorialService.publishVideoTutorial(videoTutorialId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Video tutorial published successfully", response));
     }

@@ -34,6 +34,17 @@ public class LearningController {
     private final LearningService learningService;
     private final StudentRepository studentRepository;
     private final ParentStudentLinkRepository parentStudentLinkRepository;
+    private final tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
+
+    /**
+     * Teacher publish gate for lessons. Only teachers are subject to it (other roles keep
+     * their governance paths); drafts are never gated.
+     */
+    private void gateTeacherPublish(UUID userId, boolean publishing) {
+        if (publishing) {
+            teacherVerificationStateService.requirePublishAllowed(userId);
+        }
+    }
 
     @PostMapping("/lessons")
     @Operation(summary = "Create a new lesson")
@@ -43,6 +54,7 @@ public class LearningController {
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
             @Valid @RequestBody LessonRequest request) {
+        gateTeacherPublish(userId, Boolean.TRUE.equals(request.getIsPublished()));
         LessonResponse response = learningService.createLesson(institutionId, request, userId, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Lesson created", response));
@@ -58,6 +70,7 @@ public class LearningController {
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole,
             @RequestAttribute("userId") UUID userId) {
+        gateTeacherPublish(userId, Boolean.TRUE.equals(request.getIsPublished()));
         LessonResponse response = learningService.updateLesson(id, request, institutionId, userEmail, userRole, userId);
         return ResponseEntity.ok(ApiResponse.success("Lesson updated", response));
     }
@@ -70,7 +83,9 @@ public class LearningController {
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, String> body) {
+        gateTeacherPublish(userId, isPublishedStatus(body.get("status")));
         learningService.setLessonStatus(id, body.get("status"), institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Lesson status updated", null));
     }
@@ -94,9 +109,15 @@ public class LearningController {
             @PathVariable UUID id,
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
-            @RequestAttribute("userRole") String userRole) {
+            @RequestAttribute("userRole") String userRole,
+            @RequestAttribute("userId") UUID userId) {
+        gateTeacherPublish(userId, true);
         LessonResponse response = learningService.setLessonStatus(id, "PUBLISHED", institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Lesson published", response));
+    }
+
+    private static boolean isPublishedStatus(String status) {
+        return status != null && "PUBLISHED".equalsIgnoreCase(status.trim());
     }
 
     @PostMapping("/lessons/{id}/unpublish")

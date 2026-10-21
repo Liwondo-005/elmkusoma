@@ -11,4 +11,6 @@ public class VerificationSubmitRequest {
     private UUID submittedBy;
     private String documents;
     private String notes;
+    /** Raw JSON context, e.g. {"serviceTypes":[...]} for teacher verifications. */
+    private String metadata;
 }

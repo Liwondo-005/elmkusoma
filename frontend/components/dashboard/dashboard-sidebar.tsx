@@ -435,7 +435,10 @@ const teacherNavSections: TeacherNavSection[] = [
   },
   {
     group: "ACCOUNT", groupKey: "groupAccount",
-    items: [{ label: "Settings", labelKey: "settings", href: "/dashboard/teacher/settings", icon: Settings }],
+    items: [
+      { label: "Verification", labelKey: "verification", href: "/dashboard/teacher/verification", icon: ShieldCheck },
+      { label: "Settings", labelKey: "settings", href: "/dashboard/teacher/settings", icon: Settings },
+    ],
   },
 ]
 

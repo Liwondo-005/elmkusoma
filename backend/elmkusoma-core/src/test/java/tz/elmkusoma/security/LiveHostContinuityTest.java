@@ -38,6 +38,9 @@ class LiveHostContinuityTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
+
     /**
      * Distinct, non-overlapping windows so the seeded teacher's conflict check never fires.
      *
@@ -67,6 +70,12 @@ class LiveHostContinuityTest {
 
         String classId = com.jayway.jsonpath.JsonPath.read(
                 created.getResponse().getContentAsString(), "$.data.id");
+        // startSession delivers to learners, so the class must carry platform approval first
+        // (the governance step the host flow performs between scheduling and going live).
+        liveClassRepository.findById(java.util.UUID.fromString(classId)).ifPresent(lc -> {
+            lc.setPublicationStatus("PUBLISHED");
+            liveClassRepository.save(lc);
+        });
         mockMvc.perform(post("/v1/teachers/me/live-classes/" + classId + "/start")
                         .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
                         .header("Authorization", "Bearer " + TestTokens.teacherToken()))

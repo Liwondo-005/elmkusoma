@@ -570,7 +570,7 @@ public class PlatformAdminController {
     }
 
     @PostMapping("/verifications")
-    @Operation(summary = "Submit a verification request (INSTITUTION|PROVIDER|SERVICE)")
+    @Operation(summary = "Submit a verification request (INSTITUTION|PROVIDER|SERVICE|TEACHER)")
     public ResponseEntity<ApiResponse<VerificationSummaryResponse>> submitVerification(
             @RequestBody VerificationSubmitRequest req,
             HttpServletRequest request) {
@@ -593,6 +593,28 @@ public class PlatformAdminController {
             HttpServletRequest request) {
         UUID actorId = request.getAttribute("userId") != null ? UUID.fromString(request.getAttribute("userId").toString()) : null;
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.reviewVerification(verificationId, actorId, status, notes)));
+    }
+
+    @PostMapping("/teachers/{userId}/suspend")
+    @Operation(summary = "Suspend a verified teacher's verification (backend blocks publish/delivery immediately)")
+    public ResponseEntity<ApiResponse<VerificationSummaryResponse>> suspendTeacherVerification(
+            @PathVariable UUID userId,
+            @RequestBody(required = false) Map<String, String> body,
+            HttpServletRequest request) {
+        String reason = body != null ? body.getOrDefault("reason", "") : "";
+        return ResponseEntity.ok(ApiResponse.success("Teacher verification suspended",
+                platformAdminService.suspendTeacherVerification(userId, actorId(request), reason)));
+    }
+
+    @PostMapping("/teachers/{userId}/reactivate")
+    @Operation(summary = "Reactivate a suspended teacher's verification")
+    public ResponseEntity<ApiResponse<VerificationSummaryResponse>> reactivateTeacherVerification(
+            @PathVariable UUID userId,
+            @RequestBody(required = false) Map<String, String> body,
+            HttpServletRequest request) {
+        String reason = body != null ? body.getOrDefault("reason", "") : "";
+        return ResponseEntity.ok(ApiResponse.success("Teacher verification reactivated",
+                platformAdminService.reactivateTeacherVerification(userId, actorId(request), reason)));
     }
 
     // ── Entitlements ──

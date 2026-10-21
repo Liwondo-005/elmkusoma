@@ -74,9 +74,52 @@ export interface TeacherAssignment {
 export interface TeacherQualification {
   id: string
   qualificationName: string
-  institution: string | null
+  institution?: string | null
+  /** Backend TeacherQualificationResponse field name. */
+  institutionName?: string | null
+  fieldOfStudy?: string | null
   yearObtained: number | null
   certificateUrl: string | null
+}
+
+/** One review decision in a teacher's verification history (verification_records row). */
+export interface TeacherVerificationRecord {
+  id: string
+  status: string
+  verificationType: string | null
+  notes: string | null
+  /** Raw JSON document array as submitted. */
+  documents: string | null
+  /** Raw JSON metadata, e.g. {"serviceTypes":[...]}. */
+  metadata: string | null
+  submittedAt: string | null
+  reviewedAt: string | null
+  reviewedBy: string | null
+}
+
+/** Shape of GET /v1/teachers/me/verification. */
+export interface TeacherVerificationStatus {
+  teacherId: string
+  userId: string
+  /** PROVISIONAL | PENDING | CHANGES_REQUIRED | REJECTED | APPROVED | SUSPENDED */
+  effectiveStatus: string
+  formallyVerified: boolean
+  /** Documents required per service category (preliminary check matrix). */
+  requiredDocumentsByServiceType: Record<string, string[]>
+  /** Review history, oldest first. */
+  records: TeacherVerificationRecord[]
+}
+
+export interface VerificationDocumentInput {
+  type: string
+  url?: string
+  notes?: string
+}
+
+export interface VerificationSubmitInput {
+  serviceTypes: string[]
+  documents: VerificationDocumentInput[]
+  notes?: string
 }
 
 export interface LearningOffering {
@@ -467,6 +510,15 @@ export const teacherApi = {
   getQualifications: (id: string) => teacherFetch<TeacherQualification[]>(`/v1/teachers/${id}/qualifications`),
   addQualification: (id: string, data: { qualificationName: string; institution?: string; yearObtained?: number }) =>
     teacherFetch<TeacherQualification>(`/v1/teachers/${id}/qualifications`, { method: "POST", body: JSON.stringify(data) }),
+
+  /** Keyed by the caller's own teacher row — works for independent (school-less) teachers. */
+  getMyQualifications: () => teacherFetch<TeacherQualification[]>("/v1/teachers/me/qualifications"),
+  addMyQualification: (data: { qualificationName: string; institutionName: string; fieldOfStudy?: string; yearObtained?: number; certificateUrl?: string }) =>
+    teacherFetch<TeacherQualification>("/v1/teachers/me/qualifications", { method: "POST", body: JSON.stringify(data) }),
+
+  getVerification: () => teacherFetch<TeacherVerificationStatus>("/v1/teachers/me/verification"),
+  submitVerification: (data: VerificationSubmitInput) =>
+    teacherFetch<{ id: string; status: string }>("/v1/teachers/me/verification/submit", { method: "POST", body: JSON.stringify(data) }),
 
   getClassGroups: () => teacherFetch<ClassGroupInfo[]>(`/v1/academic/class-groups`),
   getStudentsByClass: (classId: string) => teacherFetch<StudentInClass[]>(`/v1/students?classId=${classId}`),

@@ -43,6 +43,7 @@ public class LearningOfferingService {
     private final UserRepository userRepository;
     private final SubjectRepository subjectRepository;
     private final CourseRepository courseRepository;
+    private final tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
 
     @Transactional
     public LearningOfferingResponse create(LearningOfferingRequest request, UUID userId, UUID institutionId) {
@@ -60,6 +61,10 @@ public class LearningOfferingService {
         offering.setCourseId(validatedCourseId(request.getCourseId(), independent, institutionId));
         offering.setVisibility(resolveVisibility(request.getVisibility(), independent));
         offering.setStatus(resolveStatus(request.getStatus(), LearningOffering.STATUS_DRAFT));
+        if (LearningOffering.STATUS_PUBLISHED.equals(offering.getStatus())) {
+            // Publishing a service offering is gated: provisional teachers may only save drafts.
+            teacherVerificationStateService.requirePublishAllowed(userId);
+        }
         return toResponse(offeringRepository.save(offering));
     }
 
@@ -93,6 +98,10 @@ public class LearningOfferingService {
         }
         if (request.getStatus() != null) {
             offering.setStatus(resolveStatus(request.getStatus(), offering.getStatus()));
+            if (LearningOffering.STATUS_PUBLISHED.equals(offering.getStatus())) {
+                // Draft → PUBLISHED transition is a publish action and is gated the same way.
+                teacherVerificationStateService.requirePublishAllowed(userId);
+            }
         }
         return toResponse(offeringRepository.save(offering));
     }

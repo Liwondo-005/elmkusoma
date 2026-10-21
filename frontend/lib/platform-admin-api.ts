@@ -728,6 +728,12 @@ export interface VerificationSummary {
   id: string; entityType: string; entityId: string; verificationType: string
   status: string; submittedBy: string | null; reviewedBy: string | null
   submittedAt: string; reviewedAt: string | null; createdAt: string
+  /** Reviewer notes / decision reason. */
+  notes?: string | null
+  /** Raw JSON document array as submitted by the applicant. */
+  documents?: string | null
+  /** Raw JSON context, e.g. {"serviceTypes":[...]} for teacher verifications. */
+  metadata?: string | null
 }
 
 export interface EntitlementSummary {
@@ -1333,6 +1339,17 @@ revertLegalDocument: (id: string, version: number) =>
     if (notes) params.set("notes", notes)
     return platformFetch<VerificationSummary>(`/v1/platform-admin/verifications/${id}/review?${params}`, { method: "PUT" })
   },
+  /** Verification-level suspension: the teacher keeps login/profile; publish/delivery is blocked backend-side. */
+  suspendTeacherVerification: (userId: string, reason?: string) =>
+    platformFetch<VerificationSummary>(`/v1/platform-admin/teachers/${userId}/suspend`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? "" }),
+    }),
+  reactivateTeacherVerification: (userId: string, reason?: string) =>
+    platformFetch<VerificationSummary>(`/v1/platform-admin/teachers/${userId}/reactivate`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? "" }),
+    }),
 
   listEntitlements: (page = 0, size = 20, status?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })

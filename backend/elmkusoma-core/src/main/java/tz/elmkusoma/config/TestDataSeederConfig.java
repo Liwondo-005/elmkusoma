@@ -33,6 +33,8 @@ public class TestDataSeederConfig {
     public static final UUID LEARNER_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000030");
     public static final UUID OTHER_STUDENT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000040");
     public static final UUID CLASS_ID = UUID.fromString("00000000-0000-0000-0000-000000000050");
+    /** APPROVED teacher-verification fixture for TEACHER_USER_ID (see seedTeacherVerification). */
+    public static final UUID TEACHER_VERIFICATION_ID = UUID.fromString("00000000-0000-0000-0000-000000000151");
 
     private final InstitutionMembershipRepository membershipRepository;
     private final PasswordEncoder passwordEncoder;
@@ -48,6 +50,7 @@ public class TestDataSeederConfig {
             seedUser("learner@elmkusoma.tz", LEARNER_USER_ID, User.Role.OTHER_LEARNER, InstitutionMembership.Role.STUDENT);
             seedUser("otherstudent@elmkusoma.tz", OTHER_STUDENT_USER_ID, User.Role.STUDENT, InstitutionMembership.Role.STUDENT);
             seedTeacher();
+            seedTeacherVerification();
             seedLiveClass();
             log.info("TestDataSeeder completed");
         };
@@ -99,6 +102,26 @@ public class TestDataSeederConfig {
                         + "created_at, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 TEACHER_ID, INSTITUTION_ID, TEACHER_USER_ID, "EMP-TEST-0001", "ACTIVE",
                 LocalDateTime.now(), false);
+    }
+
+    /**
+     * The seeded teacher user is treated as formally verified, exactly as if a Platform
+     * Admin had approved them — test infrastructure fabricates the approved state, the
+     * product itself never auto-approves. Provisional-teacher behaviour is tested with
+     * fresh users that carry no verification record.
+     */
+    private void seedTeacherVerification() {
+        if (exists("SELECT COUNT(*) FROM verification_records WHERE id = ?", TEACHER_VERIFICATION_ID)) {
+            return;
+        }
+        jdbcTemplate.update(
+                "INSERT INTO verification_records (id, institution_id, entity_type, entity_id, "
+                        + "verification_type, status, submitted_by, submitted_at, reviewed_by, "
+                        + "reviewed_at, notes, is_deleted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                TEACHER_VERIFICATION_ID, INSTITUTION_ID, "TEACHER", TEACHER_USER_ID,
+                "TEACHING_SERVICE", "APPROVED", TEACHER_USER_ID, LocalDateTime.now(),
+                ADMIN_USER_ID, LocalDateTime.now(), "Seeded formally verified teacher",
+                false, LocalDateTime.now());
     }
 
     private void seedLiveClass() {

@@ -38,6 +38,18 @@ public class ResourceController {
     private final ResourceService resourceService;
     private final ResourceAnnotationService annotationService;
     private final ResourceAnalyticsService analyticsService;
+    private final tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
+
+    /**
+     * Teacher publish gate: making a resource PUBLIC shares it with all learners, so a
+     * provisional teacher cannot do it. Only teachers are subject to the gate; drafts,
+     * private and institution-scoped work are never gated.
+     */
+    private void gateTeacherPublish(UUID userId, ResourceRequest request) {
+        if (request.getVisibility() != null && "PUBLIC".equalsIgnoreCase(request.getVisibility().trim())) {
+            teacherVerificationStateService.requirePublishAllowed(userId);
+        }
+    }
 
     /**
      * Institution-scoped endpoints must never run with a missing scope.
@@ -64,6 +76,7 @@ public class ResourceController {
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userRole", required = false) String userRole) {
         requireInstitutionScope(institutionId);
+        gateTeacherPublish(userId, request);
         ResourceResponse response = resourceService.createResource(request, institutionId, userId, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Resource created successfully", response));
@@ -80,6 +93,7 @@ public class ResourceController {
             @RequestAttribute(value = "userRole", required = false) String userRole,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
         requireInstitutionScope(institutionId);
+        gateTeacherPublish(userId, request);
         ResourceResponse response = resourceService.createResourceWithFile(
                 request, file, institutionId, userId, userRole, authorization);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -166,6 +180,7 @@ public class ResourceController {
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
         requireInstitutionScope(institutionId);
+        gateTeacherPublish(userId, request);
         ResourceResponse response = resourceService.updateResource(resourceId, request, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Resource updated successfully", response));
     }
@@ -182,6 +197,7 @@ public class ResourceController {
             @RequestAttribute("userRole") String userRole,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
         requireInstitutionScope(institutionId);
+        gateTeacherPublish(userId, request);
         ResourceResponse response = resourceService.updateResourceWithFile(
                 resourceId, request, file, institutionId, userId, userRole, authorization);
         return ResponseEntity.ok(ApiResponse.success("Resource updated successfully", response));

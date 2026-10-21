@@ -126,6 +126,8 @@ public class PlatformAdminService {
     private final tz.elmkusoma.identity.repository.PasswordResetTokenRepository passwordResetTokenRepository;
     private final tz.elmkusoma.config.EventPublisherService eventPublisherService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final tz.elmkusoma.learner.service.NotificationService notificationService;
+    private final tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
 
     /** Base URL of the web app, used to build password-reset links. */
     @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
@@ -2106,7 +2108,8 @@ public class PlatformAdminService {
 
     // ── Verifications ──
 
-    private static final Set<String> VERIFIABLE_ENTITY_TYPES = Set.of("INSTITUTION", "PROVIDER", "SERVICE");
+    private static final Set<String> VERIFIABLE_ENTITY_TYPES =
+            Set.of("INSTITUTION", "PROVIDER", "SERVICE", "TEACHER");
 
     public VerificationSummaryResponse submitVerification(VerificationSubmitRequest req) {
         String entityType = req.getEntityType() != null ? req.getEntityType().trim().toUpperCase() : null;
@@ -2126,6 +2129,13 @@ public class PlatformAdminService {
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", req.getEntityId()));
             case "SERVICE" -> platformServiceRepository.findById(req.getEntityId())
                     .orElseThrow(() -> new ResourceNotFoundException("PlatformService", "id", req.getEntityId()));
+            case "TEACHER" -> {
+                User teacherUser = userRepository.findByIdAndIsDeletedFalse(req.getEntityId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id", req.getEntityId()));
+                if (teacherUser.getRole() != User.Role.TEACHER) {
+                    throw new IllegalArgumentException("entityId must reference a TEACHER user");
+                }
+            }
             default -> throw new IllegalArgumentException("Unsupported entityType: " + entityType);
         }
         // Only an undecided PENDING request blocks resubmission. A CHANGES_REQUIRED
@@ -2143,6 +2153,7 @@ public class PlatformAdminService {
                 .status("PENDING").submittedBy(req.getSubmittedBy())
                 .submittedAt(LocalDateTime.now())
                 .documents(req.getDocuments() != null && !req.getDocuments().isBlank() ? req.getDocuments() : null)
+                .metadata(req.getMetadata() != null && !req.getMetadata().isBlank() ? req.getMetadata() : null)
                 .notes(req.getNotes())
                 .build();
         if ("INSTITUTION".equals(entityType)) {
@@ -2168,6 +2179,7 @@ public class PlatformAdminService {
                 .id(rec.getId()).entityType(rec.getEntityType()).entityId(rec.getEntityId())
                 .verificationType(rec.getVerificationType()).status(rec.getStatus())
                 .submittedBy(rec.getSubmittedBy()).submittedAt(rec.getSubmittedAt())
+                .notes(rec.getNotes()).documents(rec.getDocuments()).metadata(rec.getMetadata())
                 .createdAt(rec.getCreatedAt()).build();
     }
 
@@ -2178,6 +2190,7 @@ public class PlatformAdminService {
                         .id(v.getId()).entityType(v.getEntityType()).entityId(v.getEntityId())
                         .verificationType(v.getVerificationType()).status(v.getStatus())
                         .submittedBy(v.getSubmittedBy()).submittedAt(v.getSubmittedAt())
+                        .notes(v.getNotes()).documents(v.getDocuments()).metadata(v.getMetadata())
                         .createdAt(v.getCreatedAt()).build())
                 .toList();
     }
@@ -2208,11 +2221,16 @@ public class PlatformAdminService {
 
         log.info("Verification {} reviewed: {} by {}", id, status, reviewedBy);
 
+        if ("TEACHER".equals(rec.getEntityType())) {
+            notifyTeacherVerificationDecision(rec);
+        }
+
         return VerificationSummaryResponse.builder()
                 .id(rec.getId()).entityType(rec.getEntityType()).entityId(rec.getEntityId())
                 .verificationType(rec.getVerificationType()).status(rec.getStatus())
                 .submittedBy(rec.getSubmittedBy()).reviewedBy(rec.getReviewedBy())
                 .submittedAt(rec.getSubmittedAt()).reviewedAt(rec.getReviewedAt())
+                .notes(rec.getNotes()).documents(rec.getDocuments()).metadata(rec.getMetadata())
                 .createdAt(rec.getCreatedAt()).build();
     }
 
@@ -2249,6 +2267,126 @@ public class PlatformAdminService {
         } catch (Exception e) {
             log.warn("Failed to apply verification side effects for {}: {}", rec.getId(), e.getMessage());
         }
+    }
+
+    // ── Teacher verification suspension ──
+
+    /**
+     * Verification-level suspension of a formally verified teacher. The account and login
+     * stay intact (the teacher can still manage their profile and see the status), but the
+     * shared backend guard blocks every publish/delivery operation immediately — no JWT
+     * invalidation is needed because the guard re-reads state on each gated request.
+     */
+    public VerificationSummaryResponse suspendTeacherVerification(UUID userId, UUID actorId, String reason) {
+        User user = requireTeacherUser(userId);
+        String current = teacherVerificationStateService.effectiveStatus(userId);
+        if ("SUSPENDED".equals(current)) {
+            throw new IllegalStateException("Teacher verification is already suspended");
+        }
+        if (!"APPROVED".equals(current)) {
+            throw new IllegalStateException(
+                    "Only a formally verified teacher can be suspended; current state is " + current);
+        }
+        VerificationRecord rec = saveTeacherOutcome(userId, "SUSPENDED", actorId, reason);
+        writeAudit(PLATFORM_INSTITUTION_ID, "VerificationRecord", rec.getId(),
+                "Teacher verification suspended", "UPDATE",
+                Map.of("previousStatus", current, "userId", userId.toString()),
+                Map.of("status", "SUSPENDED", "reason", String.valueOf(rec.getNotes())));
+        notifyTeacher(rec.getEntityId(), "Teacher verification suspended",
+                "Your teaching services are blocked until the platform administrator reinstates your verification."
+                        + suffixReason(rec.getNotes()));
+        log.info("Teacher verification suspended: user={} by {}", userId, actorId);
+        return toSummary(rec);
+    }
+
+    /** Restore a suspended teacher: writes a fresh APPROVED record that outranks the suspension. */
+    public VerificationSummaryResponse reactivateTeacherVerification(UUID userId, UUID actorId, String reason) {
+        User user = requireTeacherUser(userId);
+        String current = teacherVerificationStateService.effectiveStatus(userId);
+        if (!"SUSPENDED".equals(current)) {
+            throw new IllegalStateException(
+                    "Only a suspended teacher verification can be reactivated; current state is " + current);
+        }
+        VerificationRecord rec = saveTeacherOutcome(userId, "APPROVED", actorId, reason);
+        writeAudit(PLATFORM_INSTITUTION_ID, "VerificationRecord", rec.getId(),
+                "Teacher verification reactivated", "UPDATE",
+                Map.of("previousStatus", current, "userId", userId.toString()),
+                Map.of("status", "APPROVED", "reason", String.valueOf(rec.getNotes())));
+        notifyTeacher(rec.getEntityId(), "Teacher verification restored",
+                "Your teaching services are unblocked. You can publish and deliver again."
+                        + suffixReason(rec.getNotes()));
+        log.info("Teacher verification reactivated: user={} by {}", userId, actorId);
+        return toSummary(rec);
+    }
+
+    private User requireTeacherUser(UUID userId) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        if (user.getRole() != User.Role.TEACHER) {
+            throw new IllegalArgumentException("userId must reference a TEACHER user");
+        }
+        return user;
+    }
+
+    /** Admin-authored outcome row (suspend/reactivate); history is append-only for audit. */
+    private VerificationRecord saveTeacherOutcome(UUID userId, String status, UUID actorId, String reason) {
+        VerificationRecord rec = VerificationRecord.builder()
+                .entityType("TEACHER").entityId(userId)
+                .verificationType("TEACHING_SERVICE")
+                .status(status)
+                .submittedBy(actorId)
+                .submittedAt(LocalDateTime.now())
+                .reviewedBy(actorId)
+                .reviewedAt(LocalDateTime.now())
+                .notes(truncateNotes(reason))
+                .build();
+        rec.setInstitutionId(PLATFORM_INSTITUTION_ID);
+        return verificationRepository.save(rec);
+    }
+
+    /** notes is VARCHAR(255) since V81. */
+    private static String truncateNotes(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        String trimmed = reason.trim();
+        return trimmed.length() <= 255 ? trimmed : trimmed.substring(0, 255);
+    }
+
+    private static String suffixReason(String notes) {
+        return notes != null && !notes.isBlank() ? " Reason: " + notes : "";
+    }
+
+    private void notifyTeacherVerificationDecision(VerificationRecord rec) {
+        String title = switch (rec.getStatus()) {
+            case "APPROVED" -> "Teacher verification approved";
+            case "REJECTED" -> "Teacher verification rejected";
+            case "CHANGES_REQUIRED" -> "Teacher verification: more information required";
+            default -> "Teacher verification " + rec.getStatus().toLowerCase();
+        };
+        String message = rec.getStatus()
+                + (rec.getNotes() != null && !rec.getNotes().isBlank() ? ". " + rec.getNotes() : "");
+        notifyTeacher(rec.getEntityId(), title, message);
+    }
+
+    /** Best-effort in-app notification; failures must never fail the review itself. */
+    private void notifyTeacher(UUID userId, String title, String message) {
+        try {
+            notificationService.notifyUser(userId, title, message,
+                    "TEACHER_VERIFICATION", "VerificationRecord", null);
+        } catch (Exception e) {
+            log.warn("Failed to notify teacher {} about verification: {}", userId, e.getMessage());
+        }
+    }
+
+    private VerificationSummaryResponse toSummary(VerificationRecord rec) {
+        return VerificationSummaryResponse.builder()
+                .id(rec.getId()).entityType(rec.getEntityType()).entityId(rec.getEntityId())
+                .verificationType(rec.getVerificationType()).status(rec.getStatus())
+                .submittedBy(rec.getSubmittedBy()).reviewedBy(rec.getReviewedBy())
+                .submittedAt(rec.getSubmittedAt()).reviewedAt(rec.getReviewedAt())
+                .notes(rec.getNotes()).documents(rec.getDocuments()).metadata(rec.getMetadata())
+                .createdAt(rec.getCreatedAt()).build();
     }
 
     // ── Entitlements ──

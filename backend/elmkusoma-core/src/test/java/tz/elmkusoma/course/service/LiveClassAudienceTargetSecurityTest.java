@@ -58,6 +58,9 @@ class LiveClassAudienceTargetSecurityTest {
     @Mock private TeacherAssignmentRepository teacherAssignmentRepository;
     // Needed by mapToResponse on the two happy-path tests; unrelated to audience validation.
     @Mock private tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository participantRepository;
+    // Only startSession consults the verification gate, which these audience tests never call;
+    // mocked so @InjectMocks never leaves it null if a fixture later starts a session.
+    @Mock private tz.elmkusoma.teacher.service.TeacherVerificationStateService teacherVerificationStateService;
 
     @Spy private OwnershipGuard ownershipGuard = new OwnershipGuard();
 

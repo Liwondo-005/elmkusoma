@@ -44,12 +44,42 @@ public class TeacherController {
     @Operation(summary = "Update current teacher's profile")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<ApiResponse<TeacherResponse>> updateMyProfile(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            // Optional, like GET /me/profile: an independent teacher has no institution to declare.
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestBody TeacherRequest request) {
         TeacherResponse teacher = teacherService.getTeacherByUserId(userId, institutionId);
         TeacherResponse updated = teacherService.updateTeacher(institutionId, teacher.getId(), request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
+    }
+
+    @GetMapping("/me/qualifications")
+    @Operation(summary = "Get current teacher's qualifications (works for independent teachers too)")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ApiResponse<List<TeacherQualificationResponse>>> getMyQualifications(
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        // Keyed by the caller's own teacher row, so no institution-scoped path parameter
+        // blocks an independent (school-less) teacher from their own records.
+        tz.elmkusoma.teacher.domain.Teacher teacher =
+                teacherService.getOrCreateTeacherByUserId(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(
+                teacherService.getQualifications(teacher.getInstitutionId(), teacher.getId())));
+    }
+
+    @PostMapping("/me/qualifications")
+    @Operation(summary = "Add a qualification to current teacher's profile (works for independent teachers too)")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ApiResponse<TeacherQualificationResponse>> addMyQualification(
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @Valid @RequestBody TeacherQualificationRequest request) {
+        tz.elmkusoma.teacher.domain.Teacher teacher =
+                teacherService.getOrCreateTeacherByUserId(userId, institutionId);
+        TeacherQualificationResponse qualification = teacherService.addQualification(
+                teacher.getInstitutionId(), teacher.getId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Qualification added successfully", qualification));
     }
 
     @GetMapping("/me/classes")
@@ -259,12 +289,13 @@ public class TeacherController {
         if ("ADMIN".equals(userRole)) {
             return;
         }
-        teacherRepository.findById(id)
+        // A missing row is a 404, not a silent pass-through: the previous ifPresent-skip let
+        // an unknown id bypass the institution check entirely.
+        tz.elmkusoma.teacher.domain.Teacher teacher = teacherRepository.findById(id)
                 .filter(t -> !Boolean.TRUE.equals(t.getIsDeleted()))
-                .ifPresent(t -> {
-                    if (t.getInstitutionId() == null || !t.getInstitutionId().equals(serverInstitutionId)) {
-                        throw new tz.elmkusoma.exception.ForbiddenException("Teacher", "access");
-                    }
-                });
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("Teacher", "id", id));
+        if (teacher.getInstitutionId() == null || !teacher.getInstitutionId().equals(serverInstitutionId)) {
+            throw new tz.elmkusoma.exception.ForbiddenException("Teacher", "access");
+        }
     }
 }
