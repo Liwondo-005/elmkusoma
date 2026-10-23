@@ -1,4 +1,6 @@
+
 FROM eclipse-temurin:21-jdk AS build
+
 WORKDIR /app
 
 COPY pom.xml .
@@ -13,7 +15,7 @@ RUN ./mvnw clean package -DskipTests -B
 
 FROM eclipse-temurin:21-jre
 
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN groupadd --system appgroup && useradd --system --gid appgroup --create-home appuser
 
 WORKDIR /app
 
